@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Agent Command Center</title>
+    <meta
+      name="description"
+      content="Design, visualize, and export OpenClaw-powered teams of AI agents."
+    >
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    >
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <div class="brand-lockup">
+          <span class="brand-mark">OC</span>
+          <div>
+            <p class="eyebrow">OpenClaw Internal Studio</p>
+            <h1>Agent Command Center</h1>
+          </div>
+        </div>
+        <div class="status-strip">
+          <span class="status-pill status-live">One Telegram bot</span>
+          <span class="status-pill">Internal subagents</span>
+          <span class="status-pill">Static-site ready</span>
+        </div>
+      </header>
+
+      <main>
+        <section class="hero-panel">
+          <div class="hero-copy">
+            <p class="eyebrow">Team builder for serious shipping</p>
+            <h2>Spin up an agent squad, map the handoffs, and stage the launch.</h2>
+            <p class="hero-text">
+              This dashboard is built for your OpenClaw setup: one public Telegram assistant, a
+              whole internal team behind it, and a delivery path for apps, websites, and launch
+              assets.
+            </p>
+            <div class="hero-stats">
+              <article>
+                <span class="stat-value" id="hero-count">6</span>
+                <span class="stat-label">agents online</span>
+              </article>
+              <article>
+                <span class="stat-value" id="hero-cadence">daily</span>
+                <span class="stat-label">meeting cadence</span>
+              </article>
+              <article>
+                <span class="stat-value">zip</span>
+                <span class="stat-label">release handoff</span>
+              </article>
+            </div>
+          </div>
+
+          <div class="hero-aside">
+            <div class="signal-card">
+              <p class="eyebrow">Reality check</p>
+              <h3>One bot identity, many worker minds.</h3>
+              <p>
+                Telegram still sees one bot. OpenClaw handles the real swarm internally through
+                subagents, workflows, and delivery roles.
+              </p>
+            </div>
+            <div class="signal-card accent-card">
+              <p class="eyebrow">Search fallback</p>
+              <h3>Browser plus fetch beats a missing API key.</h3>
+              <p>
+                When API search is unavailable, this setup is designed to search through the web
+                browser, open sources, and pull in article text with fetch.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section class="studio-grid">
+          <section class="control-panel surface-card">
+            <div class="section-heading">
+              <p class="eyebrow">Mission control</p>
+              <h3>Build the team</h3>
+            </div>
+
+            <form id="mission-form" class="mission-form">
+              <label class="field">
+                <span>Mission brief</span>
+                <textarea
+                  id="mission-input"
+                  rows="5"
+                  placeholder="Build a premium portfolio SaaS with onboarding, billing, analytics, and a launch landing page."
+                >Build a premium AI product studio that can design, code, review, and launch bold websites and apps for me.</textarea>
+              </label>
+
+              <div class="field-row">
+                <label class="field">
+                  <span>Studio mode</span>
+                  <select id="mode-select">
+                    <option value="product-launch">Product Launch</option>
+                    <option value="research-swarm">Research Swarm</option>
+                    <option value="ops-lab">Ops Lab</option>
+                    <option value="content-engine">Content Engine</option>
+                  </select>
+                </label>
+
+                <label class="field">
+                  <span>Agent count</span>
+                  <input id="agent-count" type="range" min="4" max="12" value="6">
+                  <div class="range-labels">
+                    <span>4</span>
+                    <strong id="agent-count-label">6 agents</strong>
+                    <span>12</span>
+                  </div>
+                </label>
+              </div>
+
+              <div class="toggle-grid">
+                <label class="toggle-card">
+                  <input id="website-toggle" type="checkbox" checked>
+                  <span>Generate website/app outputs</span>
+                </label>
+                <label class="toggle-card">
+                  <input id="review-toggle" type="checkbox" checked>
+                  <span>Include reviewer loop</span>
+                </label>
+                <label class="toggle-card">
+                  <input id="zip-toggle" type="checkbox" checked>
+                  <span>Package release zip</span>
+                </label>
+                <label class="toggle-card">
+                  <input id="hosting-toggle" type="checkbox" checked>
+                  <span>Prepare free-hosting plan</span>
+                </label>
+              </div>
+
+              <div class="button-row">
+                <button class="primary-button" type="submit">Generate team</button>
+                <button class="secondary-button" id="export-json" type="button">Export JSON</button>
+              </div>
+            </form>
+          </section>
+
+          <section class="canvas-panel surface-card">
+            <div class="section-heading">
+              <p class="eyebrow">Swarm canvas</p>
+              <h3>Live role map</h3>
+            </div>
+
+            <div class="orbit-stage" id="orbit-stage">
+              <div class="core-node">
+                <span class="node-label">Main bot</span>
+                <strong>Lead coordinator</strong>
+                <p>Telegram front desk + final answers</p>
+              </div>
+              <div class="orbit-ring orbit-ring-large"></div>
+              <div class="orbit-ring orbit-ring-small"></div>
+              <div id="orbit-nodes"></div>
+            </div>
+
+            <div class="routing-note">
+              <strong>Routing model:</strong>
+              <span id="routing-summary">
+                Main coordinator delegates to specialists, collects outputs, and ships one final
+                response.
+              </span>
+            </div>
+          </section>
+        </section>
+
+        <section class="team-section">
+          <div class="section-heading section-heading-inline">
+            <div>
+              <p class="eyebrow">Roster</p>
+              <h3>Active agents</h3>
+            </div>
+            <span class="section-badge" id="mode-badge">Product Launch</span>
+          </div>
+
+          <div class="agent-grid" id="agent-grid"></div>
+        </section>
+
+        <section class="meeting-grid">
+          <section class="surface-card">
+            <div class="section-heading">
+              <p class="eyebrow">Meeting room</p>
+              <h3>Daily sync agenda</h3>
+            </div>
+            <ol class="agenda-list" id="agenda-list"></ol>
+          </section>
+
+          <section class="surface-card">
+            <div class="section-heading">
+              <p class="eyebrow">Delivery pipeline</p>
+              <h3>What this squad ships</h3>
+            </div>
+            <div class="pipeline-list" id="pipeline-list"></div>
+          </section>
+
+          <section class="surface-card">
+            <div class="section-heading">
+              <p class="eyebrow">Launch surfaces</p>
+              <h3>Where the work lands</h3>
+            </div>
+            <div class="surface-stack" id="surface-stack"></div>
+          </section>
+        </section>
+
+        <section class="footer-banner">
+          <div>
+            <p class="eyebrow">Ship path</p>
+            <h3>Static dashboard now, long-running agent ops later.</h3>
+          </div>
+          <p>
+            This dashboard is ready for static hosting on Vercel or Netlify. The real OpenClaw
+            gateway and Telegram automation still need a long-running server when you want them
+            always on.
+          </p>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

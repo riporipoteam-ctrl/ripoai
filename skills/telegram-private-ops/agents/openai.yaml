@@ -1,0 +1,6 @@
+interface:
+  display_name: "Telegram Bot Ops"
+  short_description: "Operate the private Telegram OpenClaw bot with browser, voice, and subagents."
+  default_prompt: "Use $telegram-private-ops to operate the private Telegram OpenClaw bot with browser, voice notes, and subagents."
+policy:
+  allow_implicit_invocation: true

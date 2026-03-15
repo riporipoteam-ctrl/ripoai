@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: openclaw-telegram
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    autoDeploy: false
+    healthCheckPath: /health
+    envVars:
+      - key: OPENCLAW_MODEL
+        value: huggingface/Qwen/Qwen3-8B
+      - key: TELEGRAM_OWNER_ID
+        value: "7428637111"
+      - key: OPENCLAW_DASHBOARD_PASSWORD
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET
+        generateValue: true
+      - key: HF_TOKEN
+        sync: false
+      - key: HUGGINGFACE_HUB_TOKEN
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
