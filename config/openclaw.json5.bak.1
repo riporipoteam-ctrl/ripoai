@@ -1,7 +1,7 @@
 {
   "meta": {
     "lastTouchedVersion": "2026.3.13",
-    "lastTouchedAt": "2026-03-15T16:08:32.008Z"
+    "lastTouchedAt": "2026-03-15T17:48:32.217Z"
   },
   "update": {
     "auto": {
@@ -28,19 +28,59 @@
         "archiveAfterMinutes": 120,
         "model": "huggingface/Qwen/Qwen3-8B",
         "runTimeoutSeconds": 600
+      },
+      "sandbox": {
+        "browser": {
+          "allowHostControl": true
+        }
       }
     },
     "list": [
       {
         "id": "main",
-        "default": true
+        "default": true,
+        "tools": {
+          "alsoAllow": [
+            "read",
+            "write",
+            "edit",
+            "apply_patch",
+            "exec",
+            "process",
+            "web_search",
+            "web_fetch",
+            "memory_search",
+            "memory_get",
+            "sessions_list",
+            "sessions_history",
+            "sessions_send",
+            "sessions_spawn",
+            "sessions_yield",
+            "subagents",
+            "browser",
+            "canvas",
+            "message",
+            "cron",
+            "gateway",
+            "nodes",
+            "agents_list",
+            "image",
+            "tts"
+          ]
+        }
       }
     ]
   },
   "tools": {
     "profile": "minimal",
     "allow": [
+      "browser",
+      "web_fetch",
+      "sessions_spawn",
+      "subagents",
+      "llm-task",
       "group:fs",
+      "group:plugins",
       "group:runtime",
       "group:web",
       "group:ui",
@@ -49,7 +89,7 @@
     ],
     "web": {
       "search": {
-        "enabled": true,
+        "enabled": false,
         "provider": "brave",
         "maxResults": 5,
         "timeoutSeconds": 30,
@@ -146,6 +186,16 @@
     "load": {
       "watch": true,
       "watchDebounceMs": 250
+    }
+  },
+  "plugins": {
+    "entries": {
+      "open-prose": {
+        "enabled": true
+      },
+      "llm-task": {
+        "enabled": true
+      }
     }
   }
 }

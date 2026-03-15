@@ -1,7 +1,7 @@
 {
   "meta": {
     "lastTouchedVersion": "2026.3.13",
-    "lastTouchedAt": "2026-03-15T16:09:13.228Z"
+    "lastTouchedAt": "2026-03-15T17:48:59.605Z"
   },
   "update": {
     "auto": {
@@ -18,9 +18,11 @@
         "primary": "huggingface/Qwen/Qwen3-8B"
       },
       "workspace": "${OPENCLAW_WORKSPACE}",
+      "skipBootstrap": true,
       "memorySearch": {
         "enabled": false
       },
+      "thinkingDefault": "high",
       "subagents": {
         "maxConcurrent": 4,
         "maxSpawnDepth": 2,
@@ -28,6 +30,11 @@
         "archiveAfterMinutes": 120,
         "model": "huggingface/Qwen/Qwen3-8B",
         "runTimeoutSeconds": 600
+      },
+      "sandbox": {
+        "browser": {
+          "allowHostControl": true
+        }
       }
     },
     "list": [
@@ -177,6 +184,12 @@
       "token": "${OPENCLAW_GATEWAY_TOKEN}"
     }
   },
+  "skills": {
+    "load": {
+      "watch": true,
+      "watchDebounceMs": 250
+    }
+  },
   "plugins": {
     "entries": {
       "open-prose": {
@@ -185,12 +198,6 @@
       "llm-task": {
         "enabled": true
       }
-    }
-  },
-  "skills": {
-    "load": {
-      "watch": true,
-      "watchDebounceMs": 250
     }
   }
 }

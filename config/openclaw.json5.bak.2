@@ -1,7 +1,12 @@
 {
   "meta": {
     "lastTouchedVersion": "2026.3.13",
-    "lastTouchedAt": "2026-03-15T14:56:56.144Z"
+    "lastTouchedAt": "2026-03-15T16:09:13.228Z"
+  },
+  "update": {
+    "auto": {
+      "enabled": true
+    }
   },
   "browser": {
     "enabled": true,
@@ -17,25 +22,60 @@
         "enabled": false
       },
       "subagents": {
+        "maxConcurrent": 4,
         "maxSpawnDepth": 2,
         "maxChildrenPerAgent": 4,
-        "maxConcurrent": 4,
-        "runTimeoutSeconds": 600,
         "archiveAfterMinutes": 120,
-        "model": "huggingface/Qwen/Qwen3-8B"
+        "model": "huggingface/Qwen/Qwen3-8B",
+        "runTimeoutSeconds": 600
       }
     },
     "list": [
       {
         "id": "main",
-        "default": true
+        "default": true,
+        "tools": {
+          "alsoAllow": [
+            "read",
+            "write",
+            "edit",
+            "apply_patch",
+            "exec",
+            "process",
+            "web_search",
+            "web_fetch",
+            "memory_search",
+            "memory_get",
+            "sessions_list",
+            "sessions_history",
+            "sessions_send",
+            "sessions_spawn",
+            "sessions_yield",
+            "subagents",
+            "browser",
+            "canvas",
+            "message",
+            "cron",
+            "gateway",
+            "nodes",
+            "agents_list",
+            "image",
+            "tts"
+          ]
+        }
       }
     ]
   },
   "tools": {
     "profile": "minimal",
     "allow": [
+      "browser",
+      "web_fetch",
+      "sessions_spawn",
+      "subagents",
+      "llm-task",
       "group:fs",
+      "group:plugins",
       "group:runtime",
       "group:web",
       "group:ui",
@@ -44,7 +84,7 @@
     ],
     "web": {
       "search": {
-        "enabled": true,
+        "enabled": false,
         "provider": "brave",
         "maxResults": 5,
         "timeoutSeconds": 30,
@@ -65,19 +105,11 @@
       "notifyOnExit": true
     }
   },
-  "commands": {
-    "native": "auto",
-    "nativeSkills": "auto",
-    "restart": true,
-    "ownerDisplay": "raw"
-  },
   "messages": {
     "tts": {
       "auto": "tagged",
       "mode": "final",
       "provider": "elevenlabs",
-      "maxTextLength": 2500,
-      "timeoutMs": 30000,
       "modelOverrides": {
         "enabled": true
       },
@@ -90,8 +122,16 @@
           "useSpeakerBoost": true,
           "speed": 1
         }
-      }
+      },
+      "maxTextLength": 2500,
+      "timeoutMs": 30000
     }
+  },
+  "commands": {
+    "native": "auto",
+    "nativeSkills": "auto",
+    "restart": true,
+    "ownerDisplay": "raw"
   },
   "session": {
     "dmScope": "per-channel-peer"
@@ -107,7 +147,7 @@
       "execApprovals": {
         "enabled": true,
         "approvers": [
-          "7428637111"
+          7428637111
         ],
         "target": "dm"
       },
@@ -116,7 +156,7 @@
       "dmPolicy": "allowlist",
       "tokenFile": "${OPENCLAW_TELEGRAM_TOKEN_FILE}",
       "allowFrom": [
-        "7428637111"
+        7428637111
       ],
       "groupPolicy": "disabled",
       "textChunkLimit": 4000,
@@ -135,6 +175,16 @@
     "auth": {
       "mode": "token",
       "token": "${OPENCLAW_GATEWAY_TOKEN}"
+    }
+  },
+  "plugins": {
+    "entries": {
+      "open-prose": {
+        "enabled": true
+      },
+      "llm-task": {
+        "enabled": true
+      }
     }
   },
   "skills": {
