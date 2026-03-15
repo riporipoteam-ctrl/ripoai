@@ -15,7 +15,7 @@ ENV NODE_ENV=production \
 WORKDIR /app
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends git nginx gettext-base ca-certificates \
+    && apt-get install -y --no-install-recommends curl git nginx gettext-base ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 RUN npm install -g --prefix "${OPENCLAW_INSTALL_PREFIX}" --loglevel warn --no-fund --no-audit openclaw@latest \
