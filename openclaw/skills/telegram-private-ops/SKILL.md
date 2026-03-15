@@ -22,6 +22,7 @@ Prefer these OpenClaw capabilities when answering or acting:
 
 - Use `web_fetch` for normal article and documentation URLs.
 - Use `browser` for JS-heavy pages, login-required pages, and tasks that need a real interactive browser.
+- If API-backed `web_search` is unavailable, use the browser to search the public web first, then open and fetch the most promising sources.
 - Use sub-agents for long research or ops tasks that benefit from background work, but keep the fan-out small and deliberate.
 - Use filesystem and session tools directly for repo work instead of inventing shell-only workflows.
 - Use exec sparingly and only when the task really needs host commands.
