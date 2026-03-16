@@ -69,7 +69,7 @@ wait_for_gateway() {
   local deadline
   deadline=$((SECONDS + OPENCLAW_READY_TIMEOUT_SECONDS))
 
-  until curl -fsS --max-time 5 "http://127.0.0.1:${OPENCLAW_GATEWAY_PORT}/health" >/dev/null; do
+  until curl -fsS --max-time 5 "http://127.0.0.1:${OPENCLAW_GATEWAY_PORT}/health" >/dev/null 2>&1; do
     if ! kill -0 "${OPENCLAW_PID}" 2>/dev/null; then
       echo "OpenClaw gateway exited before becoming ready." >&2
       wait "${OPENCLAW_PID}" || true
@@ -107,9 +107,20 @@ validate_telegram_token
 openclaw gateway --bind loopback --port "${OPENCLAW_GATEWAY_PORT}" run &
 OPENCLAW_PID=$!
 
-wait_for_gateway
-
 nginx -c /tmp/openclaw-nginx.conf -g 'daemon off;' &
 NGINX_PID=$!
 
+(
+  echo "Waiting for OpenClaw gateway readiness on 127.0.0.1:${OPENCLAW_GATEWAY_PORT}..."
+  if ! wait_for_gateway; then
+    kill "${OPENCLAW_PID}" 2>/dev/null || true
+    kill "${NGINX_PID}" 2>/dev/null || true
+    exit 1
+  fi
+  echo "OpenClaw gateway is ready."
+) &
+READY_PID=$!
+
 wait -n "${OPENCLAW_PID}" "${NGINX_PID}"
+
+kill "${READY_PID}" 2>/dev/null || true
