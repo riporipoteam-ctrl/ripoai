@@ -9,8 +9,6 @@ set -euo pipefail
 : "${OPENCLAW_CONFIG_PATH:=/app/config/render.openclaw.json5}"
 : "${OPENCLAW_MODEL:=huggingface/Qwen/Qwen3-8B}"
 : "${TELEGRAM_OWNER_ID:=7428637111}"
-: "${OPENCLAW_READY_TIMEOUT_SECONDS:=90}"
-
 if [[ -z "${OPENCLAW_DASHBOARD_PASSWORD:-}" ]]; then
   echo "OPENCLAW_DASHBOARD_PASSWORD is required for hosted dashboard access." >&2
   exit 1
@@ -65,24 +63,6 @@ validate_telegram_token() {
   esac
 }
 
-wait_for_gateway() {
-  local deadline
-  deadline=$((SECONDS + OPENCLAW_READY_TIMEOUT_SECONDS))
-
-  until curl -fsS --max-time 5 "http://127.0.0.1:${OPENCLAW_GATEWAY_PORT}/health" >/dev/null 2>&1; do
-    if ! kill -0 "${OPENCLAW_PID}" 2>/dev/null; then
-      echo "OpenClaw gateway exited before becoming ready." >&2
-      wait "${OPENCLAW_PID}" || true
-      exit 1
-    fi
-    if (( SECONDS >= deadline )); then
-      echo "OpenClaw gateway did not become ready within ${OPENCLAW_READY_TIMEOUT_SECONDS}s." >&2
-      exit 1
-    fi
-    sleep 2
-  done
-}
-
 mkdir -p "${OPENCLAW_STATE_DIR}" "${OPENCLAW_WORKSPACE}" /tmp/openclaw-compile-cache /run/nginx
 
 envsubst '${PORT} ${OPENCLAW_GATEWAY_PORT} ${OPENCLAW_TELEGRAM_WEBHOOK_PORT}' \
@@ -110,17 +90,4 @@ OPENCLAW_PID=$!
 nginx -c /tmp/openclaw-nginx.conf -g 'daemon off;' &
 NGINX_PID=$!
 
-(
-  echo "Waiting for OpenClaw gateway readiness on 127.0.0.1:${OPENCLAW_GATEWAY_PORT}..."
-  if ! wait_for_gateway; then
-    kill "${OPENCLAW_PID}" 2>/dev/null || true
-    kill "${NGINX_PID}" 2>/dev/null || true
-    exit 1
-  fi
-  echo "OpenClaw gateway is ready."
-) &
-READY_PID=$!
-
 wait -n "${OPENCLAW_PID}" "${NGINX_PID}"
-
-kill "${READY_PID}" 2>/dev/null || true
