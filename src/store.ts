@@ -125,7 +125,8 @@ export const useStore = create<AppState>((set, get) => ({
     set({ settings: next })
     applyAppearance(next)
     const uid = get().user?.uid
-    if (uid) await saveSettings(uid, patch)
+    // Persist in the background; never let a slow/hanging write block callers.
+    if (uid) void saveSettings(uid, patch)
   },
 
   refreshMemories: async () => {

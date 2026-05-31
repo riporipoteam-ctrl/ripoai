@@ -109,11 +109,14 @@ export default function Onboarding() {
 
   const last = step === steps.length - 1
 
-  async function next() {
-    if (step === 1 && name.trim()) await updateSettings({ displayName: name.trim() })
-    if (step === 3 && about.trim()) await updateSettings({ aboutYou: about.trim() })
+  // Advance synchronously. updateSettings updates local state immediately and
+  // persists in the background, so the UI never waits on (or hangs behind) a
+  // Firestore write.
+  function next() {
+    if (step === 1 && name.trim()) void updateSettings({ displayName: name.trim() })
+    if (step === 3 && about.trim()) void updateSettings({ aboutYou: about.trim() })
     if (last) {
-      await updateSettings({ onboarded: true })
+      void updateSettings({ onboarded: true })
       return
     }
     setStep((s) => s + 1)

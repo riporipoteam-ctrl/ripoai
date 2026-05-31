@@ -104,7 +104,11 @@ const ts = (v: unknown): number =>
 // working in-session even if persistence is unavailable.
 async function safeWrite(label: string, fn: () => Promise<unknown>) {
   try {
-    await fn()
+    // Cap every write so a hung connection can never block a caller that awaits.
+    await Promise.race([
+      fn(),
+      new Promise((resolve) => setTimeout(resolve, 8000)),
+    ])
   } catch (e) {
     console.warn(`${label}:`, (e as Error)?.message ?? e)
   }
