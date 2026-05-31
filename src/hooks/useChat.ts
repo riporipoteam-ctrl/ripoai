@@ -25,6 +25,21 @@ export interface SendOptions {
 
 const uid4 = () => crypto.randomUUID()
 
+// Keep the prompt within free-tier token limits: send only the most recent
+// messages that fit a rough character budget (~4 chars/token), always keeping
+// the latest user turn.
+function trimHistory(messages: StoredMessage[], maxChars = 9000): StoredMessage[] {
+  const out: StoredMessage[] = []
+  let total = 0
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const len = messages[i].content.length + 16
+    if (out.length && total + len > maxChars) break
+    out.unshift(messages[i])
+    total += len
+  }
+  return out
+}
+
 function toGroqMessages(
   messages: StoredMessage[],
   visionCapable: boolean,
@@ -37,7 +52,7 @@ function toGroqMessages(
       text +=
         '\n\n' +
         files
-          .map((f) => `[Attached file: ${f.name}]\n${f.text?.slice(0, 8000)}`)
+          .map((f) => `[Attached file: ${f.name}]\n${f.text?.slice(0, 4000)}`)
           .join('\n\n')
     }
     if (m.role === 'user' && visionCapable && images.length) {
@@ -130,7 +145,7 @@ export function useChat(chatId: string | undefined) {
 
       const groqMessages: ChatMessage[] = [
         { role: 'system', content: system },
-        ...toGroqMessages(history, visionCapable),
+        ...toGroqMessages(trimHistory(history), visionCapable),
       ]
 
       const assistantId = uid4()

@@ -132,19 +132,31 @@ export async function streamChat(opts: StreamOptions): Promise<StreamResult> {
   const apiKey = getApiKey()
   if (!apiKey) throw new Error('No API key set. Add your Groq API key in Settings → General.')
 
-  const res = await fetch(GROQ_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(body),
-    signal: opts.signal,
-  })
+  const doFetch = (b: Record<string, unknown>) =>
+    fetch(GROQ_URL, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(b),
+      signal: opts.signal,
+    })
+
+  let res = await doFetch(body)
+
+  // Free-tier tokens-per-minute (413): the requested max_completion_tokens
+  // counts against the limit, so shrink it and retry once.
+  if (res.status === 413) {
+    body.max_completion_tokens = 1536
+    res = await doFetch(body)
+  }
 
   if (!res.ok || !res.body) {
     const errText = await res.text().catch(() => '')
-    throw new Error(`Groq error ${res.status}: ${errText.slice(0, 300)}`)
+    let msg = `Groq error ${res.status}`
+    if (res.status === 413)
+      msg = 'That request hit the free-tier rate limit. Try a shorter message or a faster model (RipoAI 1o/2o instant).'
+    else if (res.status === 429) msg = 'Rate limited — please wait a few seconds and try again.'
+    else msg = `${msg}: ${errText.slice(0, 200)}`
+    throw new Error(msg)
   }
 
   let content = ''

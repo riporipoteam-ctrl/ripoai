@@ -94,7 +94,7 @@ export default function ProjectsView() {
     const fileContext = Object.entries(files)
       .map(([path, code]) => `--- ${path} ---\n${code}`)
       .join('\n\n')
-      .slice(0, 16000)
+      .slice(0, 6000)
 
     const ac = new AbortController()
     abortRef.current = ac
@@ -110,7 +110,7 @@ export default function ProjectsView() {
           ...history.map((m) => ({ role: m.role, content: m.content })),
         ],
         temperature: 0.4,
-        maxTokens: 16384,
+        maxTokens: 5120,
         topP: 1,
         reasoningEffort: 'high',
         signal: ac.signal,
