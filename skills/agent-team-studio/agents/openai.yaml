@@ -1,6 +1,0 @@
-interface:
-  display_name: "Agent Team Studio"
-  short_description: "Orchestrate subagents, roles, and multi-agent workflows."
-  default_prompt: "Use $agent-team-studio to design and run a team of OpenClaw agents for this task."
-policy:
-  allow_implicit_invocation: true
