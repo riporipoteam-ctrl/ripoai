@@ -99,6 +99,17 @@ export const DEFAULT_SETTINGS: UserSettings = {
 const ts = (v: unknown): number =>
   v instanceof Timestamp ? v.toMillis() : typeof v === 'number' ? v : Date.now()
 
+// Firestore writes must never break the UI. If a write is rejected (rules deny,
+// database not provisioned, offline), we log and continue — the app keeps
+// working in-session even if persistence is unavailable.
+async function safeWrite(label: string, fn: () => Promise<unknown>) {
+  try {
+    await fn()
+  } catch (e) {
+    console.warn(`${label}:`, (e as Error)?.message ?? e)
+  }
+}
+
 /* ----------------------------- Settings ----------------------------- */
 
 export async function loadSettings(uid: string): Promise<UserSettings> {
@@ -108,10 +119,8 @@ export async function loadSettings(uid: string): Promise<UserSettings> {
 }
 
 export async function saveSettings(uid: string, settings: Partial<UserSettings>) {
-  await setDoc(
-    doc(db, 'users', uid),
-    { settings, updatedAt: serverTimestamp() },
-    { merge: true },
+  await safeWrite('saveSettings', () =>
+    setDoc(doc(db, 'users', uid), { settings, updatedAt: serverTimestamp() }, { merge: true }),
   )
 }
 
@@ -127,17 +136,19 @@ export async function loadMemories(uid: string): Promise<Memory[]> {
 export async function addMemory(uid: string, text: string): Promise<Memory> {
   const id = crypto.randomUUID()
   const mem: Memory = { id, text, createdAt: Date.now() }
-  await setDoc(doc(db, 'users', uid, 'memories', id), mem)
+  await safeWrite('addMemory', () => setDoc(doc(db, 'users', uid, 'memories', id), mem))
   return mem
 }
 
 export async function deleteMemory(uid: string, id: string) {
-  await deleteDoc(doc(db, 'users', uid, 'memories', id))
+  await safeWrite('deleteMemory', () => deleteDoc(doc(db, 'users', uid, 'memories', id)))
 }
 
 export async function clearMemories(uid: string) {
-  const snap = await getDocs(collection(db, 'users', uid, 'memories'))
-  await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)))
+  await safeWrite('clearMemories', async () => {
+    const snap = await getDocs(collection(db, 'users', uid, 'memories'))
+    await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)))
+  })
 }
 
 /* ------------------------------- Chats ------------------------------- */
@@ -183,27 +194,33 @@ export async function loadChat(uid: string, chatId: string): Promise<Chat | null
 }
 
 export async function saveChat(uid: string, chat: Chat) {
-  await setDoc(doc(db, 'users', uid, 'chats', chat.id), {
-    title: chat.title,
-    model: chat.model,
-    messages: chat.messages,
-    projectId: chat.projectId ?? null,
-    updatedAt: serverTimestamp(),
-    createdAt: chat.createdAt || Date.now(),
-  })
+  await safeWrite('saveChat', () =>
+    setDoc(doc(db, 'users', uid, 'chats', chat.id), {
+      title: chat.title,
+      model: chat.model,
+      messages: chat.messages,
+      projectId: chat.projectId ?? null,
+      updatedAt: serverTimestamp(),
+      createdAt: chat.createdAt || Date.now(),
+    }),
+  )
 }
 
 export async function renameChat(uid: string, chatId: string, title: string) {
-  await updateDoc(doc(db, 'users', uid, 'chats', chatId), { title })
+  await safeWrite('renameChat', () =>
+    updateDoc(doc(db, 'users', uid, 'chats', chatId), { title }),
+  )
 }
 
 export async function deleteChat(uid: string, chatId: string) {
-  await deleteDoc(doc(db, 'users', uid, 'chats', chatId))
+  await safeWrite('deleteChat', () => deleteDoc(doc(db, 'users', uid, 'chats', chatId)))
 }
 
 export async function clearAllChats(uid: string) {
-  const snap = await getDocs(collection(db, 'users', uid, 'chats'))
-  await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)))
+  await safeWrite('clearAllChats', async () => {
+    const snap = await getDocs(collection(db, 'users', uid, 'chats'))
+    await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)))
+  })
 }
 
 /* ------------------------------ Projects ----------------------------- */
@@ -236,16 +253,20 @@ export function watchProjects(uid: string, cb: (projects: Project[]) => void) {
 }
 
 export async function saveProject(uid: string, project: Project) {
-  await setDoc(doc(db, 'users', uid, 'projects', project.id), {
-    name: project.name,
-    description: project.description ?? '',
-    files: project.files,
-    template: project.template,
-    updatedAt: serverTimestamp(),
-    createdAt: project.createdAt || Date.now(),
-  })
+  await safeWrite('saveProject', () =>
+    setDoc(doc(db, 'users', uid, 'projects', project.id), {
+      name: project.name,
+      description: project.description ?? '',
+      files: project.files,
+      template: project.template,
+      updatedAt: serverTimestamp(),
+      createdAt: project.createdAt || Date.now(),
+    }),
+  )
 }
 
 export async function deleteProject(uid: string, projectId: string) {
-  await deleteDoc(doc(db, 'users', uid, 'projects', projectId))
+  await safeWrite('deleteProject', () =>
+    deleteDoc(doc(db, 'users', uid, 'projects', projectId)),
+  )
 }

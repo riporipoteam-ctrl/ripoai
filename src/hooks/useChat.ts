@@ -75,14 +75,18 @@ export function useChat(chatId: string | undefined) {
     }
     if (!user) return
     loadedId.current = chatId
-    loadChat(user.uid, chatId).then((c) => {
-      if (loadedId.current !== chatId) return
-      if (c) {
-        setMessages(c.messages)
-        titleRef.current = c.title
-        modelRef.current = c.model
-      }
-    })
+    loadChat(user.uid, chatId)
+      .then((c) => {
+        if (loadedId.current !== chatId) return
+        if (c) {
+          setMessages(c.messages)
+          titleRef.current = c.title
+          modelRef.current = c.model
+        }
+      })
+      .catch(() => {
+        /* read failed (rules/offline) — start empty rather than crash */
+      })
   }, [chatId, user])
 
   const persist = useCallback(
