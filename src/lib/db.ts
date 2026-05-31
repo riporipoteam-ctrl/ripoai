@@ -144,19 +144,27 @@ export async function clearMemories(uid: string) {
 
 export function watchChats(uid: string, cb: (chats: ChatMeta[]) => void) {
   const q = query(collection(db, 'users', uid, 'chats'), orderBy('updatedAt', 'desc'))
-  return onSnapshot(q, (snap) => {
-    cb(
-      snap.docs.map((d) => {
-        const data = d.data()
-        return {
-          id: d.id,
-          title: data.title ?? 'New chat',
-          updatedAt: ts(data.updatedAt),
-          projectId: data.projectId,
-        }
-      }),
-    )
-  })
+  return onSnapshot(
+    q,
+    (snap) => {
+      cb(
+        snap.docs.map((d) => {
+          const data = d.data()
+          return {
+            id: d.id,
+            title: data.title ?? 'New chat',
+            updatedAt: ts(data.updatedAt),
+            projectId: data.projectId,
+          }
+        }),
+      )
+    },
+    (err) => {
+      // e.g. Firestore not enabled or rules deny — degrade gracefully.
+      console.warn('watchChats:', err.message)
+      cb([])
+    },
+  )
 }
 
 export async function loadChat(uid: string, chatId: string): Promise<Chat | null> {
@@ -202,22 +210,29 @@ export async function clearAllChats(uid: string) {
 
 export function watchProjects(uid: string, cb: (projects: Project[]) => void) {
   const q = query(collection(db, 'users', uid, 'projects'), orderBy('updatedAt', 'desc'))
-  return onSnapshot(q, (snap) => {
-    cb(
-      snap.docs.map((d) => {
-        const data = d.data()
-        return {
-          id: d.id,
-          name: data.name ?? 'Project',
-          description: data.description,
-          files: data.files ?? {},
-          template: data.template ?? 'react',
-          updatedAt: ts(data.updatedAt),
-          createdAt: ts(data.createdAt),
-        }
-      }),
-    )
-  })
+  return onSnapshot(
+    q,
+    (snap) => {
+      cb(
+        snap.docs.map((d) => {
+          const data = d.data()
+          return {
+            id: d.id,
+            name: data.name ?? 'Project',
+            description: data.description,
+            files: data.files ?? {},
+            template: data.template ?? 'react',
+            updatedAt: ts(data.updatedAt),
+            createdAt: ts(data.createdAt),
+          }
+        }),
+      )
+    },
+    (err) => {
+      console.warn('watchProjects:', err.message)
+      cb([])
+    },
+  )
 }
 
 export async function saveProject(uid: string, project: Project) {

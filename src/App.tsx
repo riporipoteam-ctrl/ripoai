@@ -36,12 +36,18 @@ export default function App() {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u)
-      if (u) {
-        await initUserData(u.uid)
-      } else {
-        teardown()
+      try {
+        if (u) {
+          await initUserData(u.uid)
+        } else {
+          teardown()
+        }
+      } catch (e) {
+        // Never trap the user on the loading screen.
+        console.warn('initUserData failed:', e)
+      } finally {
+        setAuthReady(true)
       }
-      setAuthReady(true)
     })
     return unsub
     // eslint-disable-next-line react-hooks/exhaustive-deps

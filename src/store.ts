@@ -82,10 +82,30 @@ export const useStore = create<AppState>((set, get) => ({
 
   initUserData: async (uid) => {
     get().teardown()
-    const [settings, memories] = await Promise.all([loadSettings(uid), loadMemories(uid)])
+
+    // Never let Firestore reads block app entry. If the database isn't reachable
+    // or rules deny reads, fall back to defaults so the user still gets in.
+    const withTimeout = <T,>(p: Promise<T>, ms: number, fallback: T): Promise<T> =>
+      Promise.race([
+        p.catch(() => fallback),
+        new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms)),
+      ])
+
+    const [settings, memories] = await Promise.all([
+      withTimeout(loadSettings(uid), 7000, { ...DEFAULT_SETTINGS }),
+      withTimeout(loadMemories(uid), 7000, [] as Memory[]),
+    ])
     applyAppearance(settings)
-    const unsubChats = watchChats(uid, (chats) => set({ chats }))
-    const unsubProjects = watchProjects(uid, (projects) => set({ projects }))
+
+    let unsubChats = () => {}
+    let unsubProjects = () => {}
+    try {
+      unsubChats = watchChats(uid, (chats) => set({ chats }))
+      unsubProjects = watchProjects(uid, (projects) => set({ projects }))
+    } catch {
+      /* listeners optional — app still works without history */
+    }
+
     set({
       settings,
       memories,
