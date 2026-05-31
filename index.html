@@ -25,5 +25,35 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Auto-update: if a newer build has been deployed, reload to it once so
+      // users never get stuck on a stale cached bundle.
+      window.addEventListener('load', function () {
+        setTimeout(function () {
+          try {
+            var running = '';
+            var scripts = document.querySelectorAll('script[src]');
+            for (var i = 0; i < scripts.length; i++) {
+              if (scripts[i].src.indexOf('/assets/index-') > -1) { running = scripts[i].src; break; }
+            }
+            if (!running) return;
+            fetch(location.pathname + '?_=' + Date.now(), { cache: 'no-store' })
+              .then(function (r) { return r.text(); })
+              .then(function (html) {
+                var m = html.match(/assets\/index-[^"']+\.js/);
+                if (m && running.indexOf(m[0]) === -1) {
+                  if (!sessionStorage.getItem('ripoai-upd')) {
+                    sessionStorage.setItem('ripoai-upd', '1');
+                    location.replace(location.pathname + '?u=' + Date.now() + location.hash);
+                  }
+                } else {
+                  sessionStorage.removeItem('ripoai-upd');
+                }
+              })
+              .catch(function () {});
+          } catch (e) {}
+        }, 1500);
+      });
+    </script>
   </body>
 </html>
