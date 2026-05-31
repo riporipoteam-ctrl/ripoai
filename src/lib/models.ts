@@ -12,6 +12,9 @@ export interface RipoModel {
   vision: boolean
   /** Emits <think> reasoning blocks we should render as collapsible reasoning. */
   reasoning: boolean
+  /** Valid Groq reasoning_effort for THIS model, or undefined if unsupported.
+   * qwen accepts 'default'; gpt-oss requires 'low' | 'medium' | 'high'. */
+  reasoningEffort?: string
   temperature: number
   maxTokens: number
   topP: number
@@ -26,6 +29,7 @@ export const MODELS: Record<ModelTier, RipoModel> = {
     groqModel: 'qwen/qwen3-32b',
     vision: false,
     reasoning: true,
+    reasoningEffort: 'default',
     temperature: 0.6,
     maxTokens: 8192,
     topP: 0.95,
@@ -60,6 +64,7 @@ export const MODELS: Record<ModelTier, RipoModel> = {
     groqModel: 'openai/gpt-oss-120b',
     vision: false,
     reasoning: true,
+    reasoningEffort: 'high',
     temperature: 0.8,
     maxTokens: 32768,
     topP: 1,

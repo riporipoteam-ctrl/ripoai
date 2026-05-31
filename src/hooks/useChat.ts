@@ -154,7 +154,7 @@ export function useChat(chatId: string | undefined) {
           temperature: model.temperature,
           maxTokens: model.maxTokens,
           topP: model.topP,
-          reasoningEffort: model.reasoning ? 'default' : undefined,
+          reasoningEffort: model.reasoningEffort,
           signal: ac.signal,
           onToken: (delta) =>
             setMessages((m) =>

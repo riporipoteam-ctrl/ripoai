@@ -112,7 +112,7 @@ export default function ProjectsView() {
         temperature: 0.4,
         maxTokens: 16384,
         topP: 1,
-        reasoningEffort: 'default',
+        reasoningEffort: 'high',
         signal: ac.signal,
         onToken: (d) => {
           full += d
