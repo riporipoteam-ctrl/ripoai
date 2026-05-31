@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion'
 import type { ReactNode } from 'react'
+import { APP_VERSION } from '../main'
 
 const FEATURES = [
   'Chat with four RipoAI models',
@@ -63,6 +64,7 @@ export default function AuthShell({
           <h1 className="text-2xl font-bold">{title}</h1>
           <p className="mt-1 text-sm text-muted">{subtitle}</p>
           <div className="mt-6">{children}</div>
+          <p className="mt-6 text-center text-[11px] text-muted/70">RipoAI {APP_VERSION}</p>
         </motion.div>
       </div>
     </div>
