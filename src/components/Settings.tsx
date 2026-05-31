@@ -15,7 +15,6 @@ import Modal from './ui/Modal'
 import Button from './ui/Button'
 import { MODEL_LIST } from '../lib/models'
 import { clearAllChats, clearMemories, deleteMemory } from '../lib/db'
-import { getApiKey, setApiKey } from '../lib/groq'
 
 const ACCENTS = ['#7c5cff', '#4ea8ff', '#36e0c0', '#ff6b6b', '#ffa94d', '#f06595']
 const TABS = [
@@ -37,7 +36,6 @@ export default function Settings() {
     user,
   } = useStore()
   const [tab, setTab] = useState<(typeof TABS)[number]['id']>('general')
-  const [apiKey, setApiKeyState] = useState(getApiKey())
 
   return (
     <Modal open={settingsOpen} onClose={closeSettings} title="Settings" wide>
@@ -121,22 +119,6 @@ export default function Settings() {
                     </option>
                   ))}
                 </select>
-              </Field>
-
-              <Field label="Groq API key">
-                <input
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => {
-                    setApiKeyState(e.target.value)
-                    setApiKey(e.target.value.trim())
-                  }}
-                  placeholder={getApiKey() ? 'Using configured key' : 'gsk_…'}
-                  className="w-full rounded-2xl border border-white/15 bg-white/5 px-3 py-2.5 font-mono text-sm outline-none focus:border-accent"
-                />
-                <p className="mt-1.5 text-xs text-muted">
-                  Stored only in this browser. Leave blank to use the key configured for the site.
-                </p>
               </Field>
             </>
           )}

@@ -136,6 +136,9 @@ export function useChat(chatId: string | undefined) {
 
       const groqModel = opts.agent || opts.webSearch || useCompound ? searchModel() : model.groqModel
       const visionCapable = model.vision
+      const usingCompound = groqModel === searchModel()
+      // compound (web search/agent) does NOT support reasoning_effort.
+      const reasoningEffort = usingCompound ? undefined : model.reasoningEffort
 
       const system =
         opts.systemOverride ??
@@ -169,7 +172,7 @@ export function useChat(chatId: string | undefined) {
           temperature: model.temperature,
           maxTokens: model.maxTokens,
           topP: model.topP,
-          reasoningEffort: model.reasoningEffort,
+          reasoningEffort: reasoningEffort,
           signal: ac.signal,
           onToken: (delta) =>
             setMessages((m) =>

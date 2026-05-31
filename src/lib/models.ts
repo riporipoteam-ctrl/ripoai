@@ -75,10 +75,11 @@ export const MODELS: Record<ModelTier, RipoModel> = {
 export const MODEL_LIST = Object.values(MODELS)
 export const DEFAULT_MODEL: ModelTier = 'ripoai-2o-pro'
 
-// Groq's agentic model with built-in web search + tools. Powers Web Search and
-// Agent modes natively (no extra key needed).
-export const COMPOUND_MODEL = 'groq/compound'
-export const COMPOUND_MINI_MODEL = 'groq/compound-mini'
+// Groq's agentic models with built-in web search + tools. Powers Web Search and
+// Agent modes natively. (compound-beta is the name accessible on the free tier;
+// `groq/compound` is restricted.)
+export const COMPOUND_MODEL = 'compound-beta'
+export const COMPOUND_MINI_MODEL = 'compound-beta-mini'
 
 // The best coder model for Projects.
 export const CODER_MODEL = 'openai/gpt-oss-120b'
