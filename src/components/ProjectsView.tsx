@@ -11,7 +11,7 @@ import {
 import { motion } from 'framer-motion'
 import { Eye, Code2, Terminal, ArrowUp, Square, Sparkles, Wand2 } from 'lucide-react'
 import { useStore } from '../store'
-import { streamChat } from '../lib/groq'
+import { streamChat, getOpenRouterKey } from '../lib/groq'
 import { haptic } from '../hooks/useSpeech'
 import { CODER_MODEL } from '../lib/models'
 import { CODING_SYSTEM } from '../lib/prompt'
@@ -39,6 +39,7 @@ export default function ProjectsView() {
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
   const [liveText, setLiveText] = useState('')
+  const [mobileView, setMobileView] = useState<'chat' | 'build'>('chat')
   const abortRef = useRef<AbortController | null>(null)
   const chatBottom = useRef<HTMLDivElement>(null)
   const loadedRef = useRef<string | undefined>(undefined)
@@ -76,6 +77,7 @@ export default function ProjectsView() {
       setFiles(updated)
       setBundlerKey((k) => k + 1)
       setTab('preview')
+      setMobileView('build')
     }
     if (user && project) {
       const next: Project = { ...project, files: updated, updatedAt: Date.now() }
@@ -109,13 +111,32 @@ export default function ProjectsView() {
     // Auto-continue: models cap output; if we stop mid-file, ask to continue and
     // stitch it together so the user never has to type "continue".
     async function runOnce(messages: any[]): Promise<string> {
+      const before = full.length
+      // Best coder first: Kimi K2.6 via OpenRouter (great at UI/design/long code).
+      if (getOpenRouterKey()) {
+        try {
+          const r = await streamChat({
+            provider: 'openrouter',
+            model: 'moonshotai/kimi-k2.6:free',
+            messages,
+            temperature: 0.6,
+            maxTokens: 8000,
+            topP: 1,
+            signal: ac.signal,
+            onToken: (d) => { haptic(4); full += d; setLiveText(full) },
+          })
+          if (full.length > before) return r.finishReason || ''
+        } catch {
+          /* rate-limited/error → fall back to Groq */
+        }
+      }
       const r = await streamChat({
         model: CODER_MODEL,
         messages,
         temperature: 0.5,
-        maxTokens: 7000,
+        maxTokens: 8000,
         topP: 1,
-        reasoningEffort: 'low',
+        reasoningEffort: 'medium',
         signal: ac.signal,
         onToken: (d) => { haptic(4); full += d; setLiveText(full) },
       })
@@ -132,7 +153,7 @@ export default function ProjectsView() {
       let messages: any[] = [sysMsg, ...convo]
       let finish = await runOnce(messages)
       let guard = 0
-      while (!ac.signal.aborted && looksTruncated(full, finish) && guard < 4) {
+      while (!ac.signal.aborted && looksTruncated(full, finish) && guard < 7) {
         guard++
         messages = [
           sysMsg,
@@ -154,14 +175,40 @@ export default function ProjectsView() {
     await applyAndSave(full, files)
   }
 
+  // If the agent declared npm deps in /package.json, install them in the sandbox.
+  let extraDeps: Record<string, string> = {}
+  try {
+    if (files['/package.json']) extraDeps = JSON.parse(files['/package.json']).dependencies || {}
+  } catch {
+    /* ignore malformed package.json */
+  }
   const sandpackFiles = Object.fromEntries(
-    Object.entries(files).map(([k, v]) => [k, { code: v }]),
+    Object.entries(files)
+      .filter(([k]) => k !== '/package.json')
+      .map(([k, v]) => [k, { code: v }]),
   )
 
   return (
     <div className="flex h-full flex-col md:flex-row">
+      {/* Mobile Chat/Build toggle */}
+      <div className="flex shrink-0 gap-1 p-2 md:hidden">
+        {(['chat', 'build'] as const).map((v) => (
+          <button
+            key={v}
+            onClick={() => setMobileView(v)}
+            className={`pressable flex-1 rounded-xl py-2 text-sm font-semibold transition ${
+              mobileView === v ? 'accent-gradient-bg text-white' : 'glass text-muted'
+            }`}
+          >
+            {v === 'chat' ? 'Agent' : 'Workspace'}
+          </button>
+        ))}
+      </div>
+
       {/* Coding agent chat */}
-      <div className="flex h-1/2 flex-col border-b border-white/10 md:h-full md:w-[42%] md:border-b-0 md:border-r">
+      <div
+        className={`${mobileView === 'chat' ? 'flex' : 'hidden'} min-h-0 flex-1 flex-col md:flex md:h-full md:w-[42%] md:flex-none md:border-r md:border-white/10`}
+      >
         <div className="flex items-center gap-2 px-4 py-3">
           <Wand2 size={18} className="text-accent" />
           <div className="font-bold">{project.name}</div>
@@ -250,7 +297,9 @@ export default function ProjectsView() {
       </div>
 
       {/* Sandpack workspace */}
-      <div className="flex h-1/2 min-w-0 flex-1 flex-col md:h-full">
+      <div
+        className={`${mobileView === 'build' ? 'flex' : 'hidden'} min-h-0 min-w-0 flex-1 flex-col md:flex md:h-full`}
+      >
         <div className="flex items-center gap-1 px-4 py-2.5">
           {(
             [
@@ -284,6 +333,7 @@ export default function ProjectsView() {
             template="react"
             theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
             files={sandpackFiles}
+            customSetup={{ dependencies: extraDeps }}
             options={{ recompileMode: 'delayed', recompileDelay: 400 }}
             style={{ height: '100%' }}
           >

@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
+import rehypeRaw from 'rehype-raw'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { Check, Copy } from 'lucide-react'
@@ -43,7 +44,7 @@ function MarkdownImpl({ children }: { children: string }) {
     <div className="prose-ripo">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeKatex]}
+        rehypePlugins={[rehypeRaw, rehypeKatex]}
         components={{
           code({ inline, className, children, ...props }: any) {
             const match = /language-([\w-]+)/.exec(className || '')
@@ -73,16 +74,22 @@ function MarkdownImpl({ children }: { children: string }) {
             />
           ),
           table: ({ node, ...props }) => (
-            <div className="my-3 overflow-x-auto">
-              <table className="w-full border-collapse text-sm" {...props} />
+            <div className="no-scrollbar my-3 -mx-1 overflow-x-auto">
+              <table className="w-full min-w-[34rem] border-collapse text-sm" {...props} />
             </div>
           ),
           th: ({ node, ...props }) => (
-            <th className="border border-white/15 bg-white/5 px-3 py-1.5 text-left" {...props} />
+            <th
+              className="border border-white/15 bg-white/5 px-3 py-1.5 text-left align-top"
+              style={{ minWidth: '8rem' }}
+              {...props}
+            />
           ),
           td: ({ node, ...props }) => (
-            <td className="border border-white/10 px-3 py-1.5" {...props} />
+            <td className="border border-white/10 px-3 py-1.5 align-top" style={{ minWidth: '8rem' }} {...props} />
           ),
+          ul: ({ node, ...props }) => <ul className="my-1 list-disc space-y-0.5 pl-5" {...props} />,
+          ol: ({ node, ...props }) => <ol className="my-1 list-decimal space-y-0.5 pl-5" {...props} />,
         }}
       >
         {children}

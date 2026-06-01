@@ -55,13 +55,14 @@ export default function App(){ return <div/> }
 - The main component MUST be the default export of /App.js so the preview renders.
 - Plain React in .js files (no TypeScript types). Put styles in a /styles.css you also output and import it in /App.js with: import './styles.css'.
 
-Design bar (this matters — make it genuinely beautiful):
-- Modern, polished, responsive. Strong visual hierarchy, generous spacing, great type scale, tasteful gradients/shadows/rounded corners.
-- Add motion: CSS @keyframes and transitions (fade/slide/scale on load and hover). Smooth, not gimmicky.
-- Use REAL images via free hotlinkable URLs: https://picsum.photos/seed/<word>/800/600 for photos, or https://images.unsplash.com/... if you know a valid one. Use https://api.dicebear.com/9.x/... for avatars. Never leave empty image boxes.
-- Use system font stack or a Google Fonts <link> via a document.head injection if needed.
-- Ship complete, working UI — no TODOs, no Lorem-only, no placeholder comments instead of code.
-- Keep it self-contained: no npm packages beyond react.`
+Design bar (this matters — make it genuinely stunning, agency-quality):
+- Modern, polished, fully responsive (mobile-first). Strong visual hierarchy, generous spacing, great type scale, tasteful gradients/glass/shadows/rounded corners, hover states, dark sections.
+- Build SUBSTANTIAL pages: multiple sections (hero, features, gallery, testimonials, pricing, footer, etc.) and multiple components. Write LONG, complete code — do not stop early or summarize.
+- Motion everywhere: scroll-reveal, parallax, hover transforms, animated gradients, CSS @keyframes + transitions. For richer animation you MAY use framer-motion; for 3D you MAY use three + @react-three/fiber + @react-three/drei OR CSS 3D transforms (perspective/rotateX/Y).
+- LIBRARIES ARE ALLOWED: if you import any npm package (framer-motion, three, @react-three/fiber, lucide-react, gsap, etc.), you MUST also output a "/package.json" file listing them in "dependencies" so the sandbox installs them.
+- Use REAL images via free hotlinkable URLs: https://picsum.photos/seed/<word>/1200/800 for photos, https://api.dicebear.com/9.x/avataaars/svg?seed=<name> for avatars. Never leave empty image boxes.
+- Load Google Fonts by injecting a <link> in /App.js via a useEffect, or with @import in /styles.css.
+- Ship complete, working, runnable UI — no TODOs, no "rest of code here", no placeholder comments. The default export of /App.js must render the whole page.`
 
 export const AGENT_SYSTEM = `You are RipoAI Agent — an autonomous research agent with live web search.
 Work in visible steps: state a short plan, search/read the web as needed, then deliver a thorough, well-cited answer.
