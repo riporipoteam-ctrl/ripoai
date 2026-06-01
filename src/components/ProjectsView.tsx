@@ -152,11 +152,11 @@ export default function ProjectsView() {
 
     // Auto-continue: models cap output; if we stop mid-file, ask to continue and
     // stitch it together so the user never has to type "continue".
-    async function runOnce(messages: any[]): Promise<string> {
+    async function runOnce(messages: any[], continuation = false): Promise<string> {
       const before = full.length
-      // "pro" = Kimi via OpenRouter (powerful, slower); default = Groq gpt-oss
-      // (very fast + reliable). Pro falls back to Groq on error.
-      if (coderModel === 'pro' && getOpenRouterKey()) {
+      // First pass on the selected model; continuations always use fast+reliable
+      // Groq so the file is guaranteed to finish (free OpenRouter often drops).
+      if (!continuation && coderModel === 'pro' && getOpenRouterKey()) {
         try {
           const r = await streamChat({
             provider: 'openrouter',
@@ -170,16 +170,17 @@ export default function ProjectsView() {
           })
           if (full.length > before) return r.finishReason || ''
         } catch {
-          /* rate-limited/error → fall back to Groq */
+          /* fall through to Groq */
         }
       }
+      const useFast = !continuation && coderModel === 'fast'
       const r = await streamChat({
-        model: coderModel === 'fast' ? 'llama-3.3-70b-versatile' : CODER_MODEL,
+        model: useFast ? 'llama-3.3-70b-versatile' : CODER_MODEL,
         messages,
         temperature: 0.5,
         maxTokens: 8000,
         topP: 1,
-        reasoningEffort: coderModel === 'fast' ? undefined : 'low',
+        reasoningEffort: useFast ? undefined : 'low',
         signal: ac.signal,
         onToken: (d) => { haptic(4); full += d; setLiveText(full) },
       })
@@ -205,10 +206,9 @@ export default function ProjectsView() {
           { role: 'user', content: 'Continue exactly where you left off. Output only the remaining code. Do not repeat anything already written.' },
         ]
         try {
-          finish = await runOnce(messages)
+          finish = await runOnce(messages, true)
         } catch {
-          // A continuation failed (rate-limit/network) — keep what we have and
-          // stop gracefully rather than showing an error in the code.
+          // A continuation failed — keep what we have and stop gracefully.
           break
         }
       }

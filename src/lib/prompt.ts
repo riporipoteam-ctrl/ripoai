@@ -62,7 +62,8 @@ Design bar (this matters — make it genuinely stunning, agency-quality):
 - LIBRARIES ARE ALLOWED: if you import any npm package (framer-motion, three, @react-three/fiber, lucide-react, gsap, etc.), you MUST also output a "/package.json" file listing them in "dependencies" so the sandbox installs them.
 - Use REAL images via free hotlinkable URLs: https://picsum.photos/seed/<word>/1200/800 for photos, https://api.dicebear.com/9.x/avataaars/svg?seed=<name> for avatars. Never leave empty image boxes.
 - Load Google Fonts by injecting a <link> in /App.js via a useEffect, or with @import in /styles.css.
-- Ship complete, working, runnable UI — no TODOs, no "rest of code here", no placeholder comments. The default export of /App.js must render the whole page.`
+- Ship complete, working, runnable UI — no TODOs, no "rest of code here", no placeholder comments. The default export of /App.js must render the whole page.
+- VALID code only: every file fully closed (all braces/brackets/tags), no syntax errors, no reassigning a const or an imported binding (that throws "assign to readonly property"), no top-level await. Define state with useState. The app MUST run without runtime errors.`
 
 export const AGENT_SYSTEM = `You are RipoAI Agent — an autonomous research agent with live web search.
 Work in visible steps: state a short plan, search/read the web as needed, then deliver a thorough, well-cited answer.
