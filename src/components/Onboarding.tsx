@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Sparkles, Moon, Sun, Monitor, MessageSquare, FolderGit2, Globe, Brain } from 'lucide-react'
 import { useStore } from '../store'
 import Button from './ui/Button'
+import Logo from './Logo'
 
 const ACCENTS = ['#7c5cff', '#4ea8ff', '#36e0c0', '#ff6b6b', '#ffa94d', '#f06595']
 
@@ -18,9 +19,9 @@ export default function Onboarding() {
       <motion.div
         initial={{ scale: 0.5, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="accent-gradient-bg mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl text-4xl font-extrabold text-white shadow-xl shadow-accent/40"
+        className="mx-auto mb-6 flex w-fit items-center justify-center"
       >
-        R
+        <Logo size={80} glow />
       </motion.div>
       <h1 className="text-3xl font-extrabold">
         Welcome to <span className="brand-gradient">RipoAI</span>

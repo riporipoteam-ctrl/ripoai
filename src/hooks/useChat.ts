@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { streamChat, complete, type ChatMessage, type ContentPart } from '../lib/groq'
-import { imageUrl } from '../lib/imagegen'
+import { imageUrl, styleSuffix } from '../lib/imagegen'
 import { composeTextOnImage } from '../lib/compose'
 import { getModel, type ModelTier } from '../lib/models'
 import { buildSystemPrompt, AGENT_SYSTEM } from '../lib/prompt'
@@ -22,6 +22,7 @@ export interface SendOptions {
   webSearch: boolean
   agent: boolean
   image?: boolean
+  imageStyle?: string
   projectId?: string
   /** Override system prompt (used by Projects coding agent). */
   systemOverride?: string
@@ -180,7 +181,8 @@ export function useChat(chatId: string | undefined) {
         if (/\babove\b|\btop\b/i.test(prompt)) position = 'top'
         else if (/\bbelow\b|\bbottom\b|\bunder\b/i.test(prompt)) position = 'bottom'
 
-        const baseUrl = editBase || imageUrl(scene)
+        const styledScene = (scene + styleSuffix(opts.imageStyle)).slice(0, 900)
+        const baseUrl = editBase || imageUrl(styledScene)
         let finalUrl = baseUrl
         if (overlay) {
           try {

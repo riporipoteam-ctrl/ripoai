@@ -5,6 +5,7 @@ import { Markdown } from './Markdown'
 import Reasoning from './Reasoning'
 import AgentTrace from './AgentTrace'
 import ImageCard from './ImageCard'
+import Logo from './Logo'
 import { MODELS } from '../lib/models'
 import { speak, stopSpeaking, isSpeechSupported } from '../hooks/useSpeech'
 import type { StoredMessage } from '../lib/db'
@@ -120,8 +121,8 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3">
-      <div className="accent-gradient-bg mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white">
-        R
+      <div className="mt-0.5 shrink-0">
+        <Logo size={32} />
       </div>
       <div className="min-w-0 flex-1">
         {modelName && <div className="mb-1 text-xs font-semibold text-muted">{modelName}</div>}

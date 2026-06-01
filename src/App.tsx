@@ -7,13 +7,17 @@ import SignIn from './pages/SignIn'
 import SignUp from './pages/SignUp'
 import Home from './pages/Home'
 import Onboarding from './components/Onboarding'
+import Logo from './components/Logo'
 import Spinner from './components/ui/Spinner'
 
 function FullScreenLoader() {
   return (
     <div className="relative z-10 flex h-full items-center justify-center">
       <div className="flex flex-col items-center gap-4">
-        <div className="text-3xl font-extrabold tracking-tight brand-gradient">RipoAI</div>
+        <div className="animate-float">
+          <Logo size={56} glow />
+        </div>
+        <div className="text-2xl font-extrabold tracking-tight brand-gradient">RipoAI</div>
         <Spinner />
       </div>
     </div>

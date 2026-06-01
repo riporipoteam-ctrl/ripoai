@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion'
 import type { ReactNode } from 'react'
 import { APP_VERSION } from '../main'
+import Logo from './Logo'
 
 const FEATURES = [
   'Chat with four RipoAI models',
@@ -25,6 +26,7 @@ export default function AuthShell({
         <div className="relative hidden flex-col justify-between p-10 md:flex">
           <div className="accent-gradient-bg absolute inset-0 opacity-90" />
           <div className="relative z-10">
+            <div className="mb-3"><Logo size={52} glow /></div>
             <div className="text-4xl font-extrabold tracking-tight text-white">RipoAI</div>
             <p className="mt-3 max-w-xs text-white/80">
               Your intelligent workspace for chatting, researching and building anything.
@@ -58,7 +60,8 @@ export default function AuthShell({
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: 'spring', stiffness: 260, damping: 26 }}
         >
-          <div className="mb-6 md:hidden">
+          <div className="mb-6 flex items-center gap-2 md:hidden">
+            <Logo size={32} />
             <div className="text-3xl font-extrabold brand-gradient">RipoAI</div>
           </div>
           <h1 className="text-2xl font-bold">{title}</h1>

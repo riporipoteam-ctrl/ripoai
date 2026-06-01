@@ -1,3 +1,18 @@
+// Quick image style presets appended to the prompt.
+export const IMAGE_STYLES: { id: string; label: string; suffix: string }[] = [
+  { id: 'auto', label: 'Auto', suffix: '' },
+  { id: 'photo', label: 'Photo', suffix: ', ultra-realistic photograph, 50mm, natural lighting, sharp focus, high detail' },
+  { id: 'anime', label: 'Anime', suffix: ', anime style, vibrant colors, clean line art, studio anime key visual' },
+  { id: '3d', label: '3D', suffix: ', 3D render, octane render, soft studio lighting, cinematic, highly detailed' },
+  { id: 'art', label: 'Art', suffix: ', digital painting, artstation trending, dramatic lighting, masterpiece' },
+  { id: 'logo', label: 'Logo', suffix: ', minimal flat vector logo, centered, simple, clean solid background' },
+  { id: 'sketch', label: 'Sketch', suffix: ', detailed pencil sketch, hand-drawn, black and white' },
+]
+
+export function styleSuffix(id?: string): string {
+  return IMAGE_STYLES.find((s) => s.id === id)?.suffix ?? ''
+}
+
 // Free, keyless image generation via Pollinations (open CORS — usable directly
 // as an <img> src). Returns a stable URL for a given prompt + seed.
 export function imageUrl(

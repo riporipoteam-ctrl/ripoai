@@ -4,6 +4,7 @@ import { Plus, ArrowUp, Square, Globe, Bot, ImageIcon, Paperclip, X, FileText, L
 import ModelSelector from './ModelSelector'
 import { useVoiceInput, hapticPattern } from '../hooks/useSpeech'
 import { fileToAttachment } from '../lib/files'
+import { IMAGE_STYLES } from '../lib/imagegen'
 import type { Attachment } from '../lib/db'
 import type { ModelTier } from '../lib/models'
 
@@ -13,9 +14,11 @@ interface Props {
   webSearch: boolean
   agent: boolean
   imageMode?: boolean
+  imageStyle?: string
   onToggleWeb: () => void
   onToggleAgent: () => void
   onToggleImage?: () => void
+  onImageStyle?: (id: string) => void
   onSend: (text: string, attachments: Attachment[]) => void
   onStop: () => void
   streaming: boolean
@@ -30,9 +33,11 @@ export default function Composer({
   webSearch,
   agent,
   imageMode,
+  imageStyle,
   onToggleWeb,
   onToggleAgent,
   onToggleImage,
+  onImageStyle,
   onSend,
   onStop,
   streaming,
@@ -106,6 +111,24 @@ export default function Composer({
                 <X size={12} />
               </button>
             </div>
+          ))}
+        </div>
+      )}
+
+      {imageMode && onImageStyle && (
+        <div className="no-scrollbar mb-2 flex gap-1.5 overflow-x-auto px-1">
+          {IMAGE_STYLES.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => onImageStyle(s.id)}
+              className={`pressable shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                (imageStyle ?? 'auto') === s.id
+                  ? 'accent-gradient-bg text-white'
+                  : 'border border-white/15 text-muted hover:text-ink'
+              }`}
+            >
+              {s.label}
+            </button>
           ))}
         </div>
       )}

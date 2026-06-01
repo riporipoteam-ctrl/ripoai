@@ -84,7 +84,7 @@ export const MODELS: Record<ModelTier, RipoModel> = {
   'ripoai-3o-instant': {
     id: 'ripoai-3o-instant',
     name: 'RipoAI 3o instant',
-    tagline: 'Qwen3-Next 80B — fast & very capable',
+    tagline: 'Lightning-fast and very capable',
     provider: 'openrouter',
     orModel: 'qwen/qwen3-next-80b-a3b-instruct:free',
     groqModel: 'llama-3.3-70b-versatile',
@@ -98,9 +98,9 @@ export const MODELS: Record<ModelTier, RipoModel> = {
   'ripoai-3o-pro': {
     id: 'ripoai-3o-pro',
     name: 'RipoAI 3o Pro',
-    tagline: 'Nemotron 120B — most powerful, best for builds',
+    tagline: 'Our most powerful — best for building & design',
     provider: 'openrouter',
-    orModel: 'nvidia/nemotron-3-super-120b-a12b:free',
+    orModel: 'moonshotai/kimi-k2.6:free',
     groqModel: 'openai/gpt-oss-120b',
     vision: false,
     reasoning: false,

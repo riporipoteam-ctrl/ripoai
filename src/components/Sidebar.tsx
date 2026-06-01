@@ -26,6 +26,7 @@ import {
   type ChatMeta,
 } from '../lib/db'
 import { newReactProject } from '../lib/templates'
+import Logo from './Logo'
 
 function groupByDate(chats: ChatMeta[]) {
   const now = Date.now()
@@ -99,7 +100,10 @@ export default function Sidebar() {
           >
             {/* Header */}
             <div className="flex items-center justify-between p-3">
-              <div className="px-2 text-xl font-extrabold brand-gradient">RipoAI</div>
+              <div className="flex items-center gap-2 px-1">
+                <Logo size={26} />
+                <span className="text-xl font-extrabold brand-gradient">RipoAI</span>
+              </div>
               <button
                 onClick={() => setSidebar(false)}
                 className="pressable rounded-xl p-2 text-muted hover:bg-white/10 hover:text-ink"
