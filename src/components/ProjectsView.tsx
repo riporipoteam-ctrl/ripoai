@@ -12,7 +12,7 @@ import { motion } from 'framer-motion'
 import { Eye, Code2, Terminal, ArrowUp, Square, Sparkles, Wand2 } from 'lucide-react'
 import { useStore } from '../store'
 import { streamChat } from '../lib/groq'
-import { streamPuter, isPuterLoaded } from '../lib/puter'
+import { streamPuter, isPuterSignedIn } from '../lib/puter'
 import { haptic } from '../hooks/useSpeech'
 import { CODER_MODEL, PUTER_CODER_MODEL } from '../lib/models'
 import { CODING_SYSTEM } from '../lib/prompt'
@@ -101,7 +101,7 @@ export default function ProjectsView() {
     const ac = new AbortController()
     abortRef.current = ac
     let full = ''
-    const useClaude = isPuterLoaded()
+    const useClaude = isPuterSignedIn()
     const sysMsg = {
       role: 'system' as const,
       content: `${CODING_SYSTEM}\n\nProject: ${project.name} (React template, entry /App.js).\nCurrent files:\n${fileContext}`,

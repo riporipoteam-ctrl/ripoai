@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { streamChat, complete, type ChatMessage, type ContentPart } from '../lib/groq'
-import { streamPuter } from '../lib/puter'
+import { streamPuter, isPuterSignedIn } from '../lib/puter'
 import { getModel, type ModelTier } from '../lib/models'
 import { buildSystemPrompt, AGENT_SYSTEM } from '../lib/prompt'
 import { searchModel, shouldAutoSearch } from '../lib/search'
@@ -147,21 +147,30 @@ export function useChat(chatId: string | undefined) {
         opts.agent ||
         opts.webSearch ||
         (!opts.webSearch && shouldAutoSearch(history[history.length - 1]?.content ?? ''))
-      const usePuter = !hasImages && model.provider === 'puter' && !(opts.webSearch || opts.agent)
+      // Use Puter (Claude) ONLY when the user has already connected Puter via
+      // Settings — never trigger a sign-in popup. Otherwise fall back silently.
+      const usePuter =
+        !hasImages &&
+        model.provider === 'puter' &&
+        !(opts.webSearch || opts.agent) &&
+        isPuterSignedIn()
 
       const useCompound = !hasImages && !usePuter && wantsSearch
+
+      // When a 3o (Puter) model can't be used, fall back to the gpt-oss config.
+      const fallback = model.provider === 'puter' ? getModel('ripoai-2o-pro') : model
 
       const visionModel = getModel('ripoai-2o-instant')
       const groqModel = hasImages
         ? visionModel.groqModel
         : useCompound
           ? searchModel()
-          : model.groqModel
+          : fallback.groqModel
       const visionCapable = hasImages || model.vision
       const usingCompound = groqModel === searchModel()
       // compound (web search/agent) does NOT support reasoning_effort; nor does
       // the vision model when we auto-switch to it.
-      const reasoningEffort = usingCompound || hasImages ? undefined : model.reasoningEffort
+      const reasoningEffort = usingCompound || hasImages ? undefined : fallback.reasoningEffort
 
       const system =
         opts.systemOverride ??
@@ -206,9 +215,9 @@ export function useChat(chatId: string | undefined) {
         const res = await streamChat({
           model: groqModel,
           messages: groqMessages,
-          temperature: model.temperature,
-          maxTokens: model.maxTokens,
-          topP: model.topP,
+          temperature: fallback.temperature,
+          maxTokens: fallback.maxTokens,
+          topP: fallback.topP,
           reasoningEffort: reasoningEffort,
           signal: ac.signal,
           onToken: (delta) => {

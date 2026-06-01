@@ -34,6 +34,14 @@ export async function puterSignIn(): Promise<boolean> {
   }
 }
 
+export function puterSignOut() {
+  try {
+    P()?.auth?.signOut?.()
+  } catch {
+    /* ignore */
+  }
+}
+
 export interface PuterStreamOpts {
   model: string
   messages: PuterMsg[]
@@ -50,10 +58,10 @@ export async function streamPuter(opts: PuterStreamOpts): Promise<PuterResult> {
   const p = P()
   if (!p?.ai?.chat) throw new Error('Puter is still loading — try again in a moment.')
 
-  // Sign in once if needed (single popup; Puter caches the session afterwards).
+  // NEVER trigger a sign-in popup automatically. Callers must only use Puter
+  // when isPuterSignedIn() is already true (connected via Settings).
   if (p.auth?.isSignedIn && !p.auth.isSignedIn()) {
-    const ok = await puterSignIn()
-    if (!ok) throw new Error('Connect a free Puter account to use RipoAI 3o models.')
+    throw new Error('not-connected')
   }
 
   let content = ''
