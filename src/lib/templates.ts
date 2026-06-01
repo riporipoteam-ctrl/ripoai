@@ -6,27 +6,31 @@ export function newReactProject(name: string): Project {
     id,
     name,
     description: '',
-    template: 'react',
+    template: 'static',
     createdAt: Date.now(),
     updatedAt: Date.now(),
     files: {
-      '/App.js': `export default function App() {
-  return (
-    <div style={{
-      fontFamily: 'system-ui, sans-serif',
-      minHeight: '100vh',
-      display: 'grid',
-      placeItems: 'center',
-      background: 'linear-gradient(120deg,#7c5cff,#4ea8ff,#36e0c0)',
-      color: 'white'
-    }}>
-      <div style={{ textAlign: 'center' }}>
-        <h1 style={{ fontSize: 48, margin: 0 }}>Hello from RipoAI 👋</h1>
-        <p style={{ opacity: 0.9 }}>Ask the agent on the left to build something.</p>
-      </div>
-    </div>
-  );
-}
+      '/index.html': `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My App</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
+    body { min-height: 100vh; display: grid; place-items: center;
+      background: linear-gradient(120deg,#7c5cff,#4ea8ff,#36e0c0); color: #fff; text-align: center; }
+    h1 { font-size: clamp(2rem, 6vw, 3.5rem); }
+    p { opacity: .9; margin-top: .5rem; }
+  </style>
+</head>
+<body>
+  <div>
+    <h1>Hello from RipoAI 👋</h1>
+    <p>Ask the agent on the left to build something amazing.</p>
+  </div>
+</body>
+</html>
 `,
     },
   }

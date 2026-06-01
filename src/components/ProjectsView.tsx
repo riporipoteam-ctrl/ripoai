@@ -79,7 +79,11 @@ export default function ProjectsView() {
     const parsed = parseCodeFiles(text)
     let updated = { ...newFiles }
     if (parsed.length) {
-      for (const f of parsed) updated[f.path] = f.code
+      // If a file was streamed across multiple blocks (truncation + continue),
+      // concatenate the parts in order instead of overwriting with a fragment.
+      const byPath: Record<string, string> = {}
+      for (const f of parsed) byPath[f.path] = byPath[f.path] ? byPath[f.path] + '\n' + f.code : f.code
+      for (const [path, code] of Object.entries(byPath)) updated[path] = code
       setFiles(updated)
       setBundlerKey((k) => k + 1)
       setTab('preview')
@@ -144,7 +148,7 @@ export default function ProjectsView() {
     let full = ''
     const sysMsg = {
       role: 'system' as const,
-      content: `${CODING_SYSTEM}\n\nProject: ${project.name} (React template, entry /App.js).\nCurrent files:\n${fileContext}`,
+      content: `${CODING_SYSTEM}\n\nProject: ${project.name} (static website, entry /index.html).\nCurrent files:\n${fileContext}`,
     }
     const convo = history.map((m, i) =>
       i === history.length - 1 ? { role: m.role, content: userText } : { role: m.role, content: m.content },
@@ -163,7 +167,7 @@ export default function ProjectsView() {
             model: 'moonshotai/kimi-k2.6:free',
             messages,
             temperature: 0.6,
-            maxTokens: 8000,
+            maxTokens: 5000,
             topP: 1,
             signal: ac.signal,
             onToken: (d) => { haptic(4); full += d; setLiveText(full) },
@@ -178,7 +182,7 @@ export default function ProjectsView() {
         model: useFast ? 'llama-3.3-70b-versatile' : CODER_MODEL,
         messages,
         temperature: 0.5,
-        maxTokens: 8000,
+        maxTokens: 5000,
         topP: 1,
         reasoningEffort: useFast ? undefined : 'low',
         signal: ac.signal,
@@ -224,18 +228,7 @@ export default function ProjectsView() {
     await applyAndSave(full, files)
   }
 
-  // If the agent declared npm deps in /package.json, install them in the sandbox.
-  let extraDeps: Record<string, string> = {}
-  try {
-    if (files['/package.json']) extraDeps = JSON.parse(files['/package.json']).dependencies || {}
-  } catch {
-    /* ignore malformed package.json */
-  }
-  const sandpackFiles = Object.fromEntries(
-    Object.entries(files)
-      .filter(([k]) => k !== '/package.json')
-      .map(([k, v]) => [k, { code: v }]),
-  )
+  const sandpackFiles = Object.fromEntries(Object.entries(files).map(([k, v]) => [k, { code: v }]))
 
   return (
     <div className="flex h-full flex-col md:flex-row">
@@ -445,10 +438,9 @@ export default function ProjectsView() {
         >
           <SandpackProvider
             key={bundlerKey}
-            template="react"
+            template="static"
             theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
             files={sandpackFiles}
-            customSetup={{ dependencies: extraDeps }}
             options={{ recompileMode: 'delayed', recompileDelay: 400 }}
             style={{ height: '100%' }}
           >
