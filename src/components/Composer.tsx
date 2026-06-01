@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, ArrowUp, Square, Globe, Bot, ImageIcon, Paperclip, X, FileText, Loader2 } from 'lucide-react'
+import { Plus, ArrowUp, Square, Globe, Bot, ImageIcon, Paperclip, X, FileText, Loader2, Mic } from 'lucide-react'
 import ModelSelector from './ModelSelector'
+import { useVoiceInput, hapticPattern } from '../hooks/useSpeech'
 import { fileToAttachment } from '../lib/files'
 import type { Attachment } from '../lib/db'
 import type { ModelTier } from '../lib/models'
@@ -41,6 +42,10 @@ export default function Composer({
   const taRef = useRef<HTMLTextAreaElement>(null)
   const imgInput = useRef<HTMLInputElement>(null)
   const fileInput = useRef<HTMLInputElement>(null)
+  const voice = useVoiceInput((t) => {
+    setText(t)
+    requestAnimationFrame(autosize)
+  })
 
   function autosize() {
     const ta = taRef.current
@@ -118,9 +123,9 @@ export default function Composer({
           className="no-scrollbar max-h-[220px] w-full resize-none bg-transparent px-3 py-2 text-[0.975rem] outline-none placeholder:text-muted"
         />
 
-        <div className="flex items-center gap-1.5 px-1">
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 px-1">
           {/* Plus menu */}
-          <div className="relative">
+          <div className="relative shrink-0">
             <button
               onClick={() => setPlusOpen((o) => !o)}
               className={`pressable flex h-9 w-9 items-center justify-center rounded-full transition ${plusOpen ? 'bg-accent text-white' : 'hover:bg-white/10'}`}
@@ -182,6 +187,20 @@ export default function Composer({
 
           <div className="ml-auto flex items-center gap-1.5">
             {showModelSelector && <ModelSelector value={model} onChange={onModelChange} />}
+            {voice.supported && !streaming && (
+              <button
+                onClick={() => {
+                  hapticPattern([10])
+                  voice.listening ? voice.stop() : voice.start()
+                }}
+                className={`pressable flex h-9 w-9 items-center justify-center rounded-full transition ${
+                  voice.listening ? 'bg-red-500 text-white' : 'text-muted hover:bg-white/10 hover:text-ink'
+                }`}
+                title="Voice input"
+              >
+                <Mic size={18} className={voice.listening ? 'animate-pulse' : ''} />
+              </button>
+            )}
             {streaming ? (
               <button
                 onClick={onStop}

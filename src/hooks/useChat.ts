@@ -5,6 +5,7 @@ import { getModel, type ModelTier } from '../lib/models'
 import { buildSystemPrompt, AGENT_SYSTEM } from '../lib/prompt'
 import { searchModel, shouldAutoSearch } from '../lib/search'
 import { extractMemories } from '../lib/memory'
+import { haptic } from './useSpeech'
 import { useStore } from '../store'
 import {
   loadChat,
@@ -132,13 +133,30 @@ export function useChat(chatId: string | undefined) {
     async (history: StoredMessage[], opts: SendOptions, id: string) => {
       if (!user) return
       const model = getModel(opts.model)
-      const useCompound = opts.agent || opts.webSearch || (!opts.webSearch && shouldAutoSearch(history[history.length - 1]?.content ?? ''))
 
-      const groqModel = opts.agent || opts.webSearch || useCompound ? searchModel() : model.groqModel
-      const visionCapable = model.vision
+      // If the latest user turn includes images, force a vision-capable model
+      // (only the 2o models can see images) and skip web-search routing, since
+      // the compound model can't view images.
+      const lastUser = [...history].reverse().find((m) => m.role === 'user')
+      const hasImages = (lastUser?.attachments ?? []).some((a) => a.kind === 'image' && a.url)
+
+      const useCompound =
+        !hasImages &&
+        (opts.agent ||
+          opts.webSearch ||
+          (!opts.webSearch && shouldAutoSearch(history[history.length - 1]?.content ?? '')))
+
+      const visionModel = getModel('ripoai-2o-instant')
+      const groqModel = hasImages
+        ? visionModel.groqModel
+        : useCompound
+          ? searchModel()
+          : model.groqModel
+      const visionCapable = hasImages || model.vision
       const usingCompound = groqModel === searchModel()
-      // compound (web search/agent) does NOT support reasoning_effort.
-      const reasoningEffort = usingCompound ? undefined : model.reasoningEffort
+      // compound (web search/agent) does NOT support reasoning_effort; nor does
+      // the vision model when we auto-switch to it.
+      const reasoningEffort = usingCompound || hasImages ? undefined : model.reasoningEffort
 
       const system =
         opts.systemOverride ??
@@ -174,16 +192,20 @@ export function useChat(chatId: string | undefined) {
           topP: model.topP,
           reasoningEffort: reasoningEffort,
           signal: ac.signal,
-          onToken: (delta) =>
+          onToken: (delta) => {
+            haptic(5)
             setMessages((m) =>
               m.map((x) => (x.id === assistantId ? { ...x, content: x.content + delta } : x)),
-            ),
-          onReasoning: (delta) =>
+            )
+          },
+          onReasoning: (delta) => {
+            haptic(4)
             setMessages((m) =>
               m.map((x) =>
                 x.id === assistantId ? { ...x, reasoning: (x.reasoning ?? '') + delta } : x,
               ),
-            ),
+            )
+          },
           onTool: (info) => {
             localSteps.push(info)
             setSteps([...localSteps])
@@ -194,6 +216,40 @@ export function useChat(chatId: string | undefined) {
         })
         finalContent = res.content
         finalReasoning = res.reasoning
+
+        // Some models (esp. compound after web search) finish with the answer
+        // in the reasoning channel and an empty content field. Recover it so
+        // the user always gets a response.
+        if (!finalContent.trim()) {
+          if (finalReasoning.trim()) {
+            finalContent = finalReasoning.trim()
+          } else {
+            // One quiet retry on the plain selected model without tools.
+            try {
+              const retry = await streamChat({
+                model: model.groqModel,
+                messages: groqMessages,
+                temperature: model.temperature,
+                maxTokens: model.maxTokens,
+                topP: model.topP,
+                reasoningEffort: model.reasoningEffort,
+                signal: ac.signal,
+                onToken: (delta) =>
+                  setMessages((m) =>
+                    m.map((x) => (x.id === assistantId ? { ...x, content: x.content + delta } : x)),
+                  ),
+              })
+              finalContent = retry.content
+            } catch {
+              /* fall through to fallback message below */
+            }
+          }
+          if (!finalContent.trim()) {
+            finalContent = "I couldn't generate a response for that — please try rephrasing or switch models."
+          }
+          const fc = finalContent
+          setMessages((m) => m.map((x) => (x.id === assistantId ? { ...x, content: fc } : x)))
+        }
       } catch (err: any) {
         if (err?.name === 'AbortError') {
           // keep whatever streamed so far
