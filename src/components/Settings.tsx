@@ -18,7 +18,6 @@ import Button from './ui/Button'
 import { MODEL_LIST } from '../lib/models'
 import { clearAllChats, clearMemories, deleteMemory } from '../lib/db'
 import { listVoices, getVoicePrefs, setVoicePrefs, speak, stopSpeaking, isSpeechSupported } from '../hooks/useSpeech'
-import { isPuterLoaded, isPuterSignedIn, puterSignIn, puterSignOut } from '../lib/puter'
 
 const ACCENTS = ['#7c5cff', '#4ea8ff', '#36e0c0', '#ff6b6b', '#ffa94d', '#f06595']
 const TABS = [
@@ -43,7 +42,6 @@ export default function Settings() {
   const [tab, setTab] = useState<(typeof TABS)[number]['id']>('general')
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [vp, setVp] = useState(getVoicePrefs())
-  const [puterConnected, setPuterConnected] = useState(isPuterSignedIn())
 
   useEffect(() => {
     if (!isSpeechSupported()) return
@@ -141,42 +139,6 @@ export default function Settings() {
                     </option>
                   ))}
                 </select>
-              </Field>
-
-              <Field label="Claude models (RipoAI 3o)">
-                <div className="flex items-center justify-between rounded-2xl border border-white/10 px-4 py-3">
-                  <div className="min-w-0 pr-3">
-                    <div className="text-sm font-semibold">
-                      {puterConnected ? 'Connected ✓' : 'Not connected'}
-                    </div>
-                    <div className="text-xs text-muted">
-                      Optional. Connect a free Puter account to power the 3o models with Claude
-                      (incl. Opus). Until then, 3o uses the fast Groq model. No pop-ups unless you
-                      tap connect.
-                    </div>
-                  </div>
-                  {puterConnected ? (
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        puterSignOut()
-                        setPuterConnected(false)
-                      }}
-                    >
-                      Disconnect
-                    </Button>
-                  ) : (
-                    <Button
-                      disabled={!isPuterLoaded()}
-                      onClick={async () => {
-                        const ok = await puterSignIn()
-                        setPuterConnected(ok)
-                      }}
-                    >
-                      Connect
-                    </Button>
-                  )}
-                </div>
               </Field>
             </>
           )}

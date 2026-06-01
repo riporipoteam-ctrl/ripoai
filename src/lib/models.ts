@@ -83,28 +83,25 @@ export const MODELS: Record<ModelTier, RipoModel> = {
   'ripoai-3o-instant': {
     id: 'ripoai-3o-instant',
     name: 'RipoAI 3o instant',
-    tagline: 'Claude 3.7 Sonnet — fast & smart (Puter)',
-    groqModel: '',
-    provider: 'puter',
-    puterModel: 'claude-3-7-sonnet',
+    tagline: 'Versatile & fast — great all-rounder',
+    groqModel: 'llama-3.3-70b-versatile',
     vision: false,
     reasoning: false,
-    temperature: 0.8,
-    maxTokens: 8000,
-    topP: 1,
+    temperature: 0.7,
+    maxTokens: 5120,
+    topP: 0.95,
     badge: 'NEW',
   },
   'ripoai-3o-pro': {
     id: 'ripoai-3o-pro',
     name: 'RipoAI 3o Pro',
-    tagline: 'Claude Sonnet 4 — best code & design (Puter)',
-    groqModel: '',
-    provider: 'puter',
-    puterModel: 'claude-sonnet-4',
+    tagline: 'Max reasoning — deepest, most careful thinking',
+    groqModel: 'openai/gpt-oss-120b',
     vision: false,
-    reasoning: false,
-    temperature: 0.9,
-    maxTokens: 8000,
+    reasoning: true,
+    reasoningEffort: 'high',
+    temperature: 0.7,
+    maxTokens: 6000,
     topP: 1,
     badge: 'MAX',
   },
@@ -112,10 +109,6 @@ export const MODELS: Record<ModelTier, RipoModel> = {
 
 export const MODEL_LIST = Object.values(MODELS)
 export const DEFAULT_MODEL: ModelTier = 'ripoai-2o-pro'
-
-// Puter model id used for the Projects coding agent when Puter is connected
-// (Claude is far better at code/design than the free Groq models).
-export const PUTER_CODER_MODEL = 'claude-sonnet-4'
 
 // Groq's agentic models with built-in web search + tools. Powers Web Search and
 // Agent modes natively. (compound-beta is the name accessible on the free tier;

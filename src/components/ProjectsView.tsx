@@ -12,9 +12,8 @@ import { motion } from 'framer-motion'
 import { Eye, Code2, Terminal, ArrowUp, Square, Sparkles, Wand2 } from 'lucide-react'
 import { useStore } from '../store'
 import { streamChat } from '../lib/groq'
-import { streamPuter, isPuterSignedIn } from '../lib/puter'
 import { haptic } from '../hooks/useSpeech'
-import { CODER_MODEL, PUTER_CODER_MODEL } from '../lib/models'
+import { CODER_MODEL } from '../lib/models'
 import { CODING_SYSTEM } from '../lib/prompt'
 import { parseCodeFiles } from '../lib/parseCode'
 import { saveProject, type Project } from '../lib/db'
@@ -101,7 +100,6 @@ export default function ProjectsView() {
     const ac = new AbortController()
     abortRef.current = ac
     let full = ''
-    const useClaude = isPuterSignedIn()
     const sysMsg = {
       role: 'system' as const,
       content: `${CODING_SYSTEM}\n\nProject: ${project.name} (React template, entry /App.js).\nCurrent files:\n${fileContext}`,
@@ -111,20 +109,6 @@ export default function ProjectsView() {
     // Auto-continue: models cap output; if we stop mid-file, ask to continue and
     // stitch it together so the user never has to type "continue".
     async function runOnce(messages: any[]): Promise<string> {
-      if (useClaude) {
-        try {
-          const r = await streamPuter({
-            model: PUTER_CODER_MODEL,
-            messages,
-            signal: ac.signal,
-            onToken: (d) => { haptic(4); full += d; setLiveText(full) },
-          })
-          if (full.trim()) return r.finishReason || ''
-          // empty (no usage / blocked) → fall through to Groq
-        } catch {
-          // Puter failed (no usage left, etc.) → fall back to Groq.
-        }
-      }
       const r = await streamChat({
         model: CODER_MODEL,
         messages,

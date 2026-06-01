@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { streamChat, complete, type ChatMessage, type ContentPart } from '../lib/groq'
-import { streamPuter, isPuterSignedIn } from '../lib/puter'
-import { imageUrl, preloadImage } from '../lib/imagegen'
+import { imageUrl } from '../lib/imagegen'
+import { composeTextOnImage } from '../lib/compose'
 import { getModel, type ModelTier } from '../lib/models'
 import { buildSystemPrompt, AGENT_SYSTEM } from '../lib/prompt'
 import { searchModel, shouldAutoSearch } from '../lib/search'
@@ -138,35 +138,62 @@ export function useChat(chatId: string | undefined) {
       const model = getModel(opts.model)
       const lastUser = [...history].reverse().find((m) => m.role === 'user')
 
-      // Image generation mode — produce an image instead of a chat reply.
+      // Image generation / editing mode.
       if (opts.image) {
         const prompt = (lastUser?.content ?? '').trim()
+        const editBase = (lastUser?.attachments ?? []).find((a) => a.kind === 'image' && a.url)?.url
         const assistantId = uid4()
         setMessages((m) => [
           ...m,
           { id: assistantId, role: 'assistant', content: '', model: opts.model, createdAt: Date.now() },
         ])
         setStreaming(true)
-        // Enhance the prompt into a richer description for much better results.
-        let enhanced = prompt
+
+        // Decide the scene prompt + any exact text to overlay (models can't
+        // render text, so we draw it precisely with canvas).
+        let scene = prompt
+        let overlay: string | null = null
+        let position: 'top' | 'bottom' | 'center' = 'top'
         try {
-          const e = await complete(
+          const j = await complete(
             'llama-3.3-70b-versatile',
             [
-              { role: 'system', content: 'Turn the user request into ONE vivid, detailed image-generation prompt (subject, style, lighting, composition, mood, high detail). Output only the prompt, no quotes.' },
+              {
+                role: 'system',
+                content:
+                  'Given an image request, output ONLY JSON {"scene":"...","text":"...","position":"top|bottom|center"}. "scene" = a vivid, detailed image-generation prompt with NO letters/words in the image. "text" = the EXACT words the user wants written on the image (empty string if none). "position" = where the text goes.',
+              },
               { role: 'user', content: prompt },
             ],
-            { temperature: 0.7, maxTokens: 200 },
+            { temperature: 0.5, maxTokens: 250 },
           )
-          if (e && e.length > 4) enhanced = e
+          const mm = j.match(/\{[\s\S]*\}/)
+          if (mm) {
+            const o = JSON.parse(mm[0])
+            scene = (o.scene || prompt).slice(0, 800)
+            overlay = (o.text || '').trim() || null
+            if (['top', 'bottom', 'center'].includes(o.position)) position = o.position
+          }
         } catch {
           /* use raw prompt */
         }
-        const url = imageUrl(enhanced)
+        if (/\babove\b|\btop\b/i.test(prompt)) position = 'top'
+        else if (/\bbelow\b|\bbottom\b|\bunder\b/i.test(prompt)) position = 'bottom'
+
+        const baseUrl = editBase || imageUrl(scene)
+        let finalUrl = baseUrl
+        if (overlay) {
+          try {
+            finalUrl = await composeTextOnImage(baseUrl, overlay, position)
+          } catch {
+            finalUrl = baseUrl
+          }
+        }
+
         let finalMsgs: StoredMessage[] = []
         setMessages((m) => {
           finalMsgs = m.map((x) =>
-            x.id === assistantId ? { ...x, content: '', image: { prompt, url } } : x,
+            x.id === assistantId ? { ...x, content: '', image: { prompt, url: finalUrl } } : x,
           )
           return finalMsgs
         })
@@ -187,18 +214,9 @@ export function useChat(chatId: string | undefined) {
         opts.agent ||
         opts.webSearch ||
         (!opts.webSearch && shouldAutoSearch(history[history.length - 1]?.content ?? ''))
-      // Use Puter (Claude) ONLY when the user has already connected Puter via
-      // Settings — never trigger a sign-in popup. Otherwise fall back silently.
-      const usePuter =
-        !hasImages &&
-        model.provider === 'puter' &&
-        !(opts.webSearch || opts.agent) &&
-        isPuterSignedIn()
+      const useCompound = !hasImages && wantsSearch
 
-      const useCompound = !hasImages && !usePuter && wantsSearch
-
-      // When a 3o (Puter) model can't be used, fall back to the gpt-oss config.
-      const fallback = model.provider === 'puter' ? getModel('ripoai-2o-pro') : model
+      const fallback = model
 
       const visionModel = getModel('ripoai-2o-instant')
       const groqModel = hasImages
@@ -238,29 +256,7 @@ export function useChat(chatId: string | undefined) {
       let finalContent = ''
       let finalReasoning = ''
       try {
-        let ranPuter = false
-        if (usePuter) {
-          try {
-            const res = await streamPuter({
-              model: model.puterModel!,
-              messages: groqMessages,
-              signal: ac.signal,
-              onToken: (delta) => {
-                haptic(5)
-                setMessages((m) =>
-                  m.map((x) => (x.id === assistantId ? { ...x, content: x.content + delta } : x)),
-                )
-              },
-            })
-            finalContent = res.content
-            ranPuter = !!res.content.trim()
-          } catch {
-            // Puter unavailable / no usage left / not connected → fall back to Groq.
-            finalContent = ''
-            setMessages((m) => m.map((x) => (x.id === assistantId ? { ...x, content: '' } : x)))
-          }
-        }
-        if (!ranPuter) {
+        {
         const res = await streamChat({
           model: groqModel,
           messages: groqMessages,
