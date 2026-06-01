@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { useChat } from '../hooks/useChat'
 import { useStore } from '../store'
 import Composer from './Composer'
+import VoiceCall from './VoiceCall'
 import Message from './Message'
 import type { ModelTier } from '../lib/models'
 import type { Attachment } from '../lib/db'
@@ -21,6 +22,7 @@ export default function ChatView() {
   const [model, setModel] = useState<ModelTier>(settings.defaultModel)
   const [webSearch, setWebSearch] = useState(false)
   const [agent, setAgent] = useState(false)
+  const [voiceCall, setVoiceCall] = useState(false)
   const { messages, streaming, send, stop, regenerate, editAndResend } = useChat(chatId)
   const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -106,8 +108,10 @@ export default function ChatView() {
           onSend={handleSend}
           onStop={stop}
           streaming={streaming}
+          onVoiceCall={() => setVoiceCall(true)}
         />
       </div>
+      <VoiceCall open={voiceCall} onClose={() => setVoiceCall(false)} model={model} />
     </div>
   )
 }

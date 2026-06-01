@@ -26,7 +26,14 @@ function Protected({ children }: { children: React.ReactNode }) {
   if (!authReady) return <FullScreenLoader />
   if (!user) return <Navigate to="/signin" replace state={{ from: location }} />
   if (!dataReady) return <FullScreenLoader />
-  if (!settings.onboarded) return <Onboarding />
+  // Onboarding shows at most once per browser (even across accounts).
+  let onboardedGlobally = false
+  try {
+    onboardedGlobally = localStorage.getItem('ripoai:onboarded') === '1'
+  } catch {
+    /* ignore */
+  }
+  if (!settings.onboarded && !onboardedGlobally) return <Onboarding />
   return <>{children}</>
 }
 

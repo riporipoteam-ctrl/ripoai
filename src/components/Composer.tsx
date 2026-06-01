@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, ArrowUp, Square, Globe, Bot, ImageIcon, Paperclip, X, FileText, Loader2, Mic } from 'lucide-react'
+import { Plus, ArrowUp, Square, Globe, Bot, ImageIcon, Paperclip, X, FileText, Loader2, Mic, Phone } from 'lucide-react'
 import ModelSelector from './ModelSelector'
 import { useVoiceInput, hapticPattern } from '../hooks/useSpeech'
 import { fileToAttachment } from '../lib/files'
@@ -19,6 +19,7 @@ interface Props {
   streaming: boolean
   placeholder?: string
   showModelSelector?: boolean
+  onVoiceCall?: () => void
 }
 
 export default function Composer({
@@ -33,6 +34,7 @@ export default function Composer({
   streaming,
   placeholder = 'Message RipoAI…',
   showModelSelector = true,
+  onVoiceCall,
 }: Props) {
   const [text, setText] = useState('')
   const [attachments, setAttachments] = useState<Attachment[]>([])
@@ -160,6 +162,17 @@ export default function Composer({
                   >
                     <Paperclip size={17} className="text-accent" /> Upload file
                   </button>
+                  {onVoiceCall && (
+                    <button
+                      onClick={() => {
+                        onVoiceCall()
+                        setPlusOpen(false)
+                      }}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-white/10"
+                    >
+                      <Phone size={17} className="text-accent" /> Voice call
+                    </button>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>

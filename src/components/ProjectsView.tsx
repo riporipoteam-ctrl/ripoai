@@ -12,6 +12,7 @@ import { motion } from 'framer-motion'
 import { Eye, Code2, Terminal, ArrowUp, Square, Sparkles, Wand2 } from 'lucide-react'
 import { useStore } from '../store'
 import { streamChat } from '../lib/groq'
+import { haptic } from '../hooks/useSpeech'
 import { CODER_MODEL } from '../lib/models'
 import { CODING_SYSTEM } from '../lib/prompt'
 import { parseCodeFiles } from '../lib/parseCode'
@@ -109,12 +110,14 @@ export default function ProjectsView() {
           },
           ...history.map((m) => ({ role: m.role, content: m.content })),
         ],
-        temperature: 0.4,
-        maxTokens: 5120,
+        temperature: 0.5,
+        maxTokens: 7000,
         topP: 1,
-        reasoningEffort: 'high',
+        // 'low' so the budget goes to actual code, not lengthy reasoning.
+        reasoningEffort: 'low',
         signal: ac.signal,
         onToken: (d) => {
+          haptic(4)
           full += d
           setLiveText(full)
         },

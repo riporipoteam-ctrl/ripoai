@@ -116,6 +116,11 @@ export default function Onboarding() {
     if (step === 1 && name.trim()) void updateSettings({ displayName: name.trim() })
     if (step === 3 && about.trim()) void updateSettings({ aboutYou: about.trim() })
     if (last) {
+      try {
+        localStorage.setItem('ripoai:onboarded', '1')
+      } catch {
+        /* ignore */
+      }
       void updateSettings({ onboarded: true })
       return
     }

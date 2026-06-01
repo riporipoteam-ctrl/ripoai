@@ -212,7 +212,14 @@ export async function streamChat(opts: StreamOptions): Promise<StreamResult> {
     }
   }
   splitter.flush()
-  return { content: content.trim(), reasoning: reasoning.trim() }
+  // Strip any reasoning/tool tags that slipped into the visible answer.
+  const cleanContent = content
+    .replace(/<think>[\s\S]*?<\/think>/gi, '')
+    .replace(/<tool>[\s\S]*?<\/tool>/gi, '')
+    .replace(/<output>[\s\S]*?<\/output>/gi, '')
+    .replace(/<\/?(think|tool|output|reason|reasoning)>/gi, '')
+    .trim()
+  return { content: cleanContent, reasoning: reasoning.trim() }
 }
 
 // Non-streaming completion for short utility tasks (titles, memory extraction).

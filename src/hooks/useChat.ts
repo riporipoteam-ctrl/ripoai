@@ -217,36 +217,39 @@ export function useChat(chatId: string | undefined) {
         finalContent = res.content
         finalReasoning = res.reasoning
 
-        // Some models (esp. compound after web search) finish with the answer
-        // in the reasoning channel and an empty content field. Recover it so
-        // the user always gets a response.
+        // Models (esp. compound web search) sometimes end with the answer stuck
+        // in the reasoning/tool trace and empty content. Never dump raw
+        // <think>/<tool>/<output> — synthesize a clean answer from the notes.
         if (!finalContent.trim()) {
-          if (finalReasoning.trim()) {
-            finalContent = finalReasoning.trim()
-          } else {
-            // One quiet retry on the plain selected model without tools.
-            try {
-              const retry = await streamChat({
-                model: model.groqModel,
-                messages: groqMessages,
-                temperature: model.temperature,
-                maxTokens: model.maxTokens,
-                topP: model.topP,
-                reasoningEffort: model.reasoningEffort,
-                signal: ac.signal,
-                onToken: (delta) =>
-                  setMessages((m) =>
-                    m.map((x) => (x.id === assistantId ? { ...x, content: x.content + delta } : x)),
-                  ),
-              })
-              finalContent = retry.content
-            } catch {
-              /* fall through to fallback message below */
-            }
+          const notes = (finalReasoning || '')
+            .replace(/<\/?(think|tool|output|reason|reasoning)>/gi, ' ')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 7000)
+          const question = lastUser?.content ?? history[history.length - 1]?.content ?? ''
+          try {
+            finalContent = await complete(
+              'llama-3.3-70b-versatile',
+              [
+                {
+                  role: 'system',
+                  content:
+                    'Write a clear, direct, well-formatted answer to the user using the research notes. Never mention "notes", "tools", or your process. If the notes contain findings (prices, places, facts), present them cleanly.',
+                },
+                { role: 'user', content: `Question: ${question}\n\nResearch notes:\n${notes || '(none)'}` },
+              ],
+              { temperature: 0.4, maxTokens: 1800 },
+            )
+          } catch {
+            /* fall through */
           }
           if (!finalContent.trim()) {
-            finalContent = "I couldn't generate a response for that — please try rephrasing or switch models."
+            finalContent = "I couldn't pull together a clean answer for that — please try rephrasing or switch models."
           }
+          const fc = finalContent
+          setMessages((m) => m.map((x) => (x.id === assistantId ? { ...x, content: fc } : x)))
+        } else {
+          // Apply the sanitized final content (live stream may have shown raw tags).
           const fc = finalContent
           setMessages((m) => m.map((x) => (x.id === assistantId ? { ...x, content: fc } : x)))
         }
