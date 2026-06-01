@@ -144,15 +144,30 @@ export function useChat(chatId: string | undefined) {
         const assistantId = uid4()
         setMessages((m) => [
           ...m,
-          { id: assistantId, role: 'assistant', content: '🎨 Generating your image…', model: opts.model, createdAt: Date.now() },
+          { id: assistantId, role: 'assistant', content: '', model: opts.model, createdAt: Date.now() },
         ])
         setStreaming(true)
-        const url = imageUrl(prompt)
-        await preloadImage(url)
-        const content = `Here's your image for **${prompt}**:\n\n![${prompt}](${url})\n\n[Open full size](${url})`
+        // Enhance the prompt into a richer description for much better results.
+        let enhanced = prompt
+        try {
+          const e = await complete(
+            'llama-3.3-70b-versatile',
+            [
+              { role: 'system', content: 'Turn the user request into ONE vivid, detailed image-generation prompt (subject, style, lighting, composition, mood, high detail). Output only the prompt, no quotes.' },
+              { role: 'user', content: prompt },
+            ],
+            { temperature: 0.7, maxTokens: 200 },
+          )
+          if (e && e.length > 4) enhanced = e
+        } catch {
+          /* use raw prompt */
+        }
+        const url = imageUrl(enhanced)
         let finalMsgs: StoredMessage[] = []
         setMessages((m) => {
-          finalMsgs = m.map((x) => (x.id === assistantId ? { ...x, content } : x))
+          finalMsgs = m.map((x) =>
+            x.id === assistantId ? { ...x, content: '', image: { prompt, url } } : x,
+          )
           return finalMsgs
         })
         setStreaming(false)

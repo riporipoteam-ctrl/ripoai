@@ -27,6 +27,8 @@ export interface StoredMessage {
   attachments?: Attachment[]
   /** Tool/search steps surfaced during generation. */
   steps?: { type: string; detail?: string }[]
+  /** Set when this is an image-generation result. */
+  image?: { prompt: string; url: string }
   createdAt: number
 }
 

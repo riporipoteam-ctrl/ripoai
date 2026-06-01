@@ -74,6 +74,23 @@
   transform: scale(0.96);
 }
 
+/* Image generation skeleton — dot grid + sweeping shimmer (ChatGPT-style) */
+.img-skeleton {
+  background-color: rgb(var(--muted) / 0.06);
+  background-image: radial-gradient(rgb(var(--muted) / 0.35) 1.4px, transparent 1.6px);
+  background-size: 18px 18px;
+}
+.img-shimmer {
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgb(var(--accent) / 0.12) 50%,
+    transparent 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s linear infinite;
+}
+
 /* Shimmer skeleton */
 .shimmer {
   background: linear-gradient(

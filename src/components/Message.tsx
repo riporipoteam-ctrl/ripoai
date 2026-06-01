@@ -4,6 +4,7 @@ import { Copy, Check, RefreshCw, Pencil, FileText, Volume2, Square } from 'lucid
 import { Markdown } from './Markdown'
 import Reasoning from './Reasoning'
 import AgentTrace from './AgentTrace'
+import ImageCard from './ImageCard'
 import { MODELS } from '../lib/models'
 import { speak, stopSpeaking, isSpeechSupported } from '../hooks/useSpeech'
 import type { StoredMessage } from '../lib/db'
@@ -133,6 +134,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
           </div>
         )}
         {message.reasoning && <Reasoning text={message.reasoning} live={liveStreaming && !message.content} />}
+        {message.image && <ImageCard prompt={message.image.prompt} url={message.image.url} />}
         {message.content && (
           <div className={liveStreaming ? 'stream-caret' : ''}>
             <Markdown>{message.content}</Markdown>
