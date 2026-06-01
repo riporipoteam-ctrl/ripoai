@@ -112,13 +112,18 @@ export default function ProjectsView() {
     // stitch it together so the user never has to type "continue".
     async function runOnce(messages: any[]): Promise<string> {
       if (useClaude) {
-        const r = await streamPuter({
-          model: PUTER_CODER_MODEL,
-          messages,
-          signal: ac.signal,
-          onToken: (d) => { haptic(4); full += d; setLiveText(full) },
-        })
-        return r.finishReason || ''
+        try {
+          const r = await streamPuter({
+            model: PUTER_CODER_MODEL,
+            messages,
+            signal: ac.signal,
+            onToken: (d) => { haptic(4); full += d; setLiveText(full) },
+          })
+          if (full.trim()) return r.finishReason || ''
+          // empty (no usage / blocked) → fall through to Groq
+        } catch {
+          // Puter failed (no usage left, etc.) → fall back to Groq.
+        }
       }
       const r = await streamChat({
         model: CODER_MODEL,

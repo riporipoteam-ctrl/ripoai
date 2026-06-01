@@ -198,20 +198,29 @@ export function useChat(chatId: string | undefined) {
       let finalContent = ''
       let finalReasoning = ''
       try {
+        let ranPuter = false
         if (usePuter) {
-          const res = await streamPuter({
-            model: model.puterModel!,
-            messages: groqMessages,
-            signal: ac.signal,
-            onToken: (delta) => {
-              haptic(5)
-              setMessages((m) =>
-                m.map((x) => (x.id === assistantId ? { ...x, content: x.content + delta } : x)),
-              )
-            },
-          })
-          finalContent = res.content
-        } else {
+          try {
+            const res = await streamPuter({
+              model: model.puterModel!,
+              messages: groqMessages,
+              signal: ac.signal,
+              onToken: (delta) => {
+                haptic(5)
+                setMessages((m) =>
+                  m.map((x) => (x.id === assistantId ? { ...x, content: x.content + delta } : x)),
+                )
+              },
+            })
+            finalContent = res.content
+            ranPuter = !!res.content.trim()
+          } catch {
+            // Puter unavailable / no usage left / not connected → fall back to Groq.
+            finalContent = ''
+            setMessages((m) => m.map((x) => (x.id === assistantId ? { ...x, content: '' } : x)))
+          }
+        }
+        if (!ranPuter) {
         const res = await streamChat({
           model: groqModel,
           messages: groqMessages,
