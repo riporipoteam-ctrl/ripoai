@@ -23,6 +23,7 @@ export default function ChatView() {
   const [model, setModel] = useState<ModelTier>(settings.defaultModel)
   const [webSearch, setWebSearch] = useState(false)
   const [agent, setAgent] = useState(false)
+  const [imageMode, setImageMode] = useState(false)
   const [voiceCall, setVoiceCall] = useState(false)
   const { messages, streaming, send, stop, regenerate, editAndResend } = useChat(chatId)
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -43,7 +44,7 @@ export default function ChatView() {
     setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 120)
   }
 
-  const opts = { model, webSearch, agent }
+  const opts = { model, webSearch, agent, image: imageMode }
 
   function handleSend(text: string, attachments: Attachment[]) {
     send(text, attachments, opts)
@@ -128,8 +129,10 @@ export default function ChatView() {
           onModelChange={setModel}
           webSearch={webSearch}
           agent={agent}
-          onToggleWeb={() => setWebSearch((v) => !v)}
-          onToggleAgent={() => setAgent((v) => !v)}
+          imageMode={imageMode}
+          onToggleWeb={() => { setWebSearch((v) => !v); setImageMode(false) }}
+          onToggleAgent={() => { setAgent((v) => !v); setImageMode(false) }}
+          onToggleImage={() => { setImageMode((v) => !v); setWebSearch(false); setAgent(false) }}
           onSend={handleSend}
           onStop={stop}
           streaming={streaming}

@@ -5,6 +5,7 @@ import { streamChat, type ChatMessage } from '../lib/groq'
 import { getModel, type ModelTier } from '../lib/models'
 import { buildSystemPrompt } from '../lib/prompt'
 import { hapticPattern, resolveVoice, getVoicePrefs } from '../hooks/useSpeech'
+import { saveChat, type StoredMessage } from '../lib/db'
 import { useStore } from '../store'
 
 type Phase = 'connecting' | 'listening' | 'thinking' | 'speaking'
@@ -22,7 +23,36 @@ export default function VoiceCall({
   onClose: () => void
   model: ModelTier
 }) {
-  const { settings, memories } = useStore()
+  const { settings, memories, user } = useStore()
+
+  // Persist the voice conversation as a normal chat so it shows in history.
+  async function saveConversation() {
+    const msgs = historyRef.current
+    if (!user || msgs.length < 2) return
+    const now = Date.now()
+    const stored: StoredMessage[] = msgs.map((m, i) => ({
+      id: `${now}-${i}`,
+      role: m.role === 'assistant' ? 'assistant' : 'user',
+      content: typeof m.content === 'string' ? m.content : '',
+      model,
+      createdAt: now + i,
+    }))
+    const firstUser = msgs.find((m) => m.role === 'user')
+    const title = '🎙️ ' + (typeof firstUser?.content === 'string' ? firstUser.content : 'Voice call').slice(0, 40)
+    await saveChat(user.uid, {
+      id: crypto.randomUUID(),
+      title,
+      model,
+      messages: stored,
+      updatedAt: now,
+      createdAt: now,
+    })
+  }
+
+  function endCall() {
+    void saveConversation()
+    onClose()
+  }
   const [phase, setPhase] = useState<Phase>('connecting')
   const [caption, setCaption] = useState('')
   const [userSaid, setUserSaid] = useState('')
@@ -248,7 +278,7 @@ export default function VoiceCall({
             <button
               onClick={() => {
                 hapticPattern([30])
-                onClose()
+                endCall()
               }}
               className="mx-auto mt-8 flex h-16 w-16 items-center justify-center rounded-full bg-red-500 text-white shadow-lg shadow-red-500/40 transition active:scale-95"
               aria-label="End call"

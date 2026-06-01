@@ -10,9 +10,18 @@ export async function extractMemories(
   userText: string,
   assistantText: string,
   existing: Memory[],
+  force = false,
 ): Promise<Memory[]> {
   const known = existing.map((m) => m.text).join('\n')
-  const prompt = `From the exchange below, extract 0-3 durable facts about the USER worth remembering for future conversations (stable preferences, identity, goals, ongoing projects, important context).
+  const prompt = force
+    ? `The user EXPLICITLY asked you to remember something. Extract 1-3 concise facts to store from their message.
+Return ONLY a JSON array of short strings.
+
+Already known:
+${known || '(none)'}
+
+User: ${userText.slice(0, 1500)}`
+    : `From the exchange below, extract 0-3 durable facts about the USER worth remembering for future conversations (stable preferences, identity, goals, ongoing projects, important context).
 Ignore one-off questions, the assistant's content, and anything already known.
 Return ONLY a JSON array of short strings. Empty array if nothing is worth saving.
 

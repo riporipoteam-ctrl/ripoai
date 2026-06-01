@@ -70,6 +70,10 @@ export async function streamPuter(opts: PuterStreamOpts): Promise<PuterResult> {
     const resp = await p.ai.chat(opts.messages, { model: opts.model, stream: true })
     for await (const part of resp) {
       if (opts.signal?.aborted) break
+      // Surface explicit error parts so the caller can fall back.
+      if (part?.error || part?.code === 'error') {
+        throw new Error(part?.error?.message || part?.message || 'puter-error')
+      }
       const t: string = part?.text ?? part?.message?.content ?? ''
       if (t) {
         content += t
@@ -78,8 +82,17 @@ export async function streamPuter(opts: PuterStreamOpts): Promise<PuterResult> {
       if (part?.finish_reason) finishReason = part.finish_reason
     }
   } catch (e: any) {
-    if (content) return { content, finishReason: 'error' }
+    // Quota / usage / permission problems → signal failure so we fall back.
     throw new Error(e?.message || 'Puter request failed.')
   }
+  // Some failures arrive as a short text blob instead of throwing — treat
+  // usage/permission messages as a failure so we fall back to Groq.
+  if (
+    content.length < 320 &&
+    /(no usage|usage limit|out of (usage|credit)|quota|insufficient|permission denied|not allowed|delinquent|limit reached|please sign|upgrade your)/i.test(content)
+  ) {
+    throw new Error('puter-usage')
+  }
+  if (!content.trim()) throw new Error('puter-empty')
   return { content, finishReason }
 }

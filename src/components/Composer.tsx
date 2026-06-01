@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, ArrowUp, Square, Globe, Bot, ImageIcon, Paperclip, X, FileText, Loader2, Mic, Phone } from 'lucide-react'
+import { Plus, ArrowUp, Square, Globe, Bot, ImageIcon, Paperclip, X, FileText, Loader2, Mic, Phone, Sparkles } from 'lucide-react'
 import ModelSelector from './ModelSelector'
 import { useVoiceInput, hapticPattern } from '../hooks/useSpeech'
 import { fileToAttachment } from '../lib/files'
@@ -12,8 +12,10 @@ interface Props {
   onModelChange: (m: ModelTier) => void
   webSearch: boolean
   agent: boolean
+  imageMode?: boolean
   onToggleWeb: () => void
   onToggleAgent: () => void
+  onToggleImage?: () => void
   onSend: (text: string, attachments: Attachment[]) => void
   onStop: () => void
   streaming: boolean
@@ -27,8 +29,10 @@ export default function Composer({
   onModelChange,
   webSearch,
   agent,
+  imageMode,
   onToggleWeb,
   onToggleAgent,
+  onToggleImage,
   onSend,
   onStop,
   streaming,
@@ -121,7 +125,7 @@ export default function Composer({
             }
           }}
           rows={1}
-          placeholder={placeholder}
+          placeholder={imageMode ? 'Describe an image to generate…' : placeholder}
           className="no-scrollbar max-h-[220px] w-full resize-none bg-transparent px-3 py-2 text-[0.975rem] outline-none placeholder:text-muted"
         />
 
@@ -197,6 +201,17 @@ export default function Composer({
           >
             <Bot size={14} /> Agent
           </button>
+          {onToggleImage && (
+            <button
+              onClick={onToggleImage}
+              className={`pressable flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                imageMode ? 'accent-gradient-bg text-white' : 'border border-white/15 text-muted hover:text-ink'
+              }`}
+              title="Image generation mode"
+            >
+              <Sparkles size={14} /> Image
+            </button>
+          )}
 
           <div className="ml-auto flex items-center gap-1.5">
             {showModelSelector && <ModelSelector value={model} onChange={onModelChange} />}

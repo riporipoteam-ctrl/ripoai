@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { streamChat, complete, type ChatMessage, type ContentPart } from '../lib/groq'
 import { streamPuter, isPuterSignedIn } from '../lib/puter'
+import { imageUrl, preloadImage } from '../lib/imagegen'
 import { getModel, type ModelTier } from '../lib/models'
 import { buildSystemPrompt, AGENT_SYSTEM } from '../lib/prompt'
 import { searchModel, shouldAutoSearch } from '../lib/search'
@@ -20,6 +21,7 @@ export interface SendOptions {
   model: ModelTier
   webSearch: boolean
   agent: boolean
+  image?: boolean
   projectId?: string
   /** Override system prompt (used by Projects coding agent). */
   systemOverride?: string
@@ -134,11 +136,34 @@ export function useChat(chatId: string | undefined) {
     async (history: StoredMessage[], opts: SendOptions, id: string) => {
       if (!user) return
       const model = getModel(opts.model)
+      const lastUser = [...history].reverse().find((m) => m.role === 'user')
+
+      // Image generation mode — produce an image instead of a chat reply.
+      if (opts.image) {
+        const prompt = (lastUser?.content ?? '').trim()
+        const assistantId = uid4()
+        setMessages((m) => [
+          ...m,
+          { id: assistantId, role: 'assistant', content: '🎨 Generating your image…', model: opts.model, createdAt: Date.now() },
+        ])
+        setStreaming(true)
+        const url = imageUrl(prompt)
+        await preloadImage(url)
+        const content = `Here's your image for **${prompt}**:\n\n![${prompt}](${url})\n\n[Open full size](${url})`
+        let finalMsgs: StoredMessage[] = []
+        setMessages((m) => {
+          finalMsgs = m.map((x) => (x.id === assistantId ? { ...x, content } : x))
+          return finalMsgs
+        })
+        setStreaming(false)
+        if (titleRef.current === 'New chat') titleRef.current = (prompt || 'Image').slice(0, 40)
+        await persist(finalMsgs, id, opts.model, opts.projectId)
+        return
+      }
 
       // If the latest user turn includes images, force a vision-capable model
       // (only the 2o models can see images) and skip web-search routing, since
       // the compound model can't view images.
-      const lastUser = [...history].reverse().find((m) => m.role === 'user')
       const hasImages = (lastUser?.attachments ?? []).some((a) => a.kind === 'image' && a.url)
 
       // Puter (Claude) models: used unless the turn needs web search or vision,
@@ -338,14 +363,13 @@ export function useChat(chatId: string | undefined) {
 
       await persist(finalMsgs, id, opts.model, opts.projectId)
 
-      // Memory extraction (non-blocking-ish).
-      if (settings.memoryEnabled && finalContent && !opts.projectId) {
-        extractMemories(
-          user.uid,
-          history[history.length - 1]?.content ?? '',
-          finalContent,
-          memories,
-        )
+      // Memory: auto-extract, plus an explicit save when the user asks to
+      // "remember" / "save" something.
+      const userText = history[history.length - 1]?.content ?? ''
+      const explicitRemember = /\b(remember|memor(ize|ise)|save (this|that|to memory|it)|note that|keep in mind)\b/i.test(userText)
+      if ((settings.memoryEnabled || explicitRemember) && finalContent && !opts.projectId) {
+        const force = explicitRemember
+        extractMemories(user.uid, userText, finalContent, memories, force)
           .then((created) => {
             if (created.length) refreshMemories()
           })

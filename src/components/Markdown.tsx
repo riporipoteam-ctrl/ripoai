@@ -65,6 +65,13 @@ function MarkdownImpl({ children }: { children: string }) {
           a: ({ node, ...props }) => (
             <a {...props} target="_blank" rel="noreferrer" className="text-accent underline" />
           ),
+          img: ({ node, ...props }) => (
+            <img
+              {...props}
+              loading="lazy"
+              className="my-2 max-h-[28rem] w-auto max-w-full rounded-2xl border border-white/10 shadow-lg"
+            />
+          ),
           table: ({ node, ...props }) => (
             <div className="my-3 overflow-x-auto">
               <table className="w-full border-collapse text-sm" {...props} />
