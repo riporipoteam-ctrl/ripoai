@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown } from 'lucide-react'
 import { useChat } from '../hooks/useChat'
 import { useStore } from '../store'
+import { getModel } from '../lib/models'
+import { isPuterLoaded, isPuterSignedIn, puterSignIn } from '../lib/puter'
 import Composer from './Composer'
 import VoiceCall from './VoiceCall'
 import Message from './Message'
@@ -44,6 +46,14 @@ export default function ChatView() {
   }
 
   const opts = { model, webSearch, agent }
+
+  function changeModel(m: ModelTier) {
+    setModel(m)
+    // 3o models run on Puter — sign in once now (one popup), so chatting is smooth.
+    if (getModel(m).provider === 'puter' && isPuterLoaded() && !isPuterSignedIn()) {
+      void puterSignIn()
+    }
+  }
 
   function handleSend(text: string, attachments: Attachment[]) {
     send(text, attachments, opts)
@@ -125,7 +135,7 @@ export default function ChatView() {
         </AnimatePresence>
         <Composer
           model={model}
-          onModelChange={setModel}
+          onModelChange={changeModel}
           webSearch={webSearch}
           agent={agent}
           onToggleWeb={() => setWebSearch((v) => !v)}

@@ -67,6 +67,7 @@ export interface ToolEvent {
 export interface StreamResult {
   content: string
   reasoning: string
+  finishReason?: string
 }
 
 // Splits a token stream that may contain <think>...</think> reasoning inline
@@ -161,6 +162,7 @@ export async function streamChat(opts: StreamOptions): Promise<StreamResult> {
 
   let content = ''
   let reasoning = ''
+  let finishReason: string | undefined
   const splitter = new ThinkSplitter(
     (s) => {
       content += s
@@ -189,6 +191,8 @@ export async function streamChat(opts: StreamOptions): Promise<StreamResult> {
       if (data === '[DONE]') continue
       try {
         const json = JSON.parse(data)
+        const fr = json.choices?.[0]?.finish_reason
+        if (fr) finishReason = fr
         const delta = json.choices?.[0]?.delta
         if (!delta) continue
         // Native reasoning field (gpt-oss / deepseek style).
@@ -219,7 +223,7 @@ export async function streamChat(opts: StreamOptions): Promise<StreamResult> {
     .replace(/<output>[\s\S]*?<\/output>/gi, '')
     .replace(/<\/?(think|tool|output|reason|reasoning)>/gi, '')
     .trim()
-  return { content: cleanContent, reasoning: reasoning.trim() }
+  return { content: cleanContent, reasoning: reasoning.trim(), finishReason }
 }
 
 // Non-streaming completion for short utility tasks (titles, memory extraction).

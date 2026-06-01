@@ -1,13 +1,23 @@
 // RipoAI model registry. Each tier maps to a legitimately available Groq model,
 // validated against the live Groq /models endpoint.
 
-export type ModelTier = 'ripoai-1o-instant' | 'ripoai-2o-instant' | 'ripoai-1o-pro' | 'ripoai-2o-pro'
+export type ModelTier =
+  | 'ripoai-1o-instant'
+  | 'ripoai-2o-instant'
+  | 'ripoai-1o-pro'
+  | 'ripoai-2o-pro'
+  | 'ripoai-3o-instant'
+  | 'ripoai-3o-pro'
 
 export interface RipoModel {
   id: ModelTier
   name: string
   tagline: string
   groqModel: string
+  /** Provider backing this model. */
+  provider?: 'groq' | 'puter'
+  /** Puter model id (when provider === 'puter'). */
+  puterModel?: string
   /** Supports image inputs (vision). */
   vision: boolean
   /** Emits <think> reasoning blocks we should render as collapsible reasoning. */
@@ -70,10 +80,42 @@ export const MODELS: Record<ModelTier, RipoModel> = {
     topP: 1,
     badge: 'PRO',
   },
+  'ripoai-3o-instant': {
+    id: 'ripoai-3o-instant',
+    name: 'RipoAI 3o instant',
+    tagline: 'Claude-powered — brilliant & fast',
+    groqModel: '',
+    provider: 'puter',
+    puterModel: 'claude-sonnet-4',
+    vision: false,
+    reasoning: false,
+    temperature: 0.8,
+    maxTokens: 8000,
+    topP: 1,
+    badge: 'NEW',
+  },
+  'ripoai-3o-pro': {
+    id: 'ripoai-3o-pro',
+    name: 'RipoAI 3o Pro',
+    tagline: 'Most powerful — Claude Opus, best code & design',
+    groqModel: '',
+    provider: 'puter',
+    puterModel: 'claude-opus-4',
+    vision: false,
+    reasoning: false,
+    temperature: 0.9,
+    maxTokens: 8000,
+    topP: 1,
+    badge: 'MAX',
+  },
 }
 
 export const MODEL_LIST = Object.values(MODELS)
 export const DEFAULT_MODEL: ModelTier = 'ripoai-2o-pro'
+
+// Puter model id used for the Projects coding agent when Puter is connected
+// (Claude is far better at code/design than the free Groq models).
+export const PUTER_CODER_MODEL = 'claude-sonnet-4'
 
 // Groq's agentic models with built-in web search + tools. Powers Web Search and
 // Agent modes natively. (compound-beta is the name accessible on the free tier;

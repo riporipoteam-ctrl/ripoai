@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { streamChat, complete, type ChatMessage, type ContentPart } from '../lib/groq'
+import { streamPuter } from '../lib/puter'
 import { getModel, type ModelTier } from '../lib/models'
 import { buildSystemPrompt, AGENT_SYSTEM } from '../lib/prompt'
 import { searchModel, shouldAutoSearch } from '../lib/search'
@@ -140,11 +141,15 @@ export function useChat(chatId: string | undefined) {
       const lastUser = [...history].reverse().find((m) => m.role === 'user')
       const hasImages = (lastUser?.attachments ?? []).some((a) => a.kind === 'image' && a.url)
 
-      const useCompound =
-        !hasImages &&
-        (opts.agent ||
-          opts.webSearch ||
-          (!opts.webSearch && shouldAutoSearch(history[history.length - 1]?.content ?? '')))
+      // Puter (Claude) models: used unless the turn needs web search or vision,
+      // which Puter models here don't handle (route those to Groq instead).
+      const wantsSearch =
+        opts.agent ||
+        opts.webSearch ||
+        (!opts.webSearch && shouldAutoSearch(history[history.length - 1]?.content ?? ''))
+      const usePuter = !hasImages && model.provider === 'puter' && !(opts.webSearch || opts.agent)
+
+      const useCompound = !hasImages && !usePuter && wantsSearch
 
       const visionModel = getModel('ripoai-2o-instant')
       const groqModel = hasImages
@@ -184,6 +189,20 @@ export function useChat(chatId: string | undefined) {
       let finalContent = ''
       let finalReasoning = ''
       try {
+        if (usePuter) {
+          const res = await streamPuter({
+            model: model.puterModel!,
+            messages: groqMessages,
+            signal: ac.signal,
+            onToken: (delta) => {
+              haptic(5)
+              setMessages((m) =>
+                m.map((x) => (x.id === assistantId ? { ...x, content: x.content + delta } : x)),
+              )
+            },
+          })
+          finalContent = res.content
+        } else {
         const res = await streamChat({
           model: groqModel,
           messages: groqMessages,
@@ -216,6 +235,7 @@ export function useChat(chatId: string | undefined) {
         })
         finalContent = res.content
         finalReasoning = res.reasoning
+        }
 
         // Models (esp. compound web search) sometimes end with the answer stuck
         // in the reasoning/tool trace and empty content. Never dump raw

@@ -12,8 +12,9 @@ import { motion } from 'framer-motion'
 import { Eye, Code2, Terminal, ArrowUp, Square, Sparkles, Wand2 } from 'lucide-react'
 import { useStore } from '../store'
 import { streamChat } from '../lib/groq'
+import { streamPuter, isPuterLoaded } from '../lib/puter'
 import { haptic } from '../hooks/useSpeech'
-import { CODER_MODEL } from '../lib/models'
+import { CODER_MODEL, PUTER_CODER_MODEL } from '../lib/models'
 import { CODING_SYSTEM } from '../lib/prompt'
 import { parseCodeFiles } from '../lib/parseCode'
 import { saveProject, type Project } from '../lib/db'
@@ -100,28 +101,58 @@ export default function ProjectsView() {
     const ac = new AbortController()
     abortRef.current = ac
     let full = ''
-    try {
-      await streamChat({
+    const useClaude = isPuterLoaded()
+    const sysMsg = {
+      role: 'system' as const,
+      content: `${CODING_SYSTEM}\n\nProject: ${project.name} (React template, entry /App.js).\nCurrent files:\n${fileContext}`,
+    }
+    const convo = history.map((m) => ({ role: m.role, content: m.content }))
+
+    // Auto-continue: models cap output; if we stop mid-file, ask to continue and
+    // stitch it together so the user never has to type "continue".
+    async function runOnce(messages: any[]): Promise<string> {
+      if (useClaude) {
+        const r = await streamPuter({
+          model: PUTER_CODER_MODEL,
+          messages,
+          signal: ac.signal,
+          onToken: (d) => { haptic(4); full += d; setLiveText(full) },
+        })
+        return r.finishReason || ''
+      }
+      const r = await streamChat({
         model: CODER_MODEL,
-        messages: [
-          {
-            role: 'system',
-            content: `${CODING_SYSTEM}\n\nProject: ${project.name} (React template, entry /App.js).\nCurrent files:\n${fileContext}`,
-          },
-          ...history.map((m) => ({ role: m.role, content: m.content })),
-        ],
+        messages,
         temperature: 0.5,
         maxTokens: 7000,
         topP: 1,
-        // 'low' so the budget goes to actual code, not lengthy reasoning.
         reasoningEffort: 'low',
         signal: ac.signal,
-        onToken: (d) => {
-          haptic(4)
-          full += d
-          setLiveText(full)
-        },
+        onToken: (d) => { haptic(4); full += d; setLiveText(full) },
       })
+      return r.finishReason || ''
+    }
+
+    function looksTruncated(text: string, finish: string): boolean {
+      if (finish === 'length') return true
+      const fences = (text.match(/```/g) || []).length
+      return fences % 2 === 1 // an unclosed code block
+    }
+
+    try {
+      let messages: any[] = [sysMsg, ...convo]
+      let finish = await runOnce(messages)
+      let guard = 0
+      while (!ac.signal.aborted && looksTruncated(full, finish) && guard < 4) {
+        guard++
+        messages = [
+          sysMsg,
+          ...convo,
+          { role: 'assistant', content: full },
+          { role: 'user', content: 'Continue exactly where you left off. Do not repeat anything already written.' },
+        ]
+        finish = await runOnce(messages)
+      }
     } catch (e: any) {
       if (e?.name !== 'AbortError') full += `\n\n⚠️ ${e?.message ?? 'error'}`
     } finally {
