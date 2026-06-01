@@ -208,13 +208,15 @@ export function useChat(chatId: string | undefined) {
       // the compound model can't view images.
       const hasImages = (lastUser?.attachments ?? []).some((a) => a.kind === 'image' && a.url)
 
-      // Puter (Claude) models: used unless the turn needs web search or vision,
-      // which Puter models here don't handle (route those to Groq instead).
       const wantsSearch =
         opts.agent ||
         opts.webSearch ||
         (!opts.webSearch && shouldAutoSearch(history[history.length - 1]?.content ?? ''))
       const useCompound = !hasImages && wantsSearch
+
+      // 3o models run on OpenRouter (free), with automatic Groq fallback on
+      // rate-limit/slow/error. Not used for vision or web-search turns.
+      const useOR = model.provider === 'openrouter' && !!model.orModel && !hasImages && !useCompound
 
       const fallback = model
 
@@ -256,7 +258,40 @@ export function useChat(chatId: string | undefined) {
       let finalContent = ''
       let finalReasoning = ''
       try {
-        {
+        let ok = false
+        if (useOR) {
+          try {
+            const res = await streamChat({
+              provider: 'openrouter',
+              model: model.orModel!,
+              messages: groqMessages,
+              temperature: model.temperature,
+              maxTokens: model.maxTokens,
+              topP: model.topP,
+              signal: ac.signal,
+              onToken: (delta) => {
+                haptic(5)
+                setMessages((m) =>
+                  m.map((x) => (x.id === assistantId ? { ...x, content: x.content + delta } : x)),
+                )
+              },
+              onReasoning: (delta) =>
+                setMessages((m) =>
+                  m.map((x) =>
+                    x.id === assistantId ? { ...x, reasoning: (x.reasoning ?? '') + delta } : x,
+                  ),
+                ),
+            })
+            finalContent = res.content
+            finalReasoning = res.reasoning
+            ok = !!res.content.trim()
+          } catch {
+            // OpenRouter rate-limited/slow/error → fall back to Groq.
+            finalContent = ''
+            setMessages((m) => m.map((x) => (x.id === assistantId ? { ...x, content: '', reasoning: '' } : x)))
+          }
+        }
+        if (!ok) {
         const res = await streamChat({
           model: groqModel,
           messages: groqMessages,

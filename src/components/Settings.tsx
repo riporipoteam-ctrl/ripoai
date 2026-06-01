@@ -17,6 +17,7 @@ import Modal from './ui/Modal'
 import Button from './ui/Button'
 import { MODEL_LIST } from '../lib/models'
 import { clearAllChats, clearMemories, deleteMemory } from '../lib/db'
+import { getOpenRouterKey, setOpenRouterKey } from '../lib/groq'
 import { listVoices, getVoicePrefs, setVoicePrefs, speak, stopSpeaking, isSpeechSupported } from '../hooks/useSpeech'
 
 const ACCENTS = ['#7c5cff', '#4ea8ff', '#36e0c0', '#ff6b6b', '#ffa94d', '#f06595']
@@ -42,6 +43,7 @@ export default function Settings() {
   const [tab, setTab] = useState<(typeof TABS)[number]['id']>('general')
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [vp, setVp] = useState(getVoicePrefs())
+  const [orKey, setOrKey] = useState(getOpenRouterKey())
 
   useEffect(() => {
     if (!isSpeechSupported()) return
@@ -139,6 +141,23 @@ export default function Settings() {
                     </option>
                   ))}
                 </select>
+              </Field>
+
+              <Field label="OpenRouter key (powers RipoAI 3o models)">
+                <input
+                  type="password"
+                  value={orKey}
+                  onChange={(e) => {
+                    setOrKey(e.target.value)
+                    setOpenRouterKey(e.target.value.trim())
+                  }}
+                  placeholder={getOpenRouterKey() ? 'Using configured key' : 'sk-or-v1-…'}
+                  className="w-full rounded-2xl border border-white/15 bg-white/5 px-3 py-2.5 font-mono text-xs outline-none focus:border-accent"
+                />
+                <p className="mt-1.5 text-xs text-muted">
+                  Stored only in this browser. 3o models fall back to the fast Groq model if
+                  OpenRouter is rate-limited.
+                </p>
               </Field>
             </>
           )}

@@ -15,9 +15,10 @@ export interface RipoModel {
   tagline: string
   groqModel: string
   /** Provider backing this model. */
-  provider?: 'groq' | 'puter'
-  /** Puter model id (when provider === 'puter'). */
-  puterModel?: string
+  provider?: 'groq' | 'openrouter'
+  /** OpenRouter model id (when provider === 'openrouter'); groqModel is the
+   * automatic fallback when OpenRouter is rate-limited or errors. */
+  orModel?: string
   /** Supports image inputs (vision). */
   vision: boolean
   /** Emits <think> reasoning blocks we should render as collapsible reasoning. */
@@ -83,23 +84,26 @@ export const MODELS: Record<ModelTier, RipoModel> = {
   'ripoai-3o-instant': {
     id: 'ripoai-3o-instant',
     name: 'RipoAI 3o instant',
-    tagline: 'Versatile & fast — great all-rounder',
+    tagline: 'Qwen3-Next 80B — fast & very capable',
+    provider: 'openrouter',
+    orModel: 'qwen/qwen3-next-80b-a3b-instruct:free',
     groqModel: 'llama-3.3-70b-versatile',
     vision: false,
     reasoning: false,
     temperature: 0.7,
-    maxTokens: 5120,
+    maxTokens: 4096,
     topP: 0.95,
     badge: 'NEW',
   },
   'ripoai-3o-pro': {
     id: 'ripoai-3o-pro',
     name: 'RipoAI 3o Pro',
-    tagline: 'Max reasoning — deepest, most careful thinking',
+    tagline: 'Nemotron 120B — most powerful, best for builds',
+    provider: 'openrouter',
+    orModel: 'nvidia/nemotron-3-super-120b-a12b:free',
     groqModel: 'openai/gpt-oss-120b',
     vision: false,
-    reasoning: true,
-    reasoningEffort: 'high',
+    reasoning: false,
     temperature: 0.7,
     maxTokens: 6000,
     topP: 1,

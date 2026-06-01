@@ -9,7 +9,9 @@
 // The resolved key still ends up in the client bundle on the deployed site,
 // which is the public/abusable trade-off the owner accepted.
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
+const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 const KEY_STORAGE = 'ripoai-groq-key'
+const OR_KEY_STORAGE = 'ripoai-openrouter-key'
 
 export function getApiKey(): string {
   try {
@@ -34,6 +36,25 @@ export function hasApiKey(): boolean {
   return getApiKey().length > 0
 }
 
+export function getOpenRouterKey(): string {
+  try {
+    const local = localStorage.getItem(OR_KEY_STORAGE)
+    if (local) return local
+  } catch {
+    /* ignore */
+  }
+  return (import.meta.env.VITE_OPENROUTER_API_KEY as string) || ''
+}
+
+export function setOpenRouterKey(key: string) {
+  try {
+    if (key) localStorage.setItem(OR_KEY_STORAGE, key)
+    else localStorage.removeItem(OR_KEY_STORAGE)
+  } catch {
+    /* ignore */
+  }
+}
+
 export type TextPart = { type: 'text'; text: string }
 export type ImagePart = { type: 'image_url'; image_url: { url: string } }
 export type ContentPart = TextPart | ImagePart
@@ -50,6 +71,8 @@ export interface StreamOptions {
   maxTokens?: number
   topP?: number
   reasoningEffort?: string
+  /** 'groq' (default) or 'openrouter'. */
+  provider?: 'groq' | 'openrouter'
   signal?: AbortSignal
   /** Called with each token of the visible answer. */
   onToken?: (delta: string) => void
@@ -120,42 +143,60 @@ class ThinkSplitter {
 }
 
 export async function streamChat(opts: StreamOptions): Promise<StreamResult> {
+  const isOR = opts.provider === 'openrouter'
+  const url = isOR ? OPENROUTER_URL : GROQ_URL
+  const apiKey = isOR ? getOpenRouterKey() : getApiKey()
+  if (!apiKey) {
+    throw new Error(
+      isOR
+        ? 'No OpenRouter API key set (Settings → General → OpenRouter key).'
+        : 'No API key set. Add your Groq API key in Settings → General.',
+    )
+  }
+
   const body: Record<string, unknown> = {
     model: opts.model,
     messages: opts.messages,
     temperature: opts.temperature ?? 0.7,
-    max_completion_tokens: opts.maxTokens ?? 8192,
     top_p: opts.topP ?? 1,
     stream: true,
   }
-  if (opts.reasoningEffort) body.reasoning_effort = opts.reasoningEffort
+  // Groq uses max_completion_tokens + reasoning_effort; OpenRouter uses max_tokens.
+  if (isOR) {
+    body.max_tokens = opts.maxTokens ?? 4096
+  } else {
+    body.max_completion_tokens = opts.maxTokens ?? 8192
+    if (opts.reasoningEffort) body.reasoning_effort = opts.reasoningEffort
+  }
 
-  const apiKey = getApiKey()
-  if (!apiKey) throw new Error('No API key set. Add your Groq API key in Settings → General.')
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+  }
+  if (isOR) {
+    headers['HTTP-Referer'] = 'https://riporipoteam-ctrl.github.io/ripoai/'
+    headers['X-Title'] = 'RipoAI'
+  }
 
   const doFetch = (b: Record<string, unknown>) =>
-    fetch(GROQ_URL, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(b),
-      signal: opts.signal,
-    })
+    fetch(url, { method: 'POST', headers, body: JSON.stringify(b), signal: opts.signal })
 
   let res = await doFetch(body)
 
-  // Free-tier tokens-per-minute (413): the requested max_completion_tokens
-  // counts against the limit, so shrink it and retry once.
+  // Free-tier tokens-per-minute (413): the requested max tokens count against
+  // the limit, so shrink and retry once.
   if (res.status === 413) {
-    body.max_completion_tokens = 1536
+    if (isOR) body.max_tokens = 1536
+    else body.max_completion_tokens = 1536
     res = await doFetch(body)
   }
 
   if (!res.ok || !res.body) {
     const errText = await res.text().catch(() => '')
-    let msg = `Groq error ${res.status}`
+    let msg = `Error ${res.status}`
     if (res.status === 413)
-      msg = 'That request hit the free-tier rate limit. Try a shorter message or a faster model (RipoAI 1o/2o instant).'
-    else if (res.status === 429) msg = 'Rate limited — please wait a few seconds and try again.'
+      msg = 'That request hit the free-tier rate limit. Try a shorter message or a faster model.'
+    else if (res.status === 429) msg = 'rate-limited'
     else msg = `${msg}: ${errText.slice(0, 200)}`
     throw new Error(msg)
   }

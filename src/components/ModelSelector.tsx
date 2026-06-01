@@ -54,7 +54,7 @@ export default function ModelSelector({
                   <div className="flex items-center gap-2">
                     <span className="font-semibold">{m.name}</span>
                     {m.badge && (
-                      <span className="accent-gradient-bg rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white">
+                      <span className="accent-gradient-bg animate-pulse-dot rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white">
                         {m.badge}
                       </span>
                     )}
