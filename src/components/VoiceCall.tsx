@@ -34,6 +34,10 @@ export default function VoiceCall({
   const [phase, setPhase] = useState<Phase>('connecting')
   const [caption, setCaption] = useState('')
   const [userSaid, setUserSaid] = useState('')
+  const [manual, setManual] = useState('')
+  const sttSupported =
+    typeof window !== 'undefined' &&
+    !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
   const recRef = useRef<any>(null)
   const historyRef = useRef<ChatMessage[]>([])
   const activeRef = useRef(false)
@@ -43,13 +47,42 @@ export default function VoiceCall({
     if (!open) return
     activeRef.current = true
     historyRef.current = []
-    // Voices may load async.
     voiceRef.current = pickVoice()
     window.speechSynthesis?.addEventListener?.('voiceschanged', () => {
       voiceRef.current = pickVoice()
     })
     hapticPattern([20, 60, 20])
-    startListening()
+
+    const sttSupported =
+      typeof window !== 'undefined' &&
+      !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
+
+    // Greet immediately — this runs inside the tap gesture, which unlocks
+    // speech synthesis on iOS, and gives audible confirmation the call started.
+    const greeting = sttSupported
+      ? `Hey, I'm RipoAI. I'm listening — what's up?`
+      : `Hey, I'm RipoAI. Heads up: this browser can't hear you — open RipoAI in Chrome to talk. I can still read out loud.`
+    setPhase('speaking')
+    setCaption(greeting)
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel()
+      const u = new SpeechSynthesisUtterance(greeting)
+      if (voiceRef.current) u.voice = voiceRef.current
+      u.rate = 1.03
+      u.pitch = 1.05
+      u.onend = () => {
+        if (!activeRef.current) return
+        if (sttSupported) startListening()
+        else setCaption("This browser doesn't support voice input. Open RipoAI in Chrome to talk to me.")
+      }
+      u.onerror = () => {
+        if (activeRef.current && sttSupported) startListening()
+      }
+      window.speechSynthesis.speak(u)
+    } else if (sttSupported) {
+      startListening()
+    }
+
     return () => {
       activeRef.current = false
       try {
@@ -194,17 +227,43 @@ export default function VoiceCall({
             )}
             <p className="min-h-[3rem] text-lg font-medium leading-relaxed">{caption}</p>
 
+            {!sttSupported && (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  const t = manual.trim()
+                  if (!t || phase === 'thinking') return
+                  setManual('')
+                  setUserSaid(t)
+                  respond(t)
+                }}
+                className="glass-strong mx-auto mt-6 flex max-w-sm items-center gap-2 rounded-2xl p-1.5"
+              >
+                <input
+                  value={manual}
+                  onChange={(e) => setManual(e.target.value)}
+                  placeholder="Type — RipoAI will reply out loud"
+                  className="flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted"
+                />
+                <button type="submit" className="accent-gradient-bg rounded-xl px-3 py-2 text-sm font-semibold text-white">
+                  Send
+                </button>
+              </form>
+            )}
+
             <button
               onClick={() => {
                 hapticPattern([30])
                 onClose()
               }}
-              className="mx-auto mt-10 flex h-16 w-16 items-center justify-center rounded-full bg-red-500 text-white shadow-lg shadow-red-500/40 transition active:scale-95"
+              className="mx-auto mt-8 flex h-16 w-16 items-center justify-center rounded-full bg-red-500 text-white shadow-lg shadow-red-500/40 transition active:scale-95"
               aria-label="End call"
             >
               <PhoneOff size={26} />
             </button>
-            <p className="mt-3 text-[11px] text-muted">Uses your device's built-in voices.</p>
+            <p className="mt-3 text-[11px] text-muted">
+              {sttSupported ? "Uses your device's built-in voices." : 'Voice input needs Chrome; replies are spoken aloud.'}
+            </p>
           </div>
         </motion.div>
       )}
