@@ -65,6 +65,62 @@ export function useVoiceInput(onText: (text: string) => void) {
 
 let currentUtterance: SpeechSynthesisUtterance | null = null
 
+/* ------------------------- Voice preferences ------------------------- */
+
+export interface VoicePrefs {
+  voiceURI?: string
+  rate: number
+  pitch: number
+}
+
+const VOICE_KEY = 'ripoai:voice'
+
+export function getVoicePrefs(): VoicePrefs {
+  try {
+    const v = localStorage.getItem(VOICE_KEY)
+    if (v) return { rate: 1.0, pitch: 1.0, ...JSON.parse(v) }
+  } catch {
+    /* ignore */
+  }
+  return { rate: 1.0, pitch: 1.0 }
+}
+
+export function setVoicePrefs(prefs: Partial<VoicePrefs>) {
+  try {
+    localStorage.setItem(VOICE_KEY, JSON.stringify({ ...getVoicePrefs(), ...prefs }))
+  } catch {
+    /* ignore */
+  }
+}
+
+const QUALITY_HINTS = ['enhanced', 'premium', 'neural', 'natural', 'google', 'siri', 'ava', 'zoe', 'evan', 'samantha', 'aria', 'jenny']
+
+/** All English voices, highest-quality first. */
+export function listVoices(): SpeechSynthesisVoice[] {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return []
+  const all = window.speechSynthesis.getVoices()
+  const score = (v: SpeechSynthesisVoice) => {
+    const n = v.name.toLowerCase()
+    let s = 0
+    QUALITY_HINTS.forEach((h, i) => { if (n.includes(h)) s += QUALITY_HINTS.length - i + 5 })
+    if (v.lang?.toLowerCase().startsWith('en')) s += 4
+    if (v.localService) s += 1
+    return s
+  }
+  return [...all].sort((a, b) => score(b) - score(a))
+}
+
+export function resolveVoice(): SpeechSynthesisVoice | null {
+  const voices = window.speechSynthesis?.getVoices?.() ?? []
+  if (!voices.length) return null
+  const prefs = getVoicePrefs()
+  if (prefs.voiceURI) {
+    const v = voices.find((x) => x.voiceURI === prefs.voiceURI)
+    if (v) return v
+  }
+  return listVoices()[0] ?? voices[0]
+}
+
 export function speak(text: string, onEnd?: () => void) {
   if (typeof window === 'undefined' || !window.speechSynthesis) return
   window.speechSynthesis.cancel()
@@ -75,8 +131,11 @@ export function speak(text: string, onEnd?: () => void) {
     .replace(/\[(.*?)\]\(.*?\)/g, '$1')
     .slice(0, 4000)
   const u = new SpeechSynthesisUtterance(clean)
-  u.rate = 1.02
-  u.pitch = 1
+  const prefs = getVoicePrefs()
+  const voice = resolveVoice()
+  if (voice) u.voice = voice
+  u.rate = prefs.rate || 1.02
+  u.pitch = prefs.pitch || 1
   u.onend = () => {
     currentUtterance = null
     onEnd?.()

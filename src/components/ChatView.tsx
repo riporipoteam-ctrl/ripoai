@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ChevronDown } from 'lucide-react'
 import { useChat } from '../hooks/useChat'
 import { useStore } from '../store'
 import Composer from './Composer'
@@ -26,14 +27,21 @@ export default function ChatView() {
   const { messages, streaming, send, stop, regenerate, editAndResend } = useChat(chatId)
   const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const [atBottom, setAtBottom] = useState(true)
 
   useEffect(() => {
     setModel(settings.defaultModel)
   }, [settings.defaultModel])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: streaming ? 'auto' : 'smooth' })
-  }, [messages, streaming])
+    if (atBottom) bottomRef.current?.scrollIntoView({ behavior: streaming ? 'auto' : 'smooth' })
+  }, [messages, streaming, atBottom])
+
+  function onScroll() {
+    const el = scrollRef.current
+    if (!el) return
+    setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 120)
+  }
 
   const opts = { model, webSearch, agent }
 
@@ -46,7 +54,7 @@ export default function ChatView() {
 
   return (
     <div className="flex h-full flex-col">
-      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+      <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto">
         {empty ? (
           <div className="flex h-full flex-col items-center justify-center px-4">
             <motion.h1
@@ -97,7 +105,24 @@ export default function ChatView() {
         )}
       </div>
 
-      <div className="px-4 pb-4 pt-2">
+      <div className="relative px-4 pb-4 pt-2">
+        <AnimatePresence>
+          {!empty && !atBottom && (
+            <motion.button
+              initial={{ opacity: 0, scale: 0.8, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.8, y: 8 }}
+              onClick={() => {
+                setAtBottom(true)
+                bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+              }}
+              className="glass-strong absolute -top-6 left-1/2 z-10 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full text-ink shadow-lg"
+              title="Scroll to bottom"
+            >
+              <ChevronDown size={18} />
+            </motion.button>
+          )}
+        </AnimatePresence>
         <Composer
           model={model}
           onModelChange={setModel}

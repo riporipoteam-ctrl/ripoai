@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Palette,
   User as UserIcon,
@@ -9,17 +9,21 @@ import {
   Monitor,
   Moon,
   Sun,
+  Volume2,
+  Play,
 } from 'lucide-react'
 import { useStore } from '../store'
 import Modal from './ui/Modal'
 import Button from './ui/Button'
 import { MODEL_LIST } from '../lib/models'
 import { clearAllChats, clearMemories, deleteMemory } from '../lib/db'
+import { listVoices, getVoicePrefs, setVoicePrefs, speak, stopSpeaking, isSpeechSupported } from '../hooks/useSpeech'
 
 const ACCENTS = ['#7c5cff', '#4ea8ff', '#36e0c0', '#ff6b6b', '#ffa94d', '#f06595']
 const TABS = [
   { id: 'general', label: 'General', icon: Palette },
   { id: 'personal', label: 'Personalization', icon: UserIcon },
+  { id: 'voice', label: 'Voice', icon: Volume2 },
   { id: 'memory', label: 'Memory', icon: Brain },
   { id: 'data', label: 'Data controls', icon: Database },
   { id: 'about', label: 'About', icon: Info },
@@ -36,6 +40,22 @@ export default function Settings() {
     user,
   } = useStore()
   const [tab, setTab] = useState<(typeof TABS)[number]['id']>('general')
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
+  const [vp, setVp] = useState(getVoicePrefs())
+
+  useEffect(() => {
+    if (!isSpeechSupported()) return
+    const load = () => setVoices(listVoices())
+    load()
+    window.speechSynthesis.addEventListener('voiceschanged', load)
+    return () => window.speechSynthesis.removeEventListener('voiceschanged', load)
+  }, [])
+
+  function updateVoice(patch: Partial<ReturnType<typeof getVoicePrefs>>) {
+    const next = { ...vp, ...patch }
+    setVp(next)
+    setVoicePrefs(next)
+  }
 
   return (
     <Modal open={settingsOpen} onClose={closeSettings} title="Settings" wide>
@@ -152,6 +172,70 @@ export default function Settings() {
                 />
               </Field>
               <p className="text-xs text-muted">Custom instructions are applied to every new message.</p>
+            </>
+          )}
+
+          {tab === 'voice' && (
+            <>
+              {!isSpeechSupported() ? (
+                <p className="rounded-2xl border border-white/10 px-4 py-6 text-center text-sm text-muted">
+                  Speech isn't supported in this browser.
+                </p>
+              ) : (
+                <>
+                  <Field label="Voice">
+                    <select
+                      value={vp.voiceURI ?? ''}
+                      onChange={(e) => updateVoice({ voiceURI: e.target.value || undefined })}
+                      className="w-full rounded-2xl border border-white/15 bg-white/5 px-3 py-2.5 outline-none focus:border-accent"
+                    >
+                      <option value="" className="bg-surface text-ink">
+                        Auto (best available)
+                      </option>
+                      {voices.map((v) => (
+                        <option key={v.voiceURI} value={v.voiceURI} className="bg-surface text-ink">
+                          {v.name} ({v.lang})
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+
+                  <Field label={`Speed — ${vp.rate.toFixed(2)}×`}>
+                    <input
+                      type="range" min={0.6} max={1.6} step={0.05}
+                      value={vp.rate}
+                      onChange={(e) => updateVoice({ rate: Number(e.target.value) })}
+                      className="w-full accent-accent"
+                    />
+                  </Field>
+                  <Field label={`Pitch — ${vp.pitch.toFixed(2)}`}>
+                    <input
+                      type="range" min={0.5} max={1.6} step={0.05}
+                      value={vp.pitch}
+                      onChange={(e) => updateVoice({ pitch: Number(e.target.value) })}
+                      className="w-full accent-accent"
+                    />
+                  </Field>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="glass"
+                      onClick={() => speak("Hi, I'm RipoAI. This is how I sound — pick the voice you like best.")}
+                    >
+                      <Play size={15} /> Preview
+                    </Button>
+                    <Button variant="ghost" onClick={stopSpeaking}>
+                      Stop
+                    </Button>
+                  </div>
+
+                  <p className="text-xs text-muted">
+                    Tip: for the most realistic voices, download the “Enhanced/Premium” voices on
+                    your device (iOS: Settings → Accessibility → Spoken Content → Voices; they then
+                    appear in this list).
+                  </p>
+                </>
+              )}
             </>
           )}
 

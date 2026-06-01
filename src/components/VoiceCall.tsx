@@ -4,21 +4,13 @@ import { PhoneOff, Mic } from 'lucide-react'
 import { streamChat, type ChatMessage } from '../lib/groq'
 import { getModel, type ModelTier } from '../lib/models'
 import { buildSystemPrompt } from '../lib/prompt'
-import { hapticPattern } from '../hooks/useSpeech'
+import { hapticPattern, resolveVoice, getVoicePrefs } from '../hooks/useSpeech'
 import { useStore } from '../store'
 
 type Phase = 'connecting' | 'listening' | 'thinking' | 'speaking'
 
 function pickVoice(): SpeechSynthesisVoice | null {
-  const voices = window.speechSynthesis?.getVoices?.() ?? []
-  if (!voices.length) return null
-  // Prefer high-quality natural English voices where available.
-  const prefer = ['Samantha', 'Google US English', 'Microsoft Aria', 'Microsoft Jenny', 'Karen', 'Moira', 'Serena']
-  for (const name of prefer) {
-    const v = voices.find((x) => x.name.includes(name))
-    if (v) return v
-  }
-  return voices.find((v) => v.lang?.startsWith('en')) ?? voices[0]
+  return resolveVoice()
 }
 
 export default function VoiceCall({
@@ -68,8 +60,9 @@ export default function VoiceCall({
       window.speechSynthesis.cancel()
       const u = new SpeechSynthesisUtterance(greeting)
       if (voiceRef.current) u.voice = voiceRef.current
-      u.rate = 1.03
-      u.pitch = 1.05
+      const gp = getVoicePrefs()
+      u.rate = gp.rate || 1.03
+      u.pitch = gp.pitch || 1.05
       u.onend = () => {
         if (!activeRef.current) return
         if (sttSupported) startListening()
@@ -174,8 +167,9 @@ export default function VoiceCall({
     window.speechSynthesis.cancel()
     const u = new SpeechSynthesisUtterance(text.replace(/[*_#`>]/g, ''))
     if (voiceRef.current) u.voice = voiceRef.current
-    u.rate = 1.03
-    u.pitch = 1.05
+    const vp = getVoicePrefs()
+    u.rate = vp.rate || 1.03
+    u.pitch = vp.pitch || 1.05
     u.onend = () => {
       if (activeRef.current) startListening()
     }
