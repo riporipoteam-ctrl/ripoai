@@ -22,39 +22,28 @@ export function wantsPlaces(text: string): boolean {
   )
 }
 
-async function geocode(query: string): Promise<[number, number] | null> {
-  try {
-    const r = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`,
-      { headers: { Accept: 'application/json' } },
-    )
-    const d = await r.json()
-    if (d?.[0]) return [parseFloat(d[0].lat), parseFloat(d[0].lon)]
-  } catch {
-    /* ignore */
-  }
-  return null
+function addrOf(p: any): string {
+  return [p.street, p.district, p.city, p.state, p.country].filter(Boolean).join(', ')
 }
 
-/** Searches for places matching `query`. If `near` is given, biases around it. */
+/** Searches for places matching `query` via Photon (OSM). Biases around `near`. */
 export async function searchPlaces(query: string, near?: [number, number]): Promise<PlacesResult | null> {
   try {
-    let url = `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=12&addressdetails=1&q=${encodeURIComponent(query)}`
-    if (near) {
-      const [la, ln] = near
-      const d = 0.1 // ~11km box
-      url += `&viewbox=${ln - d},${la + d},${ln + d},${la - d}&bounded=1`
-    }
-    const r = await fetch(url, { headers: { Accept: 'application/json' } })
+    let url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=12`
+    if (near) url += `&lat=${near[0]}&lon=${near[1]}`
+    const r = await fetch(url)
     const data = await r.json()
-    if (!Array.isArray(data) || !data.length) return null
-    const places: Place[] = data.map((p: any) => ({
-      name: p.name || p.display_name?.split(',')[0] || 'Place',
-      address: p.display_name || '',
-      lat: parseFloat(p.lat),
-      lng: parseFloat(p.lon),
-      category: p.type,
-    }))
+    const feats: any[] = data?.features ?? []
+    const places: Place[] = feats
+      .filter((f) => f.geometry?.coordinates && (f.properties?.name || f.properties?.street))
+      .map((f) => ({
+        name: f.properties.name || f.properties.street || 'Place',
+        address: addrOf(f.properties),
+        lat: f.geometry.coordinates[1],
+        lng: f.geometry.coordinates[0],
+        category: f.properties.osm_value,
+      }))
+    if (!places.length) return null
     const center: [number, number] = near ?? [places[0].lat, places[0].lng]
     return { center, places, label: query }
   } catch {
@@ -79,5 +68,3 @@ export function getUserLocation(timeout = 8000): Promise<[number, number] | null
     )
   })
 }
-
-export { geocode }
