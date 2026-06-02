@@ -135,9 +135,19 @@ function emit() {
 
 // Best-effort Firestore write that can never throw or hang (8s cap).
 function bgWrite(label: string, fn: () => Promise<unknown>) {
-  Promise.race([fn(), new Promise((r) => setTimeout(r, 8000))]).catch((e) =>
-    console.warn(`${label} (background):`, (e as Error)?.message ?? e),
-  )
+  try {
+    Promise.race([fn(), new Promise((r) => setTimeout(r, 8000))]).catch((e) =>
+      console.warn(`${label} (background):`, (e as Error)?.message ?? e),
+    )
+  } catch (e) {
+    // setDoc validates synchronously and can throw (e.g. undefined fields).
+    console.warn(`${label} (background):`, (e as Error)?.message ?? e)
+  }
+}
+
+// Firestore rejects `undefined`; round-trip drops undefined fields.
+function clean<T>(v: T): T {
+  return JSON.parse(JSON.stringify(v))
 }
 
 /* ----------------------------- Settings ----------------------------- */
@@ -211,7 +221,7 @@ export async function saveChat(uid: string, chat: Chat) {
     setDoc(doc(db, 'users', uid, 'chats', chat.id), {
       title: chat.title,
       model: chat.model,
-      messages: chat.messages,
+      messages: clean(chat.messages),
       projectId: chat.projectId ?? null,
       updatedAt: serverTimestamp(),
       createdAt: chat.createdAt || Date.now(),
@@ -280,7 +290,7 @@ export async function saveProject(uid: string, project: Project) {
     setDoc(doc(db, 'users', uid, 'projects', project.id), {
       name: project.name,
       description: project.description ?? '',
-      files: project.files,
+      files: clean(project.files),
       template: project.template,
       updatedAt: serverTimestamp(),
       createdAt: project.createdAt || Date.now(),
