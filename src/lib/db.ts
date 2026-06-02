@@ -458,3 +458,48 @@ export async function deleteProject(uid: string, projectId: string) {
   emit()
   bgWrite('deleteProject', () => deleteDoc(doc(db, 'users', uid, 'projects', projectId)))
 }
+
+/* --------------------- One-time local → cloud migration --------------------- */
+// Uploads existing localStorage data (chats, settings, memories, projects) to
+// Firestore the first time sync is available, so users who built everything
+// locally keep it across devices. Never overwrites items already in the cloud.
+export async function migrateLocalToCloud(uid: string): Promise<void> {
+  try {
+    if (read<number>(uid, 'migrated', 0)) return
+    const chatSnap = await withTimeout(getDocs(collection(db, 'users', uid, 'chats')), 9000, null as any)
+    if (!chatSnap) return // Firestore unreachable/unconfigured — retry next load.
+
+    const cloudChatIds = new Set<string>(chatSnap.docs.map((d: any) => d.id))
+    const metas = read<ChatMeta[]>(uid, 'chats', []).slice().sort((a, b) => a.updatedAt - b.updatedAt)
+    for (const m of metas) {
+      if (cloudChatIds.has(m.id)) continue
+      const full = read<Chat | null>(uid, `chat:${m.id}`, null)
+      if (full && full.messages?.length) await saveChat(uid, full)
+    }
+
+    // Settings — only if the cloud has none yet.
+    const sSnap = await withTimeout(getDoc(doc(db, 'users', uid)), 6000, null as any)
+    if (!sSnap?.exists?.() || !sSnap.data()?.settings) {
+      const localS = read<Partial<UserSettings> | null>(uid, 'settings', null)
+      if (localS) await saveSettings(uid, localS)
+    }
+
+    // Memories.
+    const mSnap = await withTimeout(getDocs(collection(db, 'users', uid, 'memories')), 6000, null as any)
+    const cloudMemIds = new Set<string>(mSnap ? mSnap.docs.map((d: any) => d.id) : [])
+    for (const mem of read<Memory[]>(uid, 'memories', [])) {
+      if (!cloudMemIds.has(mem.id)) bgWrite('migrateMem', () => setDoc(doc(db, 'users', uid, 'memories', mem.id), mem))
+    }
+
+    // Projects.
+    const pSnap = await withTimeout(getDocs(collection(db, 'users', uid, 'projects')), 6000, null as any)
+    const cloudProjIds = new Set<string>(pSnap ? pSnap.docs.map((d: any) => d.id) : [])
+    for (const p of read<Project[]>(uid, 'projects', [])) {
+      if (!cloudProjIds.has(p.id)) await saveProject(uid, p)
+    }
+
+    write(uid, 'migrated', Date.now())
+  } catch {
+    /* will retry on next load */
+  }
+}

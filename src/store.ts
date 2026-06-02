@@ -8,6 +8,7 @@ import {
   watchChats,
   watchProjects,
   onSyncStatus,
+  migrateLocalToCloud,
   type ChatMeta,
   type Memory,
   type Project,
@@ -119,6 +120,9 @@ export const useStore = create<AppState>((set, get) => ({
       _unsub: [unsubChats, unsubProjects, unsubSync],
       sidebarOpen: window.innerWidth >= 768,
     })
+
+    // Push any existing local data to the cloud (one-time), in the background.
+    void migrateLocalToCloud(uid)
   },
 
   teardown: () => {

@@ -14,6 +14,7 @@ import {
   PanelLeftClose,
   MessageSquare,
   Pin,
+  Download,
 } from 'lucide-react'
 import { signOut } from 'firebase/auth'
 import { auth } from '../firebase'
@@ -23,6 +24,7 @@ import {
   deleteChat,
   renameChat,
   togglePinChat,
+  loadChat,
   saveProject,
   deleteProject,
   type ChatMeta,
@@ -51,7 +53,7 @@ function groupByDate(chats: ChatMeta[]) {
 export default function Sidebar() {
   const navigate = useNavigate()
   const { chatId, projectId } = useParams()
-  const { user, settings, chats, projects, sidebarOpen, setSidebar, openSettings, synced } = useStore()
+  const { user, settings, chats, projects, sidebarOpen, setSidebar, openSettings } = useStore()
   const [search, setSearch] = useState('')
   const [menuFor, setMenuFor] = useState<string | null>(null)
   const [renaming, setRenaming] = useState<string | null>(null)
@@ -247,7 +249,7 @@ export default function Sidebar() {
                                   initial={{ opacity: 0, scale: 0.95 }}
                                   animate={{ opacity: 1, scale: 1 }}
                                   exit={{ opacity: 0, scale: 0.95 }}
-                                  className="glass-strong absolute right-2 top-9 z-50 w-36 overflow-hidden rounded-2xl p-1"
+                                  className="glass-strong absolute right-2 top-9 z-50 w-44 overflow-hidden rounded-2xl p-1"
                                   onMouseLeave={() => setMenuFor(null)}
                                 >
                                   <button
@@ -268,6 +270,21 @@ export default function Sidebar() {
                                     className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-white/10"
                                   >
                                     <Pencil size={14} /> Rename
+                                  </button>
+                                  <button
+                                    onClick={async () => {
+                                      setMenuFor(null)
+                                      if (!user) return
+                                      const full = await loadChat(user.uid, c.id)
+                                      if (!full) return
+                                      const md = `# ${full.title}\n\n${full.messages
+                                        .map((m) => `**${m.role === 'user' ? 'You' : 'RipoAI'}:** ${m.content}`)
+                                        .join('\n\n')}`
+                                      navigator.clipboard.writeText(md)
+                                    }}
+                                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-white/10"
+                                  >
+                                    <Download size={14} /> Copy as text
                                   </button>
                                   <button
                                     onClick={async () => {
@@ -299,10 +316,7 @@ export default function Sidebar() {
                   <div className="truncate text-sm font-semibold">
                     {settings.displayName || user?.displayName || 'Account'}
                   </div>
-                  <div className="flex items-center gap-1 text-xs text-muted">
-                    <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${synced ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-                    <span className="truncate">{synced ? 'Synced' : 'Local only'}</span>
-                  </div>
+                  <div className="truncate text-xs text-muted">{user?.email}</div>
                 </div>
                 <button
                   onClick={openSettings}
