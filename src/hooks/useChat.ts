@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { streamChat, complete, type ChatMessage, type ContentPart } from '../lib/groq'
 import { imageUrl, styleSuffix } from '../lib/imagegen'
 import { composeTextOnImage } from '../lib/compose'
+import { isGmailConnected, wantsEmail, readRecentEmails } from '../lib/gmail'
 import { getModel, type ModelTier } from '../lib/models'
 import { buildSystemPrompt, AGENT_SYSTEM } from '../lib/prompt'
 import { searchModel, shouldAutoSearch } from '../lib/search'
@@ -234,11 +235,18 @@ export function useChat(chatId: string | undefined) {
       // the vision model when we auto-switch to it.
       const reasoningEffort = usingCompound || hasImages ? undefined : fallback.reasoningEffort
 
-      const system =
+      let system =
         opts.systemOverride ??
         (opts.agent
           ? AGENT_SYSTEM + '\n\n' + buildSystemPrompt(model, settings, memories)
           : buildSystemPrompt(model, settings, memories))
+
+      // Gmail: if connected and the user asks about email, fetch recent mail.
+      const lastText = lastUser?.content ?? ''
+      if (isGmailConnected() && wantsEmail(lastText)) {
+        const emails = await readRecentEmails(8)
+        if (emails) system += `\n\nThe user connected their Gmail. Their recent inbox emails (read-only):\n${emails}\n\nUse these to answer questions about their email.`
+      }
 
       const groqMessages: ChatMessage[] = [
         { role: 'system', content: system },
@@ -259,73 +267,73 @@ export function useChat(chatId: string | undefined) {
 
       let finalContent = ''
       let finalReasoning = ''
+
+      // Shared stream handlers.
+      const onToken = (delta: string) => {
+        haptic(5)
+        setMessages((m) => m.map((x) => (x.id === assistantId ? { ...x, content: x.content + delta } : x)))
+      }
+      const onReasoning = (delta: string) => {
+        haptic(4)
+        setMessages((m) =>
+          m.map((x) => (x.id === assistantId ? { ...x, reasoning: (x.reasoning ?? '') + delta } : x)),
+        )
+      }
+      const onTool = (info: { type: string; detail?: string }) => {
+        localSteps.push(info)
+        setSteps([...localSteps])
+        setMessages((m) => m.map((x) => (x.id === assistantId ? { ...x, steps: [...localSteps] } : x)))
+      }
+      const clearStreamed = () =>
+        setMessages((m) => m.map((x) => (x.id === assistantId ? { ...x, content: '', reasoning: '' } : x)))
+
+      // Ordered fallback chain — try the best model, then progressively more
+      // reliable/faster ones, so a rate-limit never shows as the answer.
+      type Attempt = { provider?: 'openrouter' | 'groq'; model: string; maxTokens: number; reasoningEffort?: string }
+      const attempts: Attempt[] = []
+      if (useCompound) {
+        attempts.push({ provider: 'groq', model: searchModel(), maxTokens: 2048 })
+        attempts.push({ provider: 'groq', model: 'llama-3.3-70b-versatile', maxTokens: 1500 })
+      } else if (hasImages) {
+        attempts.push({ provider: 'groq', model: visionModel.groqModel, maxTokens: 1500 })
+      } else if (useOR) {
+        attempts.push({ provider: 'openrouter', model: model.orModel!, maxTokens: Math.min(model.maxTokens, 4096) })
+        attempts.push({ provider: 'groq', model: model.groqModel, maxTokens: Math.min(model.maxTokens, 4096), reasoningEffort: model.reasoningEffort })
+        attempts.push({ provider: 'groq', model: 'llama-3.1-8b-instant', maxTokens: 2048 })
+      } else {
+        attempts.push({ provider: 'groq', model: groqModel, maxTokens: fallback.maxTokens, reasoningEffort })
+        if (groqModel !== 'llama-3.1-8b-instant')
+          attempts.push({ provider: 'groq', model: 'llama-3.1-8b-instant', maxTokens: 2048 })
+      }
+
       try {
-        let ok = false
-        if (useOR) {
+        for (const a of attempts) {
+          if (ac.signal.aborted) break
           try {
+            clearStreamed()
+            finalContent = ''
+            finalReasoning = ''
+            localSteps.length = 0
             const res = await streamChat({
-              provider: 'openrouter',
-              model: model.orModel!,
+              provider: a.provider,
+              model: a.model,
               messages: groqMessages,
               temperature: model.temperature,
-              maxTokens: model.maxTokens,
+              maxTokens: a.maxTokens,
               topP: model.topP,
+              reasoningEffort: a.reasoningEffort,
               signal: ac.signal,
-              onToken: (delta) => {
-                haptic(5)
-                setMessages((m) =>
-                  m.map((x) => (x.id === assistantId ? { ...x, content: x.content + delta } : x)),
-                )
-              },
-              onReasoning: (delta) =>
-                setMessages((m) =>
-                  m.map((x) =>
-                    x.id === assistantId ? { ...x, reasoning: (x.reasoning ?? '') + delta } : x,
-                  ),
-                ),
+              onToken,
+              onReasoning,
+              onTool,
             })
             finalContent = res.content
             finalReasoning = res.reasoning
-            ok = !!res.content.trim()
-          } catch {
-            // OpenRouter rate-limited/slow/error → fall back to Groq.
-            finalContent = ''
-            setMessages((m) => m.map((x) => (x.id === assistantId ? { ...x, content: '', reasoning: '' } : x)))
+            if (finalContent.trim() || finalReasoning.trim()) break
+          } catch (err: any) {
+            if (err?.name === 'AbortError') throw err
+            // try the next model in the chain
           }
-        }
-        if (!ok) {
-        const res = await streamChat({
-          model: groqModel,
-          messages: groqMessages,
-          temperature: fallback.temperature,
-          maxTokens: fallback.maxTokens,
-          topP: fallback.topP,
-          reasoningEffort: reasoningEffort,
-          signal: ac.signal,
-          onToken: (delta) => {
-            haptic(5)
-            setMessages((m) =>
-              m.map((x) => (x.id === assistantId ? { ...x, content: x.content + delta } : x)),
-            )
-          },
-          onReasoning: (delta) => {
-            haptic(4)
-            setMessages((m) =>
-              m.map((x) =>
-                x.id === assistantId ? { ...x, reasoning: (x.reasoning ?? '') + delta } : x,
-              ),
-            )
-          },
-          onTool: (info) => {
-            localSteps.push(info)
-            setSteps([...localSteps])
-            setMessages((m) =>
-              m.map((x) => (x.id === assistantId ? { ...x, steps: [...localSteps] } : x)),
-            )
-          },
-        })
-        finalContent = res.content
-        finalReasoning = res.reasoning
         }
 
         // Models (esp. compound web search) sometimes end with the answer stuck

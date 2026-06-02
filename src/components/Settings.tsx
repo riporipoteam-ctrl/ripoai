@@ -11,6 +11,8 @@ import {
   Sun,
   Volume2,
   Play,
+  Plug,
+  Mail,
 } from 'lucide-react'
 import { useStore } from '../store'
 import Modal from './ui/Modal'
@@ -18,12 +20,14 @@ import Button from './ui/Button'
 import { MODEL_LIST } from '../lib/models'
 import { clearAllChats, clearMemories, deleteMemory } from '../lib/db'
 import { listVoices, getVoicePrefs, setVoicePrefs, speak, stopSpeaking, isSpeechSupported } from '../hooks/useSpeech'
+import { isGmailConnected, connectGmail, disconnectGmail } from '../lib/gmail'
 
 const ACCENTS = ['#7c5cff', '#4ea8ff', '#36e0c0', '#ff6b6b', '#ffa94d', '#f06595']
 const TABS = [
   { id: 'general', label: 'General', icon: Palette },
   { id: 'personal', label: 'Personalization', icon: UserIcon },
   { id: 'voice', label: 'Voice', icon: Volume2 },
+  { id: 'connections', label: 'Connections', icon: Plug },
   { id: 'memory', label: 'Memory', icon: Brain },
   { id: 'data', label: 'Data controls', icon: Database },
   { id: 'about', label: 'About', icon: Info },
@@ -42,6 +46,8 @@ export default function Settings() {
   const [tab, setTab] = useState<(typeof TABS)[number]['id']>('general')
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [vp, setVp] = useState(getVoicePrefs())
+  const [gmail, setGmail] = useState(isGmailConnected())
+  const [gmailErr, setGmailErr] = useState('')
 
   useEffect(() => {
     if (!isSpeechSupported()) return
@@ -236,6 +242,44 @@ export default function Settings() {
                   </p>
                 </>
               )}
+            </>
+          )}
+
+          {tab === 'connections' && (
+            <>
+              <div className="flex items-start gap-3 rounded-2xl border border-white/10 p-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-500/15 text-red-400">
+                  <Mail size={20} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold">Gmail {gmail && <span className="text-emerald-400">· Connected</span>}</div>
+                  <div className="text-xs text-muted">
+                    Let RipoAI read your recent inbox (read-only) when you ask about your email.
+                    You're always in control — connect or disconnect anytime.
+                  </div>
+                  {gmailErr && <p className="mt-1 text-xs text-red-400">{gmailErr}</p>}
+                </div>
+                {gmail ? (
+                  <Button variant="ghost" onClick={() => { disconnectGmail(); setGmail(false) }}>
+                    Disconnect
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={async () => {
+                      setGmailErr('')
+                      const r = await connectGmail()
+                      if (r.ok) setGmail(true)
+                      else setGmailErr(r.error || 'Could not connect.')
+                    }}
+                  >
+                    Connect
+                  </Button>
+                )}
+              </div>
+              <p className="text-xs text-muted">
+                Requires the Gmail API enabled in your Google Cloud project and the read-only scope
+                on the OAuth consent screen. More connections coming soon.
+              </p>
             </>
           )}
 
