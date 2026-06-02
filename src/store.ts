@@ -37,6 +37,7 @@ export function applyAppearance(s: UserSettings) {
   root.style.setProperty('--accent', hexToRgb(s.accent))
   root.style.setProperty('--accent-soft', hexToRgb(s.accent))
   root.style.setProperty('--glass-blur', `${s.glassIntensity}px`)
+  root.style.fontSize = `${Math.round(16 * (s.fontScale || 1))}px`
 }
 
 interface AppState {

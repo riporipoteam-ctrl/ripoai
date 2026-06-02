@@ -5,6 +5,7 @@ import { imageUrl, styleSuffix } from '../lib/imagegen'
 import { composeTextOnImage } from '../lib/compose'
 import { isGmailConnected, wantsEmail, readRecentEmails } from '../lib/gmail'
 import { wantsPlaces, searchPlaces, getUserLocation } from '../lib/places'
+import { wantsWeather, getWeather } from '../lib/weather'
 import { getModel, type ModelTier } from '../lib/models'
 import { buildSystemPrompt, AGENT_SYSTEM } from '../lib/prompt'
 import { searchModel, shouldAutoSearch } from '../lib/search'
@@ -249,6 +250,15 @@ export function useChat(chatId: string | undefined) {
         if (emails) system += `\n\nThe user connected their Gmail. Their recent inbox emails (read-only):\n${emails}\n\nUse these to answer questions about their email.`
       }
 
+      // Weather: if the user asks about weather, fetch a forecast card.
+      let weatherData: any = null
+      if (!opts.image && !opts.systemOverride && !opts.agent && wantsWeather(lastText)) {
+        const near = /\bnear me|here|my (location|area)\b/i.test(lastText) ? await getUserLocation() : null
+        weatherData = await getWeather(lastText, near || undefined)
+        if (weatherData)
+          system += `\n\nA weather card for ${weatherData.place} is already shown (now ${weatherData.current.temp}°). Give a brief, friendly comment (1-2 sentences) — don't list all the numbers.`
+      }
+
       // Maps: if the user is looking for places, search OSM and attach a map.
       let placesData: { center: [number, number]; places: any[]; label: string } | null = null
       if (!opts.image && !opts.systemOverride && !opts.agent && wantsPlaces(lastText)) {
@@ -274,7 +284,7 @@ export function useChat(chatId: string | undefined) {
       const assistantId = uid4()
       setMessages((m) => [
         ...m,
-        { id: assistantId, role: 'assistant', content: '', reasoning: '', model: opts.model, steps: [], map: placesData ?? undefined, createdAt: Date.now() },
+        { id: assistantId, role: 'assistant', content: '', reasoning: '', model: opts.model, steps: [], map: placesData ?? undefined, weather: weatherData ?? undefined, createdAt: Date.now() },
       ])
       setSteps([])
       setStreaming(true)

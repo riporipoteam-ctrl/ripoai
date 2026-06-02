@@ -133,6 +133,18 @@ export default function Settings() {
                 />
               </Field>
 
+              <Field label={`Text size (${Math.round((settings.fontScale ?? 1) * 100)}%)`}>
+                <input
+                  type="range"
+                  min={0.85}
+                  max={1.25}
+                  step={0.05}
+                  value={settings.fontScale ?? 1}
+                  onChange={(e) => updateSettings({ fontScale: Number(e.target.value) })}
+                  className="w-full accent-accent"
+                />
+              </Field>
+
               <Field label="Default model">
                 <select
                   value={settings.defaultModel}

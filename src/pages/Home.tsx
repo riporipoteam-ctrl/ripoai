@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import ChatView from '../components/ChatView'
 import Settings from '../components/Settings'
+import CommandPalette from '../components/CommandPalette'
 import Spinner from '../components/ui/Spinner'
 import { useStore } from '../store'
 
@@ -60,6 +61,7 @@ export default function Home() {
         </Routes>
       </main>
       <Settings />
+      <CommandPalette />
     </div>
   )
 }

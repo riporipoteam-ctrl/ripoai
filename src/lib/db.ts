@@ -31,6 +31,8 @@ export interface StoredMessage {
   image?: { prompt: string; url: string }
   /** Set when this message includes a places/map result. */
   map?: { center: [number, number]; places: { name: string; address: string; lat: number; lng: number; category?: string }[]; label: string }
+  /** Set when this message includes a weather result. */
+  weather?: any
   createdAt: number
 }
 
@@ -49,6 +51,7 @@ export interface ChatMeta {
   title: string
   updatedAt: number
   projectId?: string
+  pinned?: boolean
 }
 
 export interface Project {
@@ -72,6 +75,7 @@ export interface UserSettings {
   theme: 'light' | 'dark' | 'system'
   accent: string
   glassIntensity: number
+  fontScale: number
   defaultModel: ModelTier
   aboutYou: string
   responseStyle: string
@@ -86,6 +90,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   theme: 'system',
   accent: '#7c5cff',
   glassIntensity: 22,
+  fontScale: 1,
   defaultModel: 'ripoai-2o-pro',
   aboutYou: '',
   responseStyle: '',
@@ -199,7 +204,18 @@ export async function clearMemories(uid: string) {
 /* ------------------------------- Chats ------------------------------- */
 
 function chatMetaList(uid: string): ChatMeta[] {
-  return read<ChatMeta[]>(uid, 'chats', []).sort((a, b) => b.updatedAt - a.updatedAt)
+  return read<ChatMeta[]>(uid, 'chats', []).sort((a, b) => {
+    if (!!a.pinned !== !!b.pinned) return a.pinned ? -1 : 1
+    return b.updatedAt - a.updatedAt
+  })
+}
+
+export async function togglePinChat(uid: string, chatId: string) {
+  const metas = read<ChatMeta[]>(uid, 'chats', []).map((c) =>
+    c.id === chatId ? { ...c, pinned: !c.pinned } : c,
+  )
+  write(uid, 'chats', metas)
+  emit()
 }
 
 export function watchChats(uid: string, cb: (chats: ChatMeta[]) => void) {
@@ -213,8 +229,10 @@ export async function loadChat(uid: string, chatId: string): Promise<Chat | null
 
 export async function saveChat(uid: string, chat: Chat) {
   write(uid, `chat:${chat.id}`, chat)
-  const metas = read<ChatMeta[]>(uid, 'chats', []).filter((c) => c.id !== chat.id)
-  metas.push({ id: chat.id, title: chat.title, updatedAt: chat.updatedAt, projectId: chat.projectId })
+  const prev = read<ChatMeta[]>(uid, 'chats', [])
+  const wasPinned = prev.find((c) => c.id === chat.id)?.pinned
+  const metas = prev.filter((c) => c.id !== chat.id)
+  metas.push({ id: chat.id, title: chat.title, updatedAt: chat.updatedAt, projectId: chat.projectId, pinned: wasPinned })
   write(uid, 'chats', metas)
   emit()
   bgWrite('saveChat', () =>

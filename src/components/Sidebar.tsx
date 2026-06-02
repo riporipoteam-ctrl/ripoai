@@ -13,6 +13,7 @@ import {
   Plus,
   PanelLeftClose,
   MessageSquare,
+  Pin,
 } from 'lucide-react'
 import { signOut } from 'firebase/auth'
 import { auth } from '../firebase'
@@ -21,6 +22,7 @@ import Avatar from './ui/Avatar'
 import {
   deleteChat,
   renameChat,
+  togglePinChat,
   saveProject,
   deleteProject,
   type ChatMeta,
@@ -31,8 +33,12 @@ import Logo from './Logo'
 function groupByDate(chats: ChatMeta[]) {
   const now = Date.now()
   const day = 86400000
-  const groups: Record<string, ChatMeta[]> = { Today: [], Yesterday: [], 'Previous 7 days': [], Older: [] }
+  const groups: Record<string, ChatMeta[]> = { '📌 Pinned': [], Today: [], Yesterday: [], 'Previous 7 days': [], Older: [] }
   for (const c of chats) {
+    if (c.pinned) {
+      groups['📌 Pinned'].push(c)
+      continue
+    }
     const age = now - c.updatedAt
     if (age < day) groups['Today'].push(c)
     else if (age < 2 * day) groups['Yesterday'].push(c)
@@ -222,7 +228,11 @@ export default function Sidebar() {
                               }}
                               className="flex min-w-0 flex-1 items-center gap-2 text-left"
                             >
-                              <MessageSquare size={15} className="shrink-0 text-muted" />
+                              {c.pinned ? (
+                                <Pin size={14} className="shrink-0 rotate-45 text-accent" />
+                              ) : (
+                                <MessageSquare size={15} className="shrink-0 text-muted" />
+                              )}
                               <span className="truncate">{c.title}</span>
                             </button>
                             <button
@@ -240,6 +250,15 @@ export default function Sidebar() {
                                   className="glass-strong absolute right-2 top-9 z-50 w-36 overflow-hidden rounded-2xl p-1"
                                   onMouseLeave={() => setMenuFor(null)}
                                 >
+                                  <button
+                                    onClick={async () => {
+                                      setMenuFor(null)
+                                      if (user) await togglePinChat(user.uid, c.id)
+                                    }}
+                                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-white/10"
+                                  >
+                                    <Pin size={14} /> {c.pinned ? 'Unpin' : 'Pin'}
+                                  </button>
                                   <button
                                     onClick={() => {
                                       setRenaming(c.id)
