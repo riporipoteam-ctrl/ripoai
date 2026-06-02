@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, Palette, Globe, Lightbulb, Plane } from 'lucide-react'
 import { useChat } from '../hooks/useChat'
 import { useStore } from '../store'
 import Composer from './Composer'
@@ -12,10 +12,10 @@ import type { ModelTier } from '../lib/models'
 import type { Attachment } from '../lib/db'
 
 const SUGGESTIONS = [
-  { title: 'Design a landing page', sub: 'for a productivity startup' },
-  { title: "What's new in AI", sub: 'this week (uses web search)' },
-  { title: 'Explain a hard concept', sub: 'like quantum entanglement, simply' },
-  { title: 'Plan a 3-day trip', sub: 'to Tokyo on a budget' },
+  { title: 'Design a landing page', sub: 'for a productivity startup', icon: Palette },
+  { title: "What's new in AI", sub: 'this week (uses web search)', icon: Globe },
+  { title: 'Explain a hard concept', sub: 'like quantum entanglement, simply', icon: Lightbulb },
+  { title: 'Plan a 3-day trip', sub: 'to Tokyo on a budget', icon: Plane },
 ]
 
 export default function ChatView() {
@@ -91,11 +91,17 @@ export default function ChatView() {
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.05 * i }}
+                  whileHover={{ y: -3 }}
                   onClick={() => handleSend(`${s.title} ${s.sub}`, [])}
-                  className="glass pressable rounded-2xl p-4 text-left transition hover:brightness-110"
+                  className="glass pressable flex items-start gap-3 rounded-2xl p-4 text-left transition hover:brightness-110"
                 >
-                  <div className="font-semibold">{s.title}</div>
-                  <div className="text-sm text-muted">{s.sub}</div>
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                    <s.icon size={18} />
+                  </span>
+                  <span className="min-w-0">
+                    <div className="font-semibold">{s.title}</div>
+                    <div className="text-sm text-muted">{s.sub}</div>
+                  </span>
                 </motion.button>
               ))}
             </div>

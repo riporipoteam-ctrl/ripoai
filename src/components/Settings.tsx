@@ -29,7 +29,6 @@ const TABS = [
   { id: 'general', label: 'General', icon: Palette },
   { id: 'personal', label: 'Personalization', icon: UserIcon },
   { id: 'voice', label: 'Voice', icon: Volume2 },
-  { id: 'connections', label: 'Connections', icon: Plug },
   { id: 'memory', label: 'Memory', icon: Brain },
   { id: 'data', label: 'Data controls', icon: Database },
   { id: 'about', label: 'About', icon: Info },
@@ -293,84 +292,6 @@ export default function Settings() {
                   </p>
                 </>
               )}
-            </>
-          )}
-
-          {tab === 'connections' && (
-            <>
-              <div className="flex items-start gap-3 rounded-2xl border border-white/10 p-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-500/15 text-red-400">
-                  <Mail size={20} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="font-semibold">Gmail {gmail && <span className="text-emerald-400">· Connected</span>}</div>
-                  <div className="text-xs text-muted">
-                    Let RipoAI read your recent inbox (read-only) when you ask about your email.
-                    You're always in control — connect or disconnect anytime.
-                  </div>
-                  {gmailErr && <p className="mt-1 text-xs text-red-400">{gmailErr}</p>}
-                </div>
-                {gmail ? (
-                  <Button variant="ghost" onClick={() => { disconnectGmail(); setGmail(false) }}>
-                    Disconnect
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={async () => {
-                      setGmailErr('')
-                      const r = await connectGmail()
-                      if (r.ok) setGmail(true)
-                      else setGmailErr(r.error || 'Could not connect.')
-                    }}
-                  >
-                    Connect
-                  </Button>
-                )}
-              </div>
-              <div className="flex items-start gap-3 rounded-2xl border border-white/10 p-4">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 text-blue-400">
-                  <CalIcon size={20} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="font-semibold">Google Calendar {cal && <span className="text-emerald-400">· Connected</span>}</div>
-                  <div className="text-xs text-muted">
-                    Read-only. Ask "what's on my schedule" and RipoAI reads your upcoming events.
-                  </div>
-                  {calErr && <p className="mt-1 text-xs text-red-400">{calErr}</p>}
-                </div>
-                {cal ? (
-                  <Button variant="ghost" onClick={() => { disconnectCalendar(); setCal(false) }}>Disconnect</Button>
-                ) : (
-                  <Button onClick={async () => { setCalErr(''); const r = await connectCalendar(); r.ok ? setCal(true) : setCalErr(r.error || 'Failed.') }}>
-                    Connect
-                  </Button>
-                )}
-              </div>
-
-              <div>
-                <div className="mb-2 text-sm font-semibold">Always on · no setup</div>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { icon: Cloud, label: 'Weather', desc: 'Live forecasts' },
-                    { icon: MapIcon, label: 'Maps & Places', desc: 'Find places + directions' },
-                    { icon: Bitcoin, label: 'Crypto prices', desc: 'Live coin prices' },
-                    { icon: Globe, label: 'Web search', desc: 'Current info' },
-                  ].map((c) => (
-                    <div key={c.label} className="flex items-center gap-2 rounded-2xl border border-white/10 p-3">
-                      <c.icon size={18} className="shrink-0 text-accent" />
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold">{c.label}</div>
-                        <div className="truncate text-[11px] text-muted">{c.desc}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <p className="text-xs text-muted">
-                Gmail & Calendar need their APIs enabled + the read-only scope on your Google Cloud
-                OAuth consent screen. The "always on" tools work with no setup.
-              </p>
             </>
           )}
 
