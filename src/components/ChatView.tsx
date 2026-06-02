@@ -7,6 +7,7 @@ import { useStore } from '../store'
 import Composer from './Composer'
 import VoiceCall from './VoiceCall'
 import Message from './Message'
+import Logo from './Logo'
 import type { ModelTier } from '../lib/models'
 import type { Attachment } from '../lib/db'
 
@@ -52,6 +53,8 @@ export default function ChatView() {
   }
 
   const greeting = settings.displayName || user?.displayName?.split(' ')[0] || 'there'
+  const hour = new Date().getHours()
+  const timeGreet = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
   const empty = messages.length === 0
 
   return (
@@ -59,13 +62,28 @@ export default function ChatView() {
       <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto">
         {empty ? (
           <div className="flex h-full flex-col items-center justify-center px-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="mb-5 animate-float"
+            >
+              <Logo size={56} glow />
+            </motion.div>
             <motion.h1
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               className="text-center text-3xl font-bold sm:text-4xl"
             >
-              <span className="brand-gradient">Hi {greeting}.</span> What should we build?
+              <span className="brand-gradient">{timeGreet}, {greeting}.</span>
             </motion.h1>
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="mt-2 text-center text-lg text-muted"
+            >
+              What are you planning to do today?
+            </motion.p>
             <div className="mt-8 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
               {SUGGESTIONS.map((s, i) => (
                 <motion.button

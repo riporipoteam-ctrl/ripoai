@@ -4,6 +4,7 @@ import { streamChat, complete, type ChatMessage, type ContentPart } from '../lib
 import { imageUrl, styleSuffix } from '../lib/imagegen'
 import { composeTextOnImage } from '../lib/compose'
 import { isGmailConnected, wantsEmail, readRecentEmails } from '../lib/gmail'
+import { wantsPlaces, searchPlaces, getUserLocation } from '../lib/places'
 import { getModel, type ModelTier } from '../lib/models'
 import { buildSystemPrompt, AGENT_SYSTEM } from '../lib/prompt'
 import { searchModel, shouldAutoSearch } from '../lib/search'
@@ -248,6 +249,23 @@ export function useChat(chatId: string | undefined) {
         if (emails) system += `\n\nThe user connected their Gmail. Their recent inbox emails (read-only):\n${emails}\n\nUse these to answer questions about their email.`
       }
 
+      // Maps: if the user is looking for places, search OSM and attach a map.
+      let placesData: { center: [number, number]; places: any[]; label: string } | null = null
+      if (!opts.image && !opts.systemOverride && !opts.agent && wantsPlaces(lastText)) {
+        setMessages((m) => m) // no-op to keep order
+        const near = /\bnear me|nearby|near by|around me|closest|nearest\b/i.test(lastText)
+          ? await getUserLocation()
+          : null
+        const res = await searchPlaces(lastText, near || undefined)
+        if (res && res.places.length) {
+          placesData = { center: res.center, places: res.places, label: res.label }
+          system += `\n\nThe user asked to find places. An interactive map with these results is ALREADY shown to them: ${res.places
+            .slice(0, 8)
+            .map((p, i) => `${i + 1}. ${p.name}`)
+            .join('; ')}. Write a short, friendly summary (2-4 sentences) — do not repeat the full list or addresses; the map shows them.`
+        }
+      }
+
       const groqMessages: ChatMessage[] = [
         { role: 'system', content: system },
         ...toGroqMessages(trimHistory(history), visionCapable),
@@ -256,7 +274,7 @@ export function useChat(chatId: string | undefined) {
       const assistantId = uid4()
       setMessages((m) => [
         ...m,
-        { id: assistantId, role: 'assistant', content: '', reasoning: '', model: opts.model, steps: [], createdAt: Date.now() },
+        { id: assistantId, role: 'assistant', content: '', reasoning: '', model: opts.model, steps: [], map: placesData ?? undefined, createdAt: Date.now() },
       ])
       setSteps([])
       setStreaming(true)

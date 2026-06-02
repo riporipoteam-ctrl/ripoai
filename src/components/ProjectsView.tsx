@@ -28,6 +28,30 @@ interface CodeMsg {
   content: string
 }
 
+// Show only the prose (no raw code) in the agent chat; code lives in the workspace.
+function proseOf(text: string): string {
+  return text
+    .replace(/```[\s\S]*?```/g, '')
+    .replace(/```[\s\S]*$/, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+function fileList(text: string): string[] {
+  return Array.from(new Set(parseCodeFiles(text).map((f) => f.path)))
+}
+function FileChips({ paths }: { paths: string[] }) {
+  if (!paths.length) return null
+  return (
+    <div className="mt-1.5 flex flex-wrap gap-1.5">
+      {paths.map((p) => (
+        <span key={p} className="flex items-center gap-1 rounded-lg bg-white/8 px-2 py-1 text-xs text-muted">
+          <Code2 size={12} className="text-accent" /> {p.replace(/^\//, '')}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 type RightTab = 'preview' | 'code' | 'console'
 
 export default function ProjectsView() {
@@ -229,6 +253,13 @@ export default function ProjectsView() {
   }
 
   const sandpackFiles = Object.fromEntries(Object.entries(files).map(([k, v]) => [k, { code: v }]))
+  // Render whatever the agent actually wrote: static (index.html) or React.
+  const fileKeys = Object.keys(files)
+  const sandpackTemplate: 'static' | 'react' = fileKeys.includes('/index.html')
+    ? 'static'
+    : fileKeys.some((k) => /App\.(jsx?|tsx)$/.test(k) || k === '/App.js')
+      ? 'react'
+      : 'static'
 
   return (
     <div className="flex h-full flex-col md:flex-row">
@@ -308,13 +339,24 @@ export default function ProjectsView() {
               </div>
             ) : (
               <div key={i} className="text-sm">
-                <Markdown>{m.content}</Markdown>
+                {proseOf(m.content) && <Markdown>{proseOf(m.content)}</Markdown>}
+                <FileChips paths={fileList(m.content)} />
               </div>
             ),
           )}
           {streaming && (
-            <div className="text-sm">
-              {liveText ? <Markdown>{liveText}</Markdown> : <Spinner size={18} />}
+            <div className="flex items-center gap-2 py-1 text-sm font-medium text-muted">
+              <span className="bg-gradient-to-r from-accent via-ink to-accent bg-[length:200%_100%] bg-clip-text text-transparent animate-shimmer">
+                Coding…
+              </span>
+              {fileList(liveText).length > 0 && (
+                <span className="text-xs">· {fileList(liveText).length} file{fileList(liveText).length === 1 ? '' : 's'}</span>
+              )}
+              <span className="flex gap-1">
+                <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent" />
+                <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent [animation-delay:0.2s]" />
+                <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent [animation-delay:0.4s]" />
+              </span>
             </div>
           )}
           <div ref={chatBottom} />
@@ -438,7 +480,7 @@ export default function ProjectsView() {
         >
           <SandpackProvider
             key={bundlerKey}
-            template="static"
+            template={sandpackTemplate}
             theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
             files={sandpackFiles}
             options={{ recompileMode: 'delayed', recompileDelay: 400 }}
