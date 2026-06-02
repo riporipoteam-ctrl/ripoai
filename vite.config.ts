@@ -1,10 +1,10 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// GitHub Pages serves the app from /ripoai/ (the repo name).
-// Local dev uses '/'. The base only matters for the production build.
+// Base path: GitHub Pages serves under /ripoai/, Netlify/custom domains serve
+// at root. Override with VITE_BASE (Netlify sets VITE_BASE="/").
 export default defineConfig(({ command }) => ({
-  base: command === 'build' ? '/ripoai/' : '/',
+  base: process.env.VITE_BASE || (command === 'build' ? '/ripoai/' : '/'),
   plugins: [react()],
   server: {
     host: true,

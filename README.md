@@ -51,6 +51,26 @@ To make the deployed site work for everyone without anyone entering a key, add t
 `VITE_GROQ_API_KEY`. The deploy workflow injects it at build time (the key then lives in the
 public bundle — the trade‑off accepted for a keyless‑for‑users static site).
 
+## Deploy to Netlify (recommended — shorter URL)
+
+A `netlify.toml` is included, so deploying is one click:
+
+1. Push this repo to GitHub (done).
+2. On **netlify.com** → **Add new site → Import from GitHub** → pick this repo.
+   Build command and publish dir are auto-detected from `netlify.toml`
+   (`npm run build` → `dist`, with `VITE_BASE="/"` so it serves at the root).
+3. **Site settings → Environment variables** → add `VITE_GROQ_API_KEY` and
+   `VITE_OPENROUTER_API_KEY`. Then **Deploys → Trigger deploy**.
+4. **Site settings → Domain management** → rename the site to e.g.
+   **`ripoai`** → you get **`ripoai.netlify.app`** (short, custom). Add your own
+   custom domain there too if you have one.
+5. In **Firebase → Authentication → Authorized domains**, add your
+   `*.netlify.app` domain (and any custom domain) so Google sign‑in works.
+
+> Shorter GitHub Pages URL: GitHub can't shorten `…github.io/ripoai/` without a
+> custom domain or renaming the repo to `riporipoteam-ctrl.github.io` (which
+> serves at the root). Netlify's free custom subdomain is the easiest fix.
+
 ## One‑time setup (required for production)
 
 1. **Firebase → Authentication → Sign‑in method**: enable **Email/Password** and **Google**.

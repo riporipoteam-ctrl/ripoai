@@ -4,6 +4,8 @@ import { streamChat, complete, type ChatMessage, type ContentPart } from '../lib
 import { imageUrl, styleSuffix } from '../lib/imagegen'
 import { composeTextOnImage } from '../lib/compose'
 import { isGmailConnected, wantsEmail, readRecentEmails } from '../lib/gmail'
+import { isCalendarConnected, wantsCalendar, readUpcomingEvents } from '../lib/calendar'
+import { wantsCrypto, getCryptoInfo } from '../lib/crypto'
 import { wantsPlaces, searchPlaces, getUserLocation } from '../lib/places'
 import { wantsWeather, getWeather } from '../lib/weather'
 import { getModel, type ModelTier } from '../lib/models'
@@ -248,6 +250,16 @@ export function useChat(chatId: string | undefined) {
       if (isGmailConnected() && wantsEmail(lastText)) {
         const emails = await readRecentEmails(8)
         if (emails) system += `\n\nThe user connected their Gmail. Their recent inbox emails (read-only):\n${emails}\n\nUse these to answer questions about their email.`
+      }
+      // Calendar: upcoming events when asked.
+      if (isCalendarConnected() && wantsCalendar(lastText)) {
+        const events = await readUpcomingEvents(10)
+        if (events) system += `\n\nThe user connected their Google Calendar. Upcoming events:\n${events}\n\nUse these to answer scheduling questions.`
+      }
+      // Crypto: live price when asked.
+      if (!opts.image && wantsCrypto(lastText)) {
+        const info = await getCryptoInfo(lastText)
+        if (info) system += `\n\nLive crypto price (just fetched): ${info}. Use this exact figure.`
       }
 
       // Weather: if the user asks about weather, fetch a forecast card.

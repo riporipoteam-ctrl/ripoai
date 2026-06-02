@@ -21,6 +21,8 @@ import { MODEL_LIST } from '../lib/models'
 import { clearAllChats, clearMemories, deleteMemory } from '../lib/db'
 import { listVoices, getVoicePrefs, setVoicePrefs, speak, stopSpeaking, isSpeechSupported } from '../hooks/useSpeech'
 import { isGmailConnected, connectGmail, disconnectGmail } from '../lib/gmail'
+import { isCalendarConnected, connectCalendar, disconnectCalendar } from '../lib/calendar'
+import { Calendar as CalIcon, Cloud, Map as MapIcon, Bitcoin, Globe } from 'lucide-react'
 
 const ACCENTS = ['#7c5cff', '#4ea8ff', '#36e0c0', '#ff6b6b', '#ffa94d', '#f06595']
 const TABS = [
@@ -48,6 +50,8 @@ export default function Settings() {
   const [vp, setVp] = useState(getVoicePrefs())
   const [gmail, setGmail] = useState(isGmailConnected())
   const [gmailErr, setGmailErr] = useState('')
+  const [cal, setCal] = useState(isCalendarConnected())
+  const [calErr, setCalErr] = useState('')
 
   useEffect(() => {
     if (!isSpeechSupported()) return
@@ -323,9 +327,49 @@ export default function Settings() {
                   </Button>
                 )}
               </div>
+              <div className="flex items-start gap-3 rounded-2xl border border-white/10 p-4">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/15 text-blue-400">
+                  <CalIcon size={20} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold">Google Calendar {cal && <span className="text-emerald-400">· Connected</span>}</div>
+                  <div className="text-xs text-muted">
+                    Read-only. Ask "what's on my schedule" and RipoAI reads your upcoming events.
+                  </div>
+                  {calErr && <p className="mt-1 text-xs text-red-400">{calErr}</p>}
+                </div>
+                {cal ? (
+                  <Button variant="ghost" onClick={() => { disconnectCalendar(); setCal(false) }}>Disconnect</Button>
+                ) : (
+                  <Button onClick={async () => { setCalErr(''); const r = await connectCalendar(); r.ok ? setCal(true) : setCalErr(r.error || 'Failed.') }}>
+                    Connect
+                  </Button>
+                )}
+              </div>
+
+              <div>
+                <div className="mb-2 text-sm font-semibold">Always on · no setup</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { icon: Cloud, label: 'Weather', desc: 'Live forecasts' },
+                    { icon: MapIcon, label: 'Maps & Places', desc: 'Find places + directions' },
+                    { icon: Bitcoin, label: 'Crypto prices', desc: 'Live coin prices' },
+                    { icon: Globe, label: 'Web search', desc: 'Current info' },
+                  ].map((c) => (
+                    <div key={c.label} className="flex items-center gap-2 rounded-2xl border border-white/10 p-3">
+                      <c.icon size={18} className="shrink-0 text-accent" />
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold">{c.label}</div>
+                        <div className="truncate text-[11px] text-muted">{c.desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <p className="text-xs text-muted">
-                Requires the Gmail API enabled in your Google Cloud project and the read-only scope
-                on the OAuth consent screen. More connections coming soon.
+                Gmail & Calendar need their APIs enabled + the read-only scope on your Google Cloud
+                OAuth consent screen. The "always on" tools work with no setup.
               </p>
             </>
           )}
