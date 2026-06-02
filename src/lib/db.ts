@@ -73,6 +73,9 @@ export interface UserSettings {
   defaultModel: ModelTier
   aboutYou: string
   responseStyle: string
+  verbosity: 'concise' | 'balanced' | 'detailed'
+  tone: 'professional' | 'friendly' | 'playful' | 'direct'
+  emoji: 'none' | 'some' | 'lots'
   memoryEnabled: boolean
   onboarded: boolean
 }
@@ -84,6 +87,9 @@ export const DEFAULT_SETTINGS: UserSettings = {
   defaultModel: 'ripoai-2o-pro',
   aboutYou: '',
   responseStyle: '',
+  verbosity: 'balanced',
+  tone: 'friendly',
+  emoji: 'some',
   memoryEnabled: true,
   onboarded: false,
 }

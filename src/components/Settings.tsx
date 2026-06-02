@@ -159,6 +159,41 @@ export default function Settings() {
                   className="w-full rounded-2xl border border-white/15 bg-white/5 px-3 py-2.5 outline-none focus:border-accent"
                 />
               </Field>
+
+              <Field label="Response length">
+                <Segmented
+                  value={settings.verbosity ?? 'balanced'}
+                  onChange={(v) => updateSettings({ verbosity: v as any })}
+                  options={[
+                    { id: 'concise', label: 'Concise' },
+                    { id: 'balanced', label: 'Balanced' },
+                    { id: 'detailed', label: 'Detailed' },
+                  ]}
+                />
+              </Field>
+              <Field label="Tone">
+                <Segmented
+                  value={settings.tone ?? 'friendly'}
+                  onChange={(v) => updateSettings({ tone: v as any })}
+                  options={[
+                    { id: 'professional', label: 'Professional' },
+                    { id: 'friendly', label: 'Friendly' },
+                    { id: 'playful', label: 'Playful' },
+                    { id: 'direct', label: 'Direct' },
+                  ]}
+                />
+              </Field>
+              <Field label="Emojis">
+                <Segmented
+                  value={settings.emoji ?? 'some'}
+                  onChange={(v) => updateSettings({ emoji: v as any })}
+                  options={[
+                    { id: 'none', label: 'None' },
+                    { id: 'some', label: 'Some' },
+                    { id: 'lots', label: 'Lots 🎉' },
+                  ]}
+                />
+              </Field>
               <Field label="What should RipoAI know about you?">
                 <textarea
                   value={settings.aboutYou}
@@ -395,6 +430,32 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div>
       <div className="mb-2 text-sm font-semibold">{label}</div>
       {children}
+    </div>
+  )
+}
+
+function Segmented({
+  value,
+  onChange,
+  options,
+}: {
+  value: string
+  onChange: (v: string) => void
+  options: { id: string; label: string }[]
+}) {
+  return (
+    <div className="flex flex-wrap gap-1 rounded-2xl bg-white/5 p-1">
+      {options.map((o) => (
+        <button
+          key={o.id}
+          onClick={() => onChange(o.id)}
+          className={`pressable flex-1 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-semibold transition ${
+            value === o.id ? 'accent-gradient-bg text-white' : 'text-muted hover:text-ink'
+          }`}
+        >
+          {o.label}
+        </button>
+      ))}
     </div>
   )
 }
