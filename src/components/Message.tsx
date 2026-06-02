@@ -7,6 +7,7 @@ import AgentTrace from './AgentTrace'
 import ImageCard from './ImageCard'
 import MapCard from './MapCard'
 import WeatherCard from './WeatherCard'
+import SlidesCard from './SlidesCard'
 import Logo from './Logo'
 import { MODELS } from '../lib/models'
 import { speak, stopSpeaking, isSpeechSupported } from '../hooks/useSpeech'
@@ -140,6 +141,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
         {message.image && <ImageCard prompt={message.image.prompt} url={message.image.url} />}
         {message.map && <MapCard data={message.map} />}
         {message.weather && <WeatherCard data={message.weather} />}
+        {message.deck && <SlidesCard deck={message.deck} />}
         {message.content && (
           <div className={liveStreaming ? 'stream-caret' : ''}>
             <Markdown>{message.content}</Markdown>

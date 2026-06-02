@@ -7,6 +7,8 @@ import { wantsPlaces, searchPlaces, getUserLocation } from '../lib/places'
 import { wantsWeather, getWeather } from '../lib/weather'
 import { wantsCurrency, convertCurrency } from '../lib/currency'
 import { wantsDefine, getDefinition, wantsWiki, getWiki, wantsUnits, convertUnits } from '../lib/tools'
+import { streamPuter } from '../lib/puter'
+import { wantsSlides, generateDeck } from '../lib/slides'
 import { getModel, type ModelTier } from '../lib/models'
 import { buildSystemPrompt, AGENT_SYSTEM } from '../lib/prompt'
 import { searchModel, shouldAutoSearch } from '../lib/search'
@@ -142,6 +144,33 @@ export function useChat(chatId: string | undefined) {
       if (!user) return
       const model = getModel(opts.model)
       const lastUser = [...history].reverse().find((m) => m.role === 'user')
+
+      // Presentation generation — build a slide deck the user can preview + export.
+      if (!opts.image && !opts.systemOverride && wantsSlides(lastUser?.content ?? '')) {
+        const prompt = (lastUser?.content ?? '').trim()
+        const assistantId = uid4()
+        setMessages((m) => [
+          ...m,
+          { id: assistantId, role: 'assistant', content: '🎤 Building your presentation…', model: opts.model, createdAt: Date.now() },
+        ])
+        setStreaming(true)
+        const deck = await generateDeck(prompt)
+        let finalMsgs: StoredMessage[] = []
+        setMessages((m) => {
+          finalMsgs = m.map((x) =>
+            x.id === assistantId
+              ? deck
+                ? { ...x, content: `Here's your **${deck.title}** deck — preview the slides below and download as PowerPoint.`, deck }
+                : { ...x, content: "I couldn't build that presentation — try rephrasing the topic." }
+              : x,
+          )
+          return finalMsgs
+        })
+        setStreaming(false)
+        if (titleRef.current === 'New chat') titleRef.current = (deck?.title || prompt).slice(0, 40)
+        await persist(finalMsgs, id, opts.model, opts.projectId)
+        return
+      }
 
       // Image generation / editing mode.
       if (opts.image) {
@@ -359,13 +388,18 @@ export function useChat(chatId: string | undefined) {
 
       // Ordered fallback chain — try the best model, then progressively more
       // reliable/faster ones, so a rate-limit never shows as the answer.
-      type Attempt = { provider?: 'openrouter' | 'groq'; model: string; maxTokens: number; reasoningEffort?: string }
+      type Attempt = { provider?: 'openrouter' | 'groq' | 'puter'; model: string; maxTokens: number; reasoningEffort?: string }
+      const usePuter = model.provider === 'puter' && !!model.puterModel && !hasImages && !useCompound
       const attempts: Attempt[] = []
       if (useCompound) {
         attempts.push({ provider: 'groq', model: searchModel(), maxTokens: 2048 })
         attempts.push({ provider: 'groq', model: 'llama-3.3-70b-versatile', maxTokens: 1500 })
       } else if (hasImages) {
         attempts.push({ provider: 'groq', model: visionModel.groqModel, maxTokens: 1500 })
+      } else if (usePuter) {
+        attempts.push({ provider: 'puter', model: model.puterModel!, maxTokens: model.maxTokens })
+        attempts.push({ provider: 'groq', model: model.groqModel, maxTokens: Math.min(model.maxTokens, 4096) })
+        attempts.push({ provider: 'groq', model: 'llama-3.1-8b-instant', maxTokens: 2048 })
       } else if (useOR) {
         attempts.push({ provider: 'openrouter', model: model.orModel!, maxTokens: Math.min(model.maxTokens, 4096) })
         attempts.push({ provider: 'groq', model: model.groqModel, maxTokens: Math.min(model.maxTokens, 4096), reasoningEffort: model.reasoningEffort })
@@ -384,19 +418,25 @@ export function useChat(chatId: string | undefined) {
             finalContent = ''
             finalReasoning = ''
             localSteps.length = 0
-            const res = await streamChat({
-              provider: a.provider,
-              model: a.model,
-              messages: groqMessages,
-              temperature: model.temperature,
-              maxTokens: a.maxTokens,
-              topP: model.topP,
-              reasoningEffort: a.reasoningEffort,
-              signal: ac.signal,
-              onToken,
-              onReasoning,
-              onTool,
-            })
+            let res: { content: string; reasoning: string }
+            if (a.provider === 'puter') {
+              const pr = await streamPuter({ model: a.model, messages: groqMessages as any, signal: ac.signal, onToken })
+              res = { content: pr.content, reasoning: '' }
+            } else {
+              res = await streamChat({
+                provider: a.provider as 'groq' | 'openrouter' | undefined,
+                model: a.model,
+                messages: groqMessages,
+                temperature: model.temperature,
+                maxTokens: a.maxTokens,
+                topP: model.topP,
+                reasoningEffort: a.reasoningEffort,
+                signal: ac.signal,
+                onToken,
+                onReasoning,
+                onTool,
+              })
+            }
             finalContent = res.content
             finalReasoning = res.reasoning
             if (finalContent.trim() || finalReasoning.trim()) break

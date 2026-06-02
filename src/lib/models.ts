@@ -8,6 +8,7 @@ export type ModelTier =
   | 'ripoai-2o-pro'
   | 'ripoai-3o-instant'
   | 'ripoai-3o-pro'
+  | 'ripoai-4o-pro'
 
 export interface RipoModel {
   id: ModelTier
@@ -15,10 +16,12 @@ export interface RipoModel {
   tagline: string
   groqModel: string
   /** Provider backing this model. */
-  provider?: 'groq' | 'openrouter'
+  provider?: 'groq' | 'openrouter' | 'puter'
   /** OpenRouter model id (when provider === 'openrouter'); groqModel is the
    * automatic fallback when OpenRouter is rate-limited or errors. */
   orModel?: string
+  /** Puter model id (when provider === 'puter'). */
+  puterModel?: string
   /** Supports image inputs (vision). */
   vision: boolean
   /** Emits <think> reasoning blocks we should render as collapsible reasoning. */
@@ -109,16 +112,29 @@ export const MODELS: Record<ModelTier, RipoModel> = {
     topP: 1,
     badge: 'MAX',
   },
+  'ripoai-4o-pro': {
+    id: 'ripoai-4o-pro',
+    name: 'RipoAI 4o Pro',
+    tagline: 'Experimental — Claude via Puter (sign-in once)',
+    provider: 'puter',
+    puterModel: 'claude-opus-4',
+    groqModel: 'openai/gpt-oss-120b',
+    vision: false,
+    reasoning: false,
+    temperature: 0.8,
+    maxTokens: 6000,
+    topP: 1,
+    badge: 'BETA',
+  },
 }
 
 export const MODEL_LIST = Object.values(MODELS)
 export const DEFAULT_MODEL: ModelTier = 'ripoai-2o-pro'
 
-// Groq's agentic models with built-in web search + tools. Powers Web Search and
-// Agent modes natively. (compound-beta is the name accessible on the free tier;
-// `groq/compound` is restricted.)
-export const COMPOUND_MODEL = 'compound-beta'
-export const COMPOUND_MINI_MODEL = 'compound-beta-mini'
+// Groq's agentic model with built-in web search. `groq/compound` works reliably
+// (compound-beta started returning 413). Powers Web Search and Agent modes.
+export const COMPOUND_MODEL = 'groq/compound'
+export const COMPOUND_MINI_MODEL = 'groq/compound-mini'
 
 // The best coder model for Projects.
 export const CODER_MODEL = 'openai/gpt-oss-120b'

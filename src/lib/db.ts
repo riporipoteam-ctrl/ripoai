@@ -39,6 +39,8 @@ export interface StoredMessage {
   map?: { center: [number, number]; places: { name: string; address: string; lat: number; lng: number; category?: string }[]; label: string }
   /** Set when this message includes a weather result. */
   weather?: any
+  /** Set when this message includes a generated slide deck. */
+  deck?: any
   createdAt: number
 }
 
@@ -93,8 +95,8 @@ export interface UserSettings {
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
-  theme: 'system',
-  accent: '#7c5cff',
+  theme: 'dark',
+  accent: '#10a37f',
   glassIntensity: 22,
   fontScale: 1,
   defaultModel: 'ripoai-2o-pro',

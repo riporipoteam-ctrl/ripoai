@@ -11,14 +11,15 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
     <title>RipoAI</title>
+    <script src="https://js.puter.com/v2/"></script>
     <script>
       // Apply the saved theme before paint to avoid a flash of the wrong theme.
       (function () {
         try {
-          var t = localStorage.getItem('ripoai-theme') || 'system';
+          var t = localStorage.getItem('ripoai-theme') || 'dark';
           var dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
           document.documentElement.classList.toggle('dark', dark);
-        } catch (e) {}
+        } catch (e) { document.documentElement.classList.add('dark'); }
       })();
     </script>
   </head>

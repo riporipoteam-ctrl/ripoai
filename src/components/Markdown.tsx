@@ -16,9 +16,16 @@ function CodeBlock({ language, value }: { language: string; value: string }) {
     setTimeout(() => setCopied(false), 1500)
   }
   return (
-    <div className="group my-3 overflow-hidden rounded-2xl border border-white/10">
-      <div className="flex items-center justify-between bg-black/40 px-4 py-1.5 text-xs text-muted">
-        <span className="font-mono">{language || 'text'}</span>
+    <div className="group my-3 overflow-hidden rounded-2xl border border-white/10 shadow-lg">
+      <div className="flex items-center justify-between bg-[#15151c] px-3 py-2 text-xs text-muted">
+        <div className="flex items-center gap-2">
+          <span className="flex gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
+            <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
+            <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
+          </span>
+          <span className="font-mono lowercase">{language || 'text'}</span>
+        </div>
         <button
           onClick={copy}
           className="pressable flex items-center gap-1 rounded-md px-2 py-1 hover:bg-white/10"
