@@ -95,7 +95,7 @@ export interface UserSettings {
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
-  theme: 'dark',
+  theme: 'system',
   accent: '#10a37f',
   glassIntensity: 22,
   fontScale: 1,

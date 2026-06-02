@@ -7,10 +7,12 @@ import { fileToAttachment } from '../lib/files'
 import { IMAGE_STYLES } from '../lib/imagegen'
 import type { Attachment } from '../lib/db'
 import type { ModelTier } from '../lib/models'
+import Mascot, { type MascotState } from './Mascot'
 
 interface Props {
   model: ModelTier
   onModelChange: (m: ModelTier) => void
+  mascotState?: MascotState
   webSearch: boolean
   agent: boolean
   imageMode?: boolean
@@ -30,6 +32,7 @@ interface Props {
 export default function Composer({
   model,
   onModelChange,
+  mascotState = 'idle',
   webSearch,
   agent,
   imageMode,
@@ -90,7 +93,11 @@ export default function Composer({
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl">
+    <div className="relative mx-auto w-full max-w-3xl">
+      {/* RipoAI mascot perched on the input */}
+      <div className="absolute -top-9 left-4 z-10">
+        <Mascot state={mascotState} size={48} />
+      </div>
       {err && <p className="mb-2 px-2 text-xs text-red-400">{err}</p>}
       {!!attachments.length && (
         <div className="mb-2 flex flex-wrap gap-2 px-1">

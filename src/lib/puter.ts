@@ -20,8 +20,10 @@ export interface PuterStreamOpts {
 export async function streamPuter(opts: PuterStreamOpts): Promise<{ content: string }> {
   const p = P()
   if (!p?.ai?.chat) throw new Error('Puter not loaded')
+  // NEVER trigger a sign-in popup. Use Puter only if already signed in;
+  // otherwise throw so the caller falls back to Groq.
   if (p.auth?.isSignedIn && !p.auth.isSignedIn()) {
-    await p.auth.signIn() // one-time popup
+    throw new Error('puter-not-signed-in')
   }
   let content = ''
   const resp = await p.ai.chat(opts.messages, { model: opts.model, stream: true })

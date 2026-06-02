@@ -48,6 +48,15 @@ export default function ChatView() {
 
   const opts = { model, webSearch, agent, image: imageMode, imageStyle }
 
+  const lastMsg = messages[messages.length - 1]
+  const mascotState: import('./Mascot').MascotState = streaming
+    ? lastMsg?.steps?.length
+      ? 'searching'
+      : imageMode
+        ? 'coding'
+        : 'thinking'
+    : 'idle'
+
   function handleSend(text: string, attachments: Attachment[]) {
     send(text, attachments, opts)
   }
@@ -152,6 +161,7 @@ export default function ChatView() {
         <Composer
           model={model}
           onModelChange={setModel}
+          mascotState={mascotState}
           webSearch={webSearch}
           agent={agent}
           imageMode={imageMode}

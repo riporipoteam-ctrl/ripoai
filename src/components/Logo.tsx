@@ -1,35 +1,31 @@
-// RipoAI logo mark — a gradient squircle with a white spark. Reused across the
-// app (sidebar, auth, avatars, loader).
+// RipoAI logo — the friendly robot character (static). Matches the animated
+// Mascot that lives on the composer.
 export default function Logo({ size = 32, glow = false }: { size?: number; glow?: boolean }) {
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 48 48"
+      viewBox="0 0 64 64"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      style={glow ? { filter: 'drop-shadow(0 6px 16px rgba(124,92,255,0.45))' } : undefined}
+      style={glow ? { filter: 'drop-shadow(0 6px 16px rgba(16,163,127,0.45))' } : undefined}
     >
       <defs>
-        <linearGradient id="ripo-logo-grad" x1="4" y1="4" x2="44" y2="44" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#7c5cff" />
+        <linearGradient id="ripo-logo-grad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#10a37f" />
           <stop offset="0.5" stopColor="#4ea8ff" />
-          <stop offset="1" stopColor="#36e0c0" />
+          <stop offset="1" stopColor="#7c5cff" />
         </linearGradient>
       </defs>
-      <rect x="2" y="2" width="44" height="44" rx="13" fill="url(#ripo-logo-grad)" />
-      {/* main spark */}
-      <path
-        d="M24 9 C25.6 19.4 28.6 22.4 39 24 C28.6 25.6 25.6 28.6 24 39 C22.4 28.6 19.4 25.6 9 24 C19.4 22.4 22.4 19.4 24 9 Z"
-        fill="#fff"
-        fillOpacity="0.96"
-      />
-      {/* small accent spark */}
-      <path
-        d="M35 11 C35.5 14, 36.5 15, 39.5 15.5 C36.5 16, 35.5 17, 35 20 C34.5 17, 33.5 16, 30.5 15.5 C33.5 15, 34.5 14, 35 11 Z"
-        fill="#fff"
-        fillOpacity="0.85"
-      />
+      <line x1="32" y1="8" x2="32" y2="15" stroke="url(#ripo-logo-grad)" strokeWidth="2.5" strokeLinecap="round" />
+      <circle cx="32" cy="7" r="3" fill="#36e0c0" />
+      <rect x="12" y="15" width="40" height="36" rx="13" fill="url(#ripo-logo-grad)" />
+      <rect x="17" y="21" width="30" height="22" rx="9" fill="#10121a" />
+      <circle cx="25.5" cy="32" r="3.4" fill="#fff" />
+      <circle cx="38.5" cy="32" r="3.4" fill="#fff" />
+      <path d="M27 38 Q32 41 37 38" stroke="#36e0c0" strokeWidth="1.6" fill="none" strokeLinecap="round" />
+      <rect x="20" y="50" width="8" height="5" rx="2.5" fill="url(#ripo-logo-grad)" />
+      <rect x="36" y="50" width="8" height="5" rx="2.5" fill="url(#ripo-logo-grad)" />
     </svg>
   )
 }
