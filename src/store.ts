@@ -7,6 +7,7 @@ import {
   loadMemories,
   watchChats,
   watchProjects,
+  onSyncStatus,
   type ChatMeta,
   type Memory,
   type Project,
@@ -50,6 +51,7 @@ interface AppState {
   dataReady: boolean
   sidebarOpen: boolean
   settingsOpen: boolean
+  synced: boolean
 
   _unsub: Array<() => void>
 
@@ -76,6 +78,7 @@ export const useStore = create<AppState>((set, get) => ({
   dataReady: false,
   sidebarOpen: true,
   settingsOpen: false,
+  synced: false,
   _unsub: [],
 
   setUser: (u) => set({ user: u }),
@@ -100,9 +103,11 @@ export const useStore = create<AppState>((set, get) => ({
 
     let unsubChats = () => {}
     let unsubProjects = () => {}
+    let unsubSync = () => {}
     try {
       unsubChats = watchChats(uid, (chats) => set({ chats }))
       unsubProjects = watchProjects(uid, (projects) => set({ projects }))
+      unsubSync = onSyncStatus((b) => set({ synced: b }))
     } catch {
       /* listeners optional — app still works without history */
     }
@@ -111,7 +116,7 @@ export const useStore = create<AppState>((set, get) => ({
       settings,
       memories,
       dataReady: true,
-      _unsub: [unsubChats, unsubProjects],
+      _unsub: [unsubChats, unsubProjects, unsubSync],
       sidebarOpen: window.innerWidth >= 768,
     })
   },

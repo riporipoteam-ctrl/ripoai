@@ -144,6 +144,21 @@ function emit() {
   listeners.forEach((fn) => fn())
 }
 
+// Sync status (true once Firestore is confirmed reachable).
+let syncOk = false
+const syncListeners = new Set<(b: boolean) => void>()
+export function onSyncStatus(cb: (b: boolean) => void) {
+  syncListeners.add(cb)
+  cb(syncOk)
+  return () => syncListeners.delete(cb)
+}
+function setSync(b: boolean) {
+  if (b !== syncOk) {
+    syncOk = b
+    syncListeners.forEach((fn) => fn(b))
+  }
+}
+
 // Best-effort Firestore write that can never throw or hang (8s cap).
 function bgWrite(label: string, fn: () => Promise<unknown>) {
   try {
@@ -276,12 +291,13 @@ export function watchChats(uid: string, cb: (chats: ChatMeta[]) => void) {
             })
         })
         write(uid, 'chats', metas)
+        setSync(true)
         cb(
           [...metas].sort((a, b) => (!!a.pinned !== !!b.pinned ? (a.pinned ? -1 : 1) : b.updatedAt - a.updatedAt)),
         )
       },
       () => {
-        /* rules/offline — local fallback already active */
+        setSync(false) // rules/offline — local fallback already active
       },
     )
   } catch {

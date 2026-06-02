@@ -51,7 +51,7 @@ function groupByDate(chats: ChatMeta[]) {
 export default function Sidebar() {
   const navigate = useNavigate()
   const { chatId, projectId } = useParams()
-  const { user, settings, chats, projects, sidebarOpen, setSidebar, openSettings } = useStore()
+  const { user, settings, chats, projects, sidebarOpen, setSidebar, openSettings, synced } = useStore()
   const [search, setSearch] = useState('')
   const [menuFor, setMenuFor] = useState<string | null>(null)
   const [renaming, setRenaming] = useState<string | null>(null)
@@ -299,7 +299,10 @@ export default function Sidebar() {
                   <div className="truncate text-sm font-semibold">
                     {settings.displayName || user?.displayName || 'Account'}
                   </div>
-                  <div className="truncate text-xs text-muted">{user?.email}</div>
+                  <div className="flex items-center gap-1 text-xs text-muted">
+                    <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${synced ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                    <span className="truncate">{synced ? 'Synced' : 'Local only'}</span>
+                  </div>
                 </div>
                 <button
                   onClick={openSettings}

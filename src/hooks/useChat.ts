@@ -6,6 +6,7 @@ import { composeTextOnImage } from '../lib/compose'
 import { wantsPlaces, searchPlaces, getUserLocation } from '../lib/places'
 import { wantsWeather, getWeather } from '../lib/weather'
 import { wantsCurrency, convertCurrency } from '../lib/currency'
+import { wantsDefine, getDefinition, wantsWiki, getWiki, wantsUnits, convertUnits } from '../lib/tools'
 import { getModel, type ModelTier } from '../lib/models'
 import { buildSystemPrompt, AGENT_SYSTEM } from '../lib/prompt'
 import { searchModel, shouldAutoSearch } from '../lib/search'
@@ -245,10 +246,23 @@ export function useChat(chatId: string | undefined) {
 
       const lastText = lastUser?.content ?? ''
 
-      // Currency: live conversion when asked.
-      if (!opts.image && wantsCurrency(lastText)) {
-        const conv = await convertCurrency(lastText)
-        if (conv) system += `\n\nLive currency conversion (just fetched): ${conv}. Use this exact figure.`
+      // Always-on tools: currency, units, dictionary, wikipedia.
+      if (!opts.image && !opts.systemOverride) {
+        if (wantsCurrency(lastText)) {
+          const conv = await convertCurrency(lastText)
+          if (conv) system += `\n\nLive currency conversion: ${conv}. Use this exact figure.`
+        }
+        if (wantsUnits(lastText)) {
+          const u = convertUnits(lastText)
+          if (u) system += `\n\nUnit conversion: ${u}. Use this exact result.`
+        }
+        if (wantsDefine(lastText)) {
+          const def = await getDefinition(lastText)
+          if (def) system += `\n\n${def}`
+        } else if (wantsWiki(lastText) && !wantsPlaces(lastText)) {
+          const wiki = await getWiki(lastText)
+          if (wiki) system += `\n\nReference (${wiki}). Use it if relevant; you may add more.`
+        }
       }
 
       // Weather: if the user asks about weather, fetch a forecast card.
