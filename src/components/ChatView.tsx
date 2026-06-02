@@ -54,7 +54,9 @@ export default function ChatView() {
       ? 'searching'
       : imageMode
         ? 'coding'
-        : 'thinking'
+        : lastMsg?.content
+          ? 'speaking'
+          : 'thinking'
     : 'idle'
 
   function handleSend(text: string, attachments: Attachment[]) {

@@ -8,7 +8,6 @@ export type ModelTier =
   | 'ripoai-2o-pro'
   | 'ripoai-3o-instant'
   | 'ripoai-3o-pro'
-  | 'ripoai-4o-pro'
 
 export interface RipoModel {
   id: ModelTier
@@ -111,20 +110,6 @@ export const MODELS: Record<ModelTier, RipoModel> = {
     maxTokens: 6000,
     topP: 1,
     badge: 'MAX',
-  },
-  'ripoai-4o-pro': {
-    id: 'ripoai-4o-pro',
-    name: 'RipoAI 4o Pro',
-    tagline: 'Experimental — Claude via Puter (sign-in once)',
-    provider: 'puter',
-    puterModel: 'claude-opus-4',
-    groqModel: 'openai/gpt-oss-120b',
-    vision: false,
-    reasoning: false,
-    temperature: 0.8,
-    maxTokens: 6000,
-    topP: 1,
-    badge: 'BETA',
   },
 }
 
