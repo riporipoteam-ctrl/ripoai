@@ -26,10 +26,21 @@ function addrOf(p: any): string {
   return [p.street, p.district, p.city, p.state, p.country].filter(Boolean).join(', ')
 }
 
+function cleanQuery(q: string): string {
+  return q
+    .replace(/\?/g, ' ')
+    .replace(/\b(where (is|are|can i find)|show me|can you (find|show)|find( me)?|please|the )\b/gi, ' ')
+    .replace(/\b(nearest|closest|nearby|near by|around me|near me|best|top|good|some|a few)\b/gi, ' ')
+    .replace(/\bon (a |the )?map\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 /** Searches for places matching `query` via Photon (OSM). Biases around `near`. */
 export async function searchPlaces(query: string, near?: [number, number]): Promise<PlacesResult | null> {
   try {
-    let url = `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=12`
+    const q = cleanQuery(query) || query
+    let url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=12`
     if (near) url += `&lat=${near[0]}&lon=${near[1]}`
     const r = await fetch(url)
     const data = await r.json()
@@ -45,7 +56,7 @@ export async function searchPlaces(query: string, near?: [number, number]): Prom
       }))
     if (!places.length) return null
     const center: [number, number] = near ?? [places[0].lat, places[0].lng]
-    return { center, places, label: query }
+    return { center, places, label: q }
   } catch {
     return null
   }
