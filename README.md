@@ -117,6 +117,34 @@ Actions builds the iOS app on a macOS runner:
 > above sidesteps all of it. Inside the iOS WebView, Google sign‑in (popup) may
 > not work — use **email/password**.
 
+## Google sign‑in in an installed (home‑screen) PWA
+
+Google sign‑in works in a normal browser tab, but in an **installed PWA**
+(Add to Home Screen) it fails on GitHub Pages / Netlify. That's not a bug in
+the code — it's a browser rule: the Firebase OAuth handler lives on a
+*different* domain (`…firebaseapp.com`) than your app (`…github.io`), and
+installed PWAs **partition storage per‑domain**, so the credential returned by
+Google can never be read back by the app. iOS is strictest about this.
+
+**The fix is to serve the app from a domain where the auth handler is
+same‑origin — Firebase Hosting (`https://ripoai-dff5d.web.app`).** There the
+handler is part of the same site, so Google sign‑in works everywhere, PWA
+included. A deploy workflow is provided:
+
+1. **Firebase console → Hosting → Get started** (enable Hosting).
+2. Create a **service‑account key** (role: *Firebase Hosting Admin*) and add it
+   as the repo secret **`FIREBASE_SERVICE_ACCOUNT`** (paste the full JSON).
+   Tip: `firebase init hosting:github` wires this up automatically.
+3. Push to the deploy branch (or run **Actions → Deploy to Firebase Hosting**).
+4. Open **`https://ripoai-dff5d.web.app`** in Safari/Chrome → **Add to Home
+   Screen**. Google sign‑in now works in the installed app.
+
+The app's `authDomain` is already set to `ripoai-dff5d.web.app` for this. On
+GitHub Pages the code still does the right thing (redirect‑based sign‑in), but
+the **`.web.app` install is the reliable one for Google in a PWA**. Email/
+password works everywhere regardless. In the **native APK/iOS app**, use
+email/password (native Google would need the Capacitor Firebase Auth plugin).
+
 ## One‑time setup (required for production)
 
 1. **Firebase → Authentication → Sign‑in method**: enable **Email/Password** and **Google**.
