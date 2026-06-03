@@ -1,6 +1,9 @@
 node_modules
 dist
 dist-ssr
+android
+ios
+RipoAI.apk
 *.local
 .DS_Store
 .vscode/*

@@ -41,6 +41,12 @@ body,
   height: 100%;
 }
 
+/* Respect device safe areas (notch / status bar / home indicator) in the app. */
+#root {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 body {
   margin: 0;
   font-family: 'Inter', system-ui, sans-serif;

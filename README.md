@@ -71,6 +71,26 @@ A `netlify.toml` is included, so deploying is one click:
 > custom domain or renaming the repo to `riporipoteam-ctrl.github.io` (which
 > serves at the root). Netlify's free custom subdomain is the easiest fix.
 
+## Android APK (build on GitHub — no local Android SDK needed)
+
+RipoAI ships as an Android app via **Capacitor**, built by GitHub Actions:
+
+1. Make sure the repo secrets `VITE_GROQ_API_KEY` and `VITE_OPENROUTER_API_KEY`
+   are set (Settings → Secrets and variables → Actions).
+2. **Actions** tab → **Build Android APK** → **Run workflow**.
+3. When it finishes (~5 min), download the APK from:
+   - the run's **Artifacts** (`RipoAI-apk`), or
+   - the **`android-latest` Release** (`RipoAI.apk`).
+4. On your phone: open `RipoAI.apk`, allow **install from unknown sources**, install.
+
+It's a **debug** APK (unsigned) — installable directly; for the Play Store you'd
+produce a signed release build.
+
+> ⚠️ Inside the Android WebView, **Google sign‑in (popup) does not work** — use
+> **email/password** in the app. (Native Google auth would need the
+> `@capacitor-firebase/authentication` plugin.) `localhost` must be in Firebase
+> Authorized domains (it is by default).
+
 ## One‑time setup (required for production)
 
 1. **Firebase → Authentication → Sign‑in method**: enable **Email/Password** and **Google**.

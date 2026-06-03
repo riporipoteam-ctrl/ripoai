@@ -1,0 +1,72 @@
+name: Build Android APK
+
+# Builds an installable Android APK from the web app using Capacitor, on
+# GitHub's servers (which have the Android SDK). Run it from the Actions tab
+# (Run workflow) or by pushing a tag like v1-android.
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['*-android']
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web app (root base, with API keys)
+        env:
+          VITE_BASE: '/'
+          VITE_GROQ_API_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
+          VITE_OPENROUTER_API_KEY: ${{ secrets.VITE_OPENROUTER_API_KEY }}
+        run: npm run build
+
+      - name: Add & sync Android platform
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build debug APK
+        run: |
+          cd android
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk RipoAI.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: RipoAI-apk
+          path: RipoAI.apk
+
+      - name: Publish to a Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: RipoAI Android (latest)
+          files: RipoAI.apk
+          body: |
+            Latest RipoAI Android APK (debug build).
+            Install: download RipoAI.apk on your phone, allow "install from unknown sources", and open it.
