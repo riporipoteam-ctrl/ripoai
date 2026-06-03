@@ -112,19 +112,46 @@ export function parseSkillBlock(text: string): Skill | null {
   }
 }
 
-// Turn common GitHub URLs into raw URLs so fetch works.
-function toRawUrl(url: string): string {
-  let u = url.trim()
-  const gh = u.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/(.+)$/i)
-  if (gh) return `https://raw.githubusercontent.com/${gh[1]}/${gh[2]}/${gh[3]}`
-  return u
+// github.com blocks browser fetches (no CORS); raw.githubusercontent.com allows
+// them. Turn any GitHub URL — a file (/blob/), a tree, or a bare repo — into a
+// list of candidate RAW urls to try (common skill filenames on main/master).
+function candidateUrls(url: string): string[] {
+  const u = url.trim().replace(/[)>\].,]+$/, '')
+  const blob = u.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/(.+)$/i)
+  if (blob) return [`https://raw.githubusercontent.com/${blob[1]}/${blob[2]}/${blob[3]}`]
+  const files = ['SKILL.md', 'skill.md', 'README.md', 'readme.md', 'ripoai-skill.md', 'skill.json']
+  const tree = u.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/tree\/([^/]+)\/?(.*)$/i)
+  if (tree) {
+    const dir = tree[4] ? tree[4].replace(/\/$/, '') + '/' : ''
+    return files.map((f) => `https://raw.githubusercontent.com/${tree[1]}/${tree[2]}/${tree[3]}/${dir}${f}`)
+  }
+  const repo = u.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/?$/i)
+  if (repo) {
+    const out: string[] = []
+    for (const br of ['main', 'master']) for (const f of files) out.push(`https://raw.githubusercontent.com/${repo[1]}/${repo[2]}/${br}/${f}`)
+    return out
+  }
+  return [u]
 }
 
 /** Fetch a skill from a public URL (raw markdown / skill block) and save it. */
 export async function installSkillFromUrl(uid: string, url: string): Promise<Skill> {
-  const res = await fetch(toRawUrl(url))
-  if (!res.ok) throw new Error(`Couldn't fetch the skill (${res.status}).`)
-  const text = (await res.text()).slice(0, 20000)
+  let text = ''
+  for (const c of candidateUrls(url)) {
+    try {
+      const res = await fetch(c)
+      if (res.ok) {
+        text = (await res.text()).slice(0, 20000)
+        break
+      }
+    } catch {
+      /* CORS / network — try the next candidate */
+    }
+  }
+  if (!text.trim())
+    throw new Error(
+      "Couldn't find a skill at that URL. Use a public GitHub repo, or a raw file link to a SKILL.md / README.md.",
+    )
   // Prefer an explicit skill block; else derive from markdown frontmatter/heading.
   let skill = parseSkillBlock(text)
   if (!skill) {
