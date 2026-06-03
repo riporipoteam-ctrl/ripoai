@@ -88,6 +88,7 @@ export function useChat(chatId: string | undefined) {
   const abortRef = useRef<AbortController | null>(null)
   const titleRef = useRef<string>('New chat')
   const modelRef = useRef<ModelTier>(settings.defaultModel)
+  const createdAtRef = useRef<number>(0)
 
   // Load (or reset) when the active chat id changes.
   useEffect(() => {
@@ -95,6 +96,7 @@ export function useChat(chatId: string | undefined) {
     if (!chatId) {
       loadedId.current = undefined
       titleRef.current = 'New chat'
+      createdAtRef.current = 0
       setMessages([])
       setSteps([])
       return
@@ -108,6 +110,7 @@ export function useChat(chatId: string | undefined) {
           setMessages(c.messages)
           titleRef.current = c.title
           modelRef.current = c.model
+          createdAtRef.current = c.createdAt || Date.now()
         }
       })
       .catch(() => {
@@ -118,19 +121,26 @@ export function useChat(chatId: string | undefined) {
   const persist = useCallback(
     async (msgs: StoredMessage[], id: string, model: ModelTier, projectId?: string) => {
       if (!user) return
-      const existing = messages.length
+      if (!createdAtRef.current) createdAtRef.current = Date.now()
+      // Until the AI generates a title, fall back to the first user message so
+      // the sidebar never shows a blank/"New chat" placeholder for a real chat.
+      let title = titleRef.current
+      if (title === 'New chat') {
+        const firstUser = msgs.find((m) => m.role === 'user')?.content?.trim()
+        if (firstUser) title = firstUser.slice(0, 60)
+      }
       const chat: Chat = {
         id,
-        title: titleRef.current,
+        title,
         model,
         messages: msgs,
         projectId,
         updatedAt: Date.now(),
-        createdAt: existing ? Date.now() : Date.now(),
+        createdAt: createdAtRef.current,
       }
       await saveChat(user.uid, chat)
     },
-    [user, messages.length],
+    [user],
   )
 
   const stop = useCallback(() => {
@@ -572,9 +582,14 @@ export function useChat(chatId: string | undefined) {
       }
       const history = [...messages, userMsg]
       setMessages(history)
+      // Persist the user's turn IMMEDIATELY so the chat survives even if
+      // generation fails, is stopped, or the app is closed mid-stream. persist()
+      // derives a provisional title from the first message; run() upgrades it to
+      // the AI-generated title afterwards.
+      persist(history, id, opts.model, opts.projectId).catch(() => {})
       await run(history, { ...opts }, id)
     },
-    [user, streaming, chatId, messages, navigate, run],
+    [user, streaming, chatId, messages, navigate, run, persist],
   )
 
   const regenerate = useCallback(

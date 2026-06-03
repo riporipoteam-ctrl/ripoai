@@ -131,7 +131,26 @@ function write(uid: string, key: string, value: unknown) {
   try {
     localStorage.setItem(k(uid, key), JSON.stringify(value))
   } catch (e) {
-    // Most likely quota exceeded — trim oldest chats and retry once.
+    // Quota exceeded — evict the oldest cached full-chats (they can be re-pulled
+    // from the cloud) to make room, then retry once. This keeps new data from
+    // being silently dropped when storage fills up (e.g. image-heavy chats).
+    try {
+      const metas = read<ChatMeta[]>(uid, 'chats', [])
+        .slice()
+        .sort((a, b) => a.updatedAt - b.updatedAt)
+      for (const m of metas) {
+        if (key === `chat:${m.id}`) continue
+        localStorage.removeItem(k(uid, `chat:${m.id}`))
+        try {
+          localStorage.setItem(k(uid, key), JSON.stringify(value))
+          return
+        } catch {
+          /* keep evicting */
+        }
+      }
+    } catch {
+      /* ignore */
+    }
     console.warn('localStorage write failed:', (e as Error)?.message)
   }
 }
@@ -274,28 +293,45 @@ export function watchChats(uid: string, cb: (chats: ChatMeta[]) => void) {
     fsUnsub = onSnapshot(
       q,
       (snap) => {
-        const metas: ChatMeta[] = snap.docs.map((d) => {
-          const data = d.data()
-          return { id: d.id, title: data.title ?? 'New chat', updatedAt: tsMs(data.updatedAt), projectId: data.projectId ?? undefined, pinned: !!data.pinned }
-        })
-        // Cache full chats + meta locally so reloads/offline still work.
+        // MERGE the cloud into local — never blindly overwrite. A local-only
+        // chat (pending upload, failed cloud write, or cloud unconfigured)
+        // must survive an incoming snapshot, otherwise chats "disappear".
+        const byId = new Map<string, ChatMeta>(
+          read<ChatMeta[]>(uid, 'chats', []).map((m) => [m.id, m]),
+        )
         snap.docs.forEach((d) => {
           const data = d.data()
-          if (data.messages)
-            write(uid, `chat:${d.id}`, {
-              id: d.id,
-              title: data.title ?? 'New chat',
-              model: data.model,
-              messages: data.messages,
-              projectId: data.projectId ?? undefined,
-              updatedAt: tsMs(data.updatedAt),
-              createdAt: tsMs(data.createdAt),
-            })
+          const cloudUpdated = tsMs(data.updatedAt)
+          const existing = byId.get(d.id)
+          byId.set(d.id, {
+            id: d.id,
+            title: data.title ?? existing?.title ?? 'New chat',
+            updatedAt: Math.max(cloudUpdated, existing?.updatedAt ?? 0),
+            projectId: data.projectId ?? existing?.projectId,
+            pinned: data.pinned ?? existing?.pinned ?? false,
+          })
+          // Cache the full chat only when the cloud copy is at least as fresh
+          // as the local one (don't clobber newer local edits with stale cloud).
+          if (data.messages) {
+            const localFull = read<Chat | null>(uid, `chat:${d.id}`, null)
+            if (!localFull || cloudUpdated >= localFull.updatedAt) {
+              write(uid, `chat:${d.id}`, {
+                id: d.id,
+                title: data.title ?? 'New chat',
+                model: data.model,
+                messages: data.messages,
+                projectId: data.projectId ?? undefined,
+                updatedAt: cloudUpdated,
+                createdAt: tsMs(data.createdAt),
+              })
+            }
+          }
         })
-        write(uid, 'chats', metas)
+        const merged = [...byId.values()]
+        write(uid, 'chats', merged)
         setSync(true)
         cb(
-          [...metas].sort((a, b) => (!!a.pinned !== !!b.pinned ? (a.pinned ? -1 : 1) : b.updatedAt - a.updatedAt)),
+          [...merged].sort((a, b) => (!!a.pinned !== !!b.pinned ? (a.pinned ? -1 : 1) : b.updatedAt - a.updatedAt)),
         )
       },
       () => {
@@ -316,17 +352,22 @@ export async function loadChat(uid: string, chatId: string): Promise<Chat | null
   const snap = await withTimeout(getDoc(doc(db, 'users', uid, 'chats', chatId)), 5000, null as any)
   if (snap?.exists?.()) {
     const data = snap.data()
-    const chat: Chat = {
-      id: chatId,
-      title: data.title ?? 'New chat',
-      model: data.model,
-      messages: data.messages ?? [],
-      projectId: data.projectId ?? undefined,
-      updatedAt: tsMs(data.updatedAt),
-      createdAt: tsMs(data.createdAt),
+    const cloudUpdated = tsMs(data.updatedAt)
+    // Only take the cloud copy when it's at least as fresh as local — a newer
+    // local edit that hasn't finished uploading must win, or we'd lose it.
+    if (!local || cloudUpdated >= local.updatedAt) {
+      const chat: Chat = {
+        id: chatId,
+        title: data.title ?? 'New chat',
+        model: data.model,
+        messages: data.messages ?? [],
+        projectId: data.projectId ?? undefined,
+        updatedAt: cloudUpdated,
+        createdAt: tsMs(data.createdAt),
+      }
+      write(uid, `chat:${chatId}`, chat)
+      return chat
     }
-    write(uid, `chat:${chatId}`, chat)
-    return chat
   }
   return local
 }
@@ -408,20 +449,29 @@ export function watchProjects(uid: string, cb: (projects: Project[]) => void) {
     fsUnsub = onSnapshot(
       q,
       (snap) => {
-        const projects: Project[] = snap.docs.map((d) => {
+        // Merge, never clobber — same reasoning as watchChats.
+        const byId = new Map<string, Project>(
+          read<Project[]>(uid, 'projects', []).map((p) => [p.id, p]),
+        )
+        snap.docs.forEach((d) => {
           const data = d.data()
-          return {
-            id: d.id,
-            name: data.name ?? 'Project',
-            description: data.description,
-            files: data.files ?? {},
-            template: data.template ?? 'static',
-            updatedAt: tsMs(data.updatedAt),
-            createdAt: tsMs(data.createdAt),
+          const cloudUpdated = tsMs(data.updatedAt)
+          const existing = byId.get(d.id)
+          if (!existing || cloudUpdated >= existing.updatedAt) {
+            byId.set(d.id, {
+              id: d.id,
+              name: data.name ?? 'Project',
+              description: data.description,
+              files: data.files ?? {},
+              template: data.template ?? 'static',
+              updatedAt: cloudUpdated,
+              createdAt: tsMs(data.createdAt),
+            })
           }
         })
-        write(uid, 'projects', projects)
-        cb(projects)
+        const merged = [...byId.values()].sort((a, b) => b.updatedAt - a.updatedAt)
+        write(uid, 'projects', merged)
+        cb(merged)
       },
       () => {},
     )
