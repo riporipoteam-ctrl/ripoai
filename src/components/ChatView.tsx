@@ -29,7 +29,7 @@ export default function ChatView() {
   const [imageMode, setImageMode] = useState(false)
   const [imageStyle, setImageStyle] = useState('auto')
   const [voiceCall, setVoiceCall] = useState(false)
-  const { messages, streaming, send, stop, regenerate, editAndResend, toggleBookmark } = useChat(chatId)
+  const { messages, streaming, send, stop, regenerate, editAndResend, toggleBookmark, loadedModel } = useChat(chatId)
   const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const [atBottom, setAtBottom] = useState(true)
@@ -37,6 +37,11 @@ export default function ChatView() {
   useEffect(() => {
     setModel(settings.defaultModel)
   }, [settings.defaultModel])
+
+  // Per-chat model memory: when a saved chat loads, restore the model it used.
+  useEffect(() => {
+    if (loadedModel) setModel(loadedModel)
+  }, [loadedModel])
 
   useEffect(() => {
     if (atBottom) bottomRef.current?.scrollIntoView({ behavior: streaming ? 'auto' : 'smooth' })

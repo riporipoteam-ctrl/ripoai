@@ -15,8 +15,10 @@ import {
   MessageSquare,
   Pin,
   Download,
+  Bookmark,
 } from 'lucide-react'
 import { signOut } from 'firebase/auth'
+import BookmarksView from './BookmarksView'
 import { auth } from '../firebase'
 import { useStore } from '../store'
 import Avatar from './ui/Avatar'
@@ -56,6 +58,7 @@ export default function Sidebar() {
   const { chatId, projectId } = useParams()
   const { user, settings, chats, projects, sidebarOpen, setSidebar, openSettings } = useStore()
   const [search, setSearch] = useState('')
+  const [bookmarksOpen, setBookmarksOpen] = useState(false)
   const [menuFor, setMenuFor] = useState<string | null>(null)
   const [renaming, setRenaming] = useState<string | null>(null)
   const [renameVal, setRenameVal] = useState('')
@@ -142,10 +145,16 @@ export default function Sidebar() {
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search chats"
+                  placeholder="Search chats & messages"
                   className="w-full bg-transparent text-sm outline-none placeholder:text-muted"
                 />
               </div>
+              <button
+                onClick={() => setBookmarksOpen(true)}
+                className="pressable flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-sm font-medium text-muted transition hover:bg-white/10 hover:text-ink"
+              >
+                <Bookmark size={16} className="text-accent" /> Saved messages
+              </button>
             </div>
 
             {/* Scroll area */}
@@ -343,6 +352,7 @@ export default function Sidebar() {
           </motion.aside>
         )}
       </AnimatePresence>
+      <BookmarksView open={bookmarksOpen} onClose={() => setBookmarksOpen(false)} />
     </>
   )
 }

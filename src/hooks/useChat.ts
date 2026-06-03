@@ -84,6 +84,7 @@ export function useChat(chatId: string | undefined) {
   const [messages, setMessages] = useState<StoredMessage[]>([])
   const [streaming, setStreaming] = useState(false)
   const [steps, setSteps] = useState<{ type: string; detail?: string }[]>([])
+  const [loadedModel, setLoadedModel] = useState<ModelTier | null>(null)
   const loadedId = useRef<string | undefined>(undefined)
   const abortRef = useRef<AbortController | null>(null)
   const titleRef = useRef<string>('New chat')
@@ -111,6 +112,7 @@ export function useChat(chatId: string | undefined) {
           titleRef.current = c.title
           modelRef.current = c.model
           createdAtRef.current = c.createdAt || Date.now()
+          if (c.model) setLoadedModel(c.model) // restore the chat's last model
         }
       })
       .catch(() => {
@@ -664,5 +666,5 @@ export function useChat(chatId: string | undefined) {
     [user, chatId, persist],
   )
 
-  return { messages, streaming, steps, send, stop, regenerate, editAndResend, toggleBookmark }
+  return { messages, streaming, steps, send, stop, regenerate, editAndResend, toggleBookmark, loadedModel }
 }

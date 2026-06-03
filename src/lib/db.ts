@@ -406,6 +406,35 @@ export function chatContentMatches(uid: string, chatId: string, q: string): bool
   return c.messages.some((m) => (m.content || '').toLowerCase().includes(ql))
 }
 
+export interface BookmarkEntry {
+  chatId: string
+  chatTitle: string
+  messageId: string
+  snippet: string
+  createdAt: number
+}
+
+// All bookmarked assistant messages across cached chats, newest first.
+export function listBookmarks(uid: string): BookmarkEntry[] {
+  const metas = read<ChatMeta[]>(uid, 'chats', [])
+  const out: BookmarkEntry[] = []
+  for (const meta of metas) {
+    const c = read<Chat | null>(uid, `chat:${meta.id}`, null)
+    if (!c?.messages) continue
+    for (const m of c.messages) {
+      if (m.bookmarked && m.content)
+        out.push({
+          chatId: c.id,
+          chatTitle: c.title,
+          messageId: m.id,
+          snippet: m.content.replace(/\s+/g, ' ').slice(0, 160),
+          createdAt: m.createdAt,
+        })
+    }
+  }
+  return out.sort((a, b) => b.createdAt - a.createdAt)
+}
+
 export async function renameChat(uid: string, chatId: string, title: string) {
   const metas = read<ChatMeta[]>(uid, 'chats', []).map((c) => (c.id === chatId ? { ...c, title } : c))
   write(uid, 'chats', metas)
