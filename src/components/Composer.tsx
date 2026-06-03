@@ -159,7 +159,7 @@ export default function Composer({
         </div>
       )}
 
-      <div className="glass-strong relative z-20 rounded-[28px] p-2">
+      <div className="relative z-20 rounded-[26px] border border-[rgb(var(--ink)/0.1)] bg-[rgb(var(--surface)/0.65)] p-2 shadow-sm">
         <textarea
           ref={taRef}
           value={text}
