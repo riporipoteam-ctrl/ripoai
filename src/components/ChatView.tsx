@@ -168,7 +168,7 @@ export default function ChatView() {
         )}
       </div>
 
-      <div className="relative px-4 pb-4 pt-2">
+      <div className="relative border-t border-[rgb(var(--ink)/0.05)] bg-[rgb(var(--surface)/0.7)] px-3 pt-2 pb-[max(env(safe-area-inset-bottom),0.6rem)] backdrop-blur-xl sm:px-4 sm:pb-4">
         <AnimatePresence>
           {!empty && !atBottom && (
             <motion.button

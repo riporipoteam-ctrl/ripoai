@@ -51,9 +51,10 @@ body {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  /* Respect device safe areas (notch / status bar / home indicator). */
+  /* Only the top notch is padded here; the bottom (home-indicator) inset is
+     handled by the composer bar itself so its background fills to the very
+     bottom edge instead of leaving a dead gap. */
   padding-top: env(safe-area-inset-top);
-  padding-bottom: env(safe-area-inset-bottom);
 }
 /* The app's own root + the routed page must take all available height. */
 #root > * {

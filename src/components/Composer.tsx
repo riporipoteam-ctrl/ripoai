@@ -93,6 +93,18 @@ export default function Composer({
     }
   }
 
+  // Paste an image straight from the clipboard (screenshots, copied pics).
+  async function handlePaste(e: React.ClipboardEvent) {
+    const imgs = Array.from(e.clipboardData?.items ?? []).filter((i) => i.type.startsWith('image/'))
+    if (!imgs.length) return
+    e.preventDefault()
+    const files = imgs.map((i) => i.getAsFile()).filter(Boolean) as File[]
+    const dt = new DataTransfer()
+    files.forEach((f) => dt.items.add(f))
+    haptic('light')
+    await handleFiles(dt.files)
+  }
+
   function submit() {
     if (streaming || busy) return
     if (!text.trim() && attachments.length === 0) return
@@ -161,6 +173,7 @@ export default function Composer({
               submit()
             }
           }}
+          onPaste={handlePaste}
           rows={1}
           placeholder={imageMode ? 'Describe an image to generate…' : placeholder}
           className="no-scrollbar max-h-[220px] w-full resize-none bg-transparent px-3 py-2 text-[0.975rem] outline-none placeholder:text-muted"

@@ -86,6 +86,16 @@ RipoAI ships as an Android app via **Capacitor**, built by GitHub Actions:
 It's a **debug** APK (unsigned) — installable directly; for the Play Store you'd
 produce a signed release build.
 
+### Auto-updating APK
+
+The app is configured (Capacitor `server.url`) to load the **live deployed site**
+(`https://riporipoteam-ctrl.github.io/ripoai/`) rather than a bundled copy. That
+means **every push that redeploys the site updates the installed app automatically**
+on next launch — no reinstall, no Play Store. The native shell (status bar, haptics,
+splash, bottom-sheet menus, glassier `.native` styling) still applies, so it looks
+like an app rather than the website. You only need to rebuild/reinstall the APK when
+the native shell itself changes.
+
 > ⚠️ Inside the Android WebView, **Google sign‑in (popup) does not work** — use
 > **email/password** in the app. (Native Google auth would need the
 > `@capacitor-firebase/authentication` plugin.) `localhost` must be in Firebase
