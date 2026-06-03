@@ -521,7 +521,10 @@ export function useChat(chatId: string | undefined) {
                 maxTokens: a.maxTokens,
                 topP: model.topP,
                 reasoningEffort: a.reasoningEffort,
-                thinking: a.provider === 'nvidia' && model.reasoning,
+                // Thinking helps reasoning answers but wastes the whole token
+                // budget on big code/websites (the model "thinks forever" and
+                // never writes the file) — so disable it for those.
+                thinking: a.provider === 'nvidia' && model.reasoning && !bigOutput,
                 signal: ac.signal,
                 onToken,
                 onReasoning,
