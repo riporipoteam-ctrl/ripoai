@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { streamChat, complete, type ChatMessage, type ContentPart } from '../lib/groq'
 import { generateImage, styleSuffix, dimsFor } from '../lib/imagegen'
-import { composeTextOnImage } from '../lib/compose'
 import { wantsPlaces, searchPlaces, getUserLocation, getUserPlace, wantsLocationContext } from '../lib/places'
 import { wantsWeather, getWeather } from '../lib/weather'
 import { wantsCurrency, convertCurrency } from '../lib/currency'
@@ -195,11 +194,10 @@ export function useChat(chatId: string | undefined) {
         ])
         setStreaming(true)
 
-        // Decide the scene prompt + any exact text to overlay (models can't
-        // render text, so we draw it precisely with canvas).
+        // Build a strong FLUX prompt. FLUX renders text well, so we KEEP any
+        // requested words/names/logo text in the prompt and let the model draw
+        // them — no cheap canvas caption box.
         let scene = prompt
-        let overlay: string | null = null
-        let position: 'top' | 'bottom' | 'center' = 'top'
         try {
           const j = await complete(
             'llama-3.3-70b-versatile',
@@ -207,24 +205,16 @@ export function useChat(chatId: string | undefined) {
               {
                 role: 'system',
                 content:
-                  'Given an image request, output ONLY JSON {"scene":"...","text":"...","position":"top|bottom|center"}. "scene" = a vivid, detailed image-generation prompt with NO letters/words in the image. "text" = the EXACT words the user wants written on the image (empty string if none). "position" = where the text goes.',
+                  'Rewrite the user request as ONE vivid, detailed prompt for an image model. If the user wants any text, name, title, slogan or logo wording, INCLUDE that EXACT text in the prompt so the model renders it in the image (e.g. ...with the text "Auto Servis Sunja" written in a bold modern font). Keep it under 80 words. Output ONLY the final prompt — no quotes, no preamble.',
               },
               { role: 'user', content: prompt },
             ],
-            { temperature: 0.5, maxTokens: 250 },
+            { temperature: 0.5, maxTokens: 180 },
           )
-          const mm = j.match(/\{[\s\S]*\}/)
-          if (mm) {
-            const o = JSON.parse(mm[0])
-            scene = (o.scene || prompt).slice(0, 800)
-            overlay = (o.text || '').trim() || null
-            if (['top', 'bottom', 'center'].includes(o.position)) position = o.position
-          }
+          if (j && j.trim()) scene = j.trim().replace(/^["']+|["']+$/g, '').slice(0, 800)
         } catch {
           /* use raw prompt */
         }
-        if (/\babove\b|\btop\b/i.test(prompt)) position = 'top'
-        else if (/\bbelow\b|\bbottom\b|\bunder\b/i.test(prompt)) position = 'bottom'
 
         const styledScene = (scene + styleSuffix(opts.imageStyle)).slice(0, 900)
         const { w, h } = dimsFor(prompt)
@@ -245,14 +235,7 @@ export function useChat(chatId: string | undefined) {
           await persist(errMsgs, id, opts.model, opts.projectId)
           return
         }
-        let finalUrl = baseUrl
-        if (overlay) {
-          try {
-            finalUrl = await composeTextOnImage(baseUrl, overlay, position)
-          } catch {
-            finalUrl = baseUrl
-          }
-        }
+        const finalUrl = baseUrl
 
         let finalMsgs: StoredMessage[] = []
         setMessages((m) => {
