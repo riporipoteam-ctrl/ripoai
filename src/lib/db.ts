@@ -41,6 +41,10 @@ export interface StoredMessage {
   weather?: any
   /** Set when this message includes a generated slide deck. */
   deck?: any
+  /** Suggested tappable follow-up prompts (assistant messages). */
+  followups?: string[]
+  /** User-saved/bookmarked message. */
+  bookmarked?: boolean
   createdAt: number
 }
 
@@ -391,6 +395,15 @@ export async function saveChat(uid: string, chat: Chat) {
       createdAt: chat.createdAt || Date.now(),
     }),
   )
+}
+
+// Does any message in this chat's cached copy contain the query? Powers
+// full-text chat search in the sidebar (titles + message bodies).
+export function chatContentMatches(uid: string, chatId: string, q: string): boolean {
+  const c = read<Chat | null>(uid, `chat:${chatId}`, null)
+  if (!c?.messages?.length) return false
+  const ql = q.toLowerCase()
+  return c.messages.some((m) => (m.content || '').toLowerCase().includes(ql))
 }
 
 export async function renameChat(uid: string, chatId: string, title: string) {

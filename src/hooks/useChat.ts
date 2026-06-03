@@ -545,6 +545,39 @@ export function useChat(chatId: string | undefined) {
 
       await persist(finalMsgs, id, opts.model, opts.projectId)
 
+      // Suggested follow-up prompts — generated after the answer so the user can
+      // keep the conversation going with one tap. Best-effort, never blocks.
+      if (finalContent && finalContent.trim().length > 40 && !opts.projectId) {
+        complete(
+          'llama-3.1-8b-instant',
+          [
+            {
+              role: 'system',
+              content:
+                'Given a user question and the assistant answer, suggest 3 short natural follow-up questions the user might ask next. Output ONLY a JSON array of 3 strings, each under 8 words, no numbering.',
+            },
+            { role: 'user', content: `Q: ${(history[history.length - 1]?.content ?? '').slice(0, 400)}\nA: ${finalContent.slice(0, 700)}` },
+          ],
+          { temperature: 0.6, maxTokens: 120 },
+        )
+          .then((raw) => {
+            const m = raw.match(/\[[\s\S]*\]/)
+            if (!m) return
+            const arr = JSON.parse(m[0])
+            const ups = Array.isArray(arr)
+              ? arr.filter((s) => typeof s === 'string' && s.trim()).slice(0, 3)
+              : []
+            if (!ups.length) return
+            let updated: StoredMessage[] = []
+            setMessages((mm) => {
+              updated = mm.map((x) => (x.id === assistantId ? { ...x, followups: ups } : x))
+              return updated
+            })
+            persist(updated, id, opts.model, opts.projectId).catch(() => {})
+          })
+          .catch(() => {})
+      }
+
       // Memory: auto-extract, plus an explicit save when the user asks to
       // "remember" / "save" something.
       const userText = history[history.length - 1]?.content ?? ''
@@ -618,5 +651,18 @@ export function useChat(chatId: string | undefined) {
     [user, streaming, chatId, messages, run],
   )
 
-  return { messages, streaming, steps, send, stop, regenerate, editAndResend }
+  const toggleBookmark = useCallback(
+    (messageId: string) => {
+      if (!user || !chatId) return
+      let updated: StoredMessage[] = []
+      setMessages((m) => {
+        updated = m.map((x) => (x.id === messageId ? { ...x, bookmarked: !x.bookmarked } : x))
+        return updated
+      })
+      persist(updated, chatId, modelRef.current).catch(() => {})
+    },
+    [user, chatId, persist],
+  )
+
+  return { messages, streaming, steps, send, stop, regenerate, editAndResend, toggleBookmark }
 }

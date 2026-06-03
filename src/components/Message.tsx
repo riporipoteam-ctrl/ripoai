@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Copy, Check, RefreshCw, Pencil, FileText, Volume2, Square } from 'lucide-react'
+import { Copy, Check, RefreshCw, Pencil, FileText, Volume2, Square, Bookmark, ArrowUpRight } from 'lucide-react'
 import { Markdown } from './Markdown'
 import Reasoning from './Reasoning'
 import AgentTrace from './AgentTrace'
@@ -19,9 +19,11 @@ interface Props {
   isLastAssistant?: boolean
   onRegenerate?: () => void
   onEdit?: (text: string) => void
+  onFollowup?: (text: string) => void
+  onToggleBookmark?: () => void
 }
 
-export default function Message({ message, streaming, isLastAssistant, onRegenerate, onEdit }: Props) {
+export default function Message({ message, streaming, isLastAssistant, onRegenerate, onEdit, onFollowup, onToggleBookmark }: Props) {
   const [copied, setCopied] = useState(false)
   const [editing, setEditing] = useState(false)
   const [speaking, setSpeaking] = useState(false)
@@ -123,7 +125,11 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3">
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={`flex gap-3 ${message.bookmarked ? 'rounded-2xl border-l-2 border-accent bg-accent/5 py-2 pl-3 pr-2' : ''}`}
+    >
       <div className="mt-0.5 shrink-0">
         <Logo size={32} />
       </div>
@@ -182,6 +188,33 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
                 Regenerate
               </button>
             )}
+            {onToggleBookmark && (
+              <button
+                onClick={onToggleBookmark}
+                className={`pressable flex items-center gap-1 rounded-lg px-2 py-1 text-xs hover:bg-white/10 ${
+                  message.bookmarked ? 'text-accent' : 'text-muted hover:text-ink'
+                }`}
+                title={message.bookmarked ? 'Saved' : 'Save'}
+              >
+                <Bookmark size={13} fill={message.bookmarked ? 'currentColor' : 'none'} />
+                {message.bookmarked ? 'Saved' : 'Save'}
+              </button>
+            )}
+          </div>
+        )}
+        {/* Suggested follow-ups */}
+        {isLastAssistant && !liveStreaming && !!message.followups?.length && onFollowup && (
+          <div className="mt-3 flex flex-col gap-1.5">
+            {message.followups.map((f, i) => (
+              <button
+                key={i}
+                onClick={() => onFollowup(f)}
+                className="pressable group flex items-center justify-between gap-2 rounded-xl border border-[rgb(var(--ink)/0.08)] bg-[rgb(var(--surface-raised)/0.6)] px-3 py-2 text-left text-sm text-ink/90 hover:border-accent/40 hover:bg-accent/5"
+              >
+                <span className="min-w-0 truncate">{f}</span>
+                <ArrowUpRight size={15} className="shrink-0 text-muted group-hover:text-accent" />
+              </button>
+            ))}
           </div>
         )}
       </div>

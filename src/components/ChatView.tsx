@@ -29,7 +29,7 @@ export default function ChatView() {
   const [imageMode, setImageMode] = useState(false)
   const [imageStyle, setImageStyle] = useState('auto')
   const [voiceCall, setVoiceCall] = useState(false)
-  const { messages, streaming, send, stop, regenerate, editAndResend } = useChat(chatId)
+  const { messages, streaming, send, stop, regenerate, editAndResend, toggleBookmark } = useChat(chatId)
   const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const [atBottom, setAtBottom] = useState(true)
@@ -158,6 +158,12 @@ export default function ChatView() {
                   onEdit={
                     m.role === 'user' && !streaming
                       ? (text) => editAndResend(m.id, text, opts)
+                      : undefined
+                  }
+                  onFollowup={!streaming ? (text) => handleSend(text, []) : undefined}
+                  onToggleBookmark={
+                    m.role === 'assistant' && m.content && !streaming
+                      ? () => toggleBookmark(m.id)
                       : undefined
                   }
                 />

@@ -27,6 +27,7 @@ import {
   loadChat,
   saveProject,
   deleteProject,
+  chatContentMatches,
   type ChatMeta,
 } from '../lib/db'
 import { newReactProject } from '../lib/templates'
@@ -59,10 +60,15 @@ export default function Sidebar() {
   const [renaming, setRenaming] = useState<string | null>(null)
   const [renameVal, setRenameVal] = useState('')
 
-  const filtered = useMemo(
-    () => chats.filter((c) => c.title.toLowerCase().includes(search.toLowerCase())),
-    [chats, search],
-  )
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return chats
+    return chats.filter(
+      (c) =>
+        c.title.toLowerCase().includes(q) ||
+        (user ? chatContentMatches(user.uid, c.id, q) : false),
+    )
+  }, [chats, search, user])
   const groups = useMemo(() => groupByDate(filtered), [filtered])
 
   async function createProject() {
