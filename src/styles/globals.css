@@ -45,15 +45,16 @@ body {
    100%/100vh, so use the dynamic viewport unit with sane fallbacks, and lay the
    app out as a flex column so children stretch edge to edge. */
 #root {
-  height: 100vh;
-  height: 100dvh;
-  min-height: 100vh;
-  min-height: 100dvh;
+  /* Pin to the viewport. iOS standalone PWAs mis-size 100vh/100dvh (leaving a
+     dead strip below the app), but position:fixed + inset:0 always covers the
+     exact visual viewport — no gap. */
+  position: fixed;
+  inset: 0;
   display: flex;
   flex-direction: column;
   /* Only the top notch is padded here; the bottom (home-indicator) inset is
      handled by the composer bar itself so its background fills to the very
-     bottom edge instead of leaving a dead gap. */
+     bottom edge. */
   padding-top: env(safe-area-inset-top);
 }
 /* The app's own root + the routed page must take all available height. */
