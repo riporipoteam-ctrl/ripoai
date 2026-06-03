@@ -64,7 +64,36 @@
 
 .accent-gradient-bg {
   background: linear-gradient(120deg, #7c5cff, #4ea8ff 50%, #36e0c0);
+  background-size: 160% 160%;
+  animation: gradient-pan 8s ease infinite;
 }
+@keyframes gradient-pan {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .accent-gradient-bg { animation: none; }
+}
+
+/* Glossy sweep that crosses primary buttons on hover */
+.btn-sheen { position: relative; overflow: hidden; }
+.btn-sheen::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -60%;
+  width: 50%;
+  height: 100%;
+  background: linear-gradient(
+    100deg,
+    transparent,
+    rgb(255 255 255 / 0.45),
+    transparent
+  );
+  transform: skewX(-20deg);
+  transition: left 0.6s ease;
+}
+.btn-sheen:hover::after { left: 130%; }
 
 /* Pressable scale used on interactive glass chips */
 .pressable {

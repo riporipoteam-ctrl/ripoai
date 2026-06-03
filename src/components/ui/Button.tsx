@@ -9,10 +9,10 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variants: Record<Variant, string> = {
   primary:
-    'accent-gradient-bg text-white shadow-lg shadow-accent/30 hover:brightness-110',
+    'btn-sheen accent-gradient-bg text-white shadow-lg shadow-accent/30 hover:-translate-y-0.5 hover:shadow-xl hover:shadow-accent/40',
   ghost: 'text-ink/80 hover:bg-ink/5 dark:hover:bg-white/5',
-  glass: 'glass text-ink hover:brightness-105',
-  danger: 'bg-red-500/90 text-white hover:bg-red-500',
+  glass: 'glass text-ink hover:brightness-105 hover:-translate-y-0.5',
+  danger: 'bg-red-500/90 text-white hover:bg-red-500 hover:-translate-y-0.5',
 }
 
 const Button = forwardRef<HTMLButtonElement, Props>(

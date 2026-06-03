@@ -1,11 +1,8 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  createUserWithEmailAndPassword,
-  signInWithPopup,
-  updateProfile,
-} from 'firebase/auth'
-import { auth, googleProvider } from '../firebase'
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
+import { auth } from '../firebase'
+import { signInWithGoogle, googleRedirectPending } from '../lib/googleAuth'
 import AuthShell from '../components/AuthShell'
 import GoogleButton from '../components/GoogleButton'
 import Button from '../components/ui/Button'
@@ -16,7 +13,7 @@ export default function SignUp() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(googleRedirectPending())
   const [error, setError] = useState('')
 
   async function submit(e: React.FormEvent) {
@@ -37,7 +34,7 @@ export default function SignUp() {
     setError('')
     setLoading(true)
     try {
-      await signInWithPopup(auth, googleProvider)
+      await signInWithGoogle()
     } catch (err: any) {
       setError(friendlyAuthError(err?.code ?? ''))
       setLoading(false)
@@ -53,7 +50,7 @@ export default function SignUp() {
           placeholder="Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          className="w-full rounded-2xl border border-white/15 bg-white/5 px-4 py-3 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30"
+          className="field"
         />
         <input
           type="email"
@@ -62,7 +59,7 @@ export default function SignUp() {
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-2xl border border-white/15 bg-white/5 px-4 py-3 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30"
+          className="field"
         />
         <input
           type="password"
@@ -71,7 +68,7 @@ export default function SignUp() {
           placeholder="Password (min 6 characters)"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-2xl border border-white/15 bg-white/5 px-4 py-3 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30"
+          className="field"
         />
         {error && <p className="text-sm text-red-400">{error}</p>}
         <Button type="submit" disabled={loading} className="w-full py-3">
@@ -80,9 +77,9 @@ export default function SignUp() {
       </form>
 
       <div className="my-5 flex items-center gap-3 text-xs text-muted">
-        <div className="h-px flex-1 bg-white/10" />
+        <div className="h-px flex-1 bg-ink/10" />
         OR
-        <div className="h-px flex-1 bg-white/10" />
+        <div className="h-px flex-1 bg-ink/10" />
       </div>
 
       <GoogleButton onClick={google} disabled={loading} label="Sign up with Google" />

@@ -57,38 +57,97 @@ body {
   overflow: hidden;
 }
 
-/* Animated ambient background — the "liquid glass" backdrop */
+/* Animated ambient background — the "liquid glass" backdrop.
+   Three independently-drifting colour orbs in the brand palette over a soft
+   base wash for real depth instead of a flat tint. */
 .aurora {
   position: fixed;
   inset: 0;
   z-index: 0;
   overflow: hidden;
-  background: rgb(var(--surface));
+  background:
+    radial-gradient(120% 90% at 50% -10%, rgb(var(--page-grad-2) / 0.9), transparent 60%),
+    rgb(var(--surface));
 }
 .aurora::before,
 .aurora::after {
   content: '';
   position: absolute;
-  width: 70vmax;
-  height: 70vmax;
+  width: 62vmax;
+  height: 62vmax;
   border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.7;
-  background: radial-gradient(circle at 30% 30%, rgb(var(--page-grad-1)), transparent 60%),
-    radial-gradient(circle at 70% 70%, rgb(var(--page-grad-3)), transparent 60%);
-  animation: drift 26s ease-in-out infinite;
+  filter: blur(90px);
+  opacity: 0.75;
+  will-change: transform;
+}
+.aurora::before {
+  top: -16vmax;
+  left: -12vmax;
+  background: radial-gradient(circle at 50% 50%, rgb(16 163 127 / 0.55), transparent 62%);
+  animation: drift1 28s ease-in-out infinite;
 }
 .aurora::after {
-  background: radial-gradient(circle at 60% 40%, rgb(var(--page-grad-2)), transparent 60%);
-  animation-duration: 34s;
-  animation-direction: reverse;
-  top: -20vmax;
-  right: -20vmax;
+  bottom: -18vmax;
+  right: -14vmax;
+  background: radial-gradient(circle at 50% 50%, rgb(124 92 255 / 0.5), transparent 62%);
+  animation: drift2 36s ease-in-out infinite;
 }
-@keyframes drift {
-  0%, 100% { transform: translate(-10%, -10%) scale(1); }
-  50% { transform: translate(10%, 10%) scale(1.15); }
+.aurora > .aurora-orb {
+  position: absolute;
+  top: 30%;
+  left: 55%;
+  width: 46vmax;
+  height: 46vmax;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.5;
+  background: radial-gradient(circle at 50% 50%, rgb(78 168 255 / 0.5), transparent 60%);
+  animation: drift3 32s ease-in-out infinite;
+  will-change: transform;
 }
+.dark .aurora::before { opacity: 0.55; }
+.dark .aurora::after { opacity: 0.5; }
+.dark .aurora > .aurora-orb { opacity: 0.4; }
+
+@keyframes drift1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(14vmax, 10vmax) scale(1.18); }
+}
+@keyframes drift2 {
+  0%, 100% { transform: translate(0, 0) scale(1.05); }
+  50% { transform: translate(-12vmax, -8vmax) scale(1); }
+}
+@keyframes drift3 {
+  0%, 100% { transform: translate(-30%, -20%) scale(1); }
+  33% { transform: translate(10%, -30%) scale(1.15); }
+  66% { transform: translate(-40%, 10%) scale(0.92); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aurora::before, .aurora::after, .aurora > .aurora-orb { animation: none; }
+}
+
+/* Reusable form field — visible in both themes (the old white/5 fill vanished
+   on light backgrounds). Glassy fill, clear accent focus ring. */
+.field {
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid rgb(var(--ink) / 0.12);
+  background: rgb(var(--surface-raised) / 0.7);
+  padding: 0.8rem 1rem;
+  color: rgb(var(--ink));
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.field::placeholder { color: rgb(var(--muted) / 0.8); }
+.field:focus {
+  border-color: rgb(var(--accent) / 0.7);
+  box-shadow: 0 0 0 4px rgb(var(--accent) / 0.18);
+  background: rgb(var(--surface-raised) / 0.92);
+}
+.dark .field { border-color: rgb(255 255 255 / 0.1); background: rgb(255 255 255 / 0.05); }
+.dark .field:focus { background: rgb(255 255 255 / 0.08); }
 
 /* Scrollbars */
 ::-webkit-scrollbar { width: 10px; height: 10px; }

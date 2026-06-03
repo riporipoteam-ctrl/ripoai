@@ -4,6 +4,7 @@ import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from './firebase'
 import { useStore, applyAppearance } from './store'
 import { initNative, syncStatusBarTheme } from './lib/native'
+import { completeGoogleRedirect } from './lib/googleAuth'
 import SignIn from './pages/SignIn'
 import SignUp from './pages/SignUp'
 import Home from './pages/Home'
@@ -49,6 +50,8 @@ export default function App() {
   // Wire up the native shell (status bar, keyboard, back button, haptics).
   useEffect(() => {
     initNative()
+    // Complete any Google redirect sign-in (the PWA/standalone path).
+    completeGoogleRedirect()
   }, [])
 
   useEffect(() => {
@@ -86,7 +89,9 @@ export default function App() {
 
   return (
     <>
-      <div className="aurora" aria-hidden />
+      <div className="aurora" aria-hidden>
+        <div className="aurora-orb" />
+      </div>
       <div className="relative z-10 h-full">
         <Routes>
           <Route
