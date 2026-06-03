@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, ArrowUp, Square, Globe, Bot, ImageIcon, Paperclip, X, FileText, Loader2, Mic, Phone, Sparkles } from 'lucide-react'
+import { Plus, ArrowUp, Square, Globe, Bot, ImageIcon, Paperclip, X, FileText, Loader2, Mic, Phone, Sparkles, Check } from 'lucide-react'
 import ModelSelector from './ModelSelector'
 import { useVoiceInput, hapticPattern } from '../hooks/useSpeech'
 import { fileToAttachment } from '../lib/files'
@@ -232,6 +232,45 @@ export default function Composer({
                         </span>
                         Upload file
                       </button>
+
+                      <div className="my-1.5 h-px bg-white/10" />
+                      <div className="px-3 pb-1 text-[11px] font-bold uppercase tracking-widest text-muted/70">
+                        Modes
+                      </div>
+                      <button
+                        onClick={() => { haptic('select'); onToggleWeb(); setPlusOpen(false) }}
+                        className={`pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium ${webSearch ? 'bg-accent/15' : 'hover:bg-white/10'}`}
+                      >
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                          <Globe size={18} />
+                        </span>
+                        Web search
+                        {webSearch && <Check size={18} className="ml-auto text-accent" />}
+                      </button>
+                      <button
+                        onClick={() => { haptic('select'); onToggleAgent(); setPlusOpen(false) }}
+                        className={`pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium ${agent ? 'bg-accent/15' : 'hover:bg-white/10'}`}
+                      >
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                          <Bot size={18} />
+                        </span>
+                        Agent
+                        {agent && <Check size={18} className="ml-auto text-accent" />}
+                      </button>
+                      {onToggleImage && (
+                        <button
+                          onClick={() => { haptic('select'); onToggleImage?.(); setPlusOpen(false) }}
+                          className={`pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium ${imageMode ? 'bg-accent/15' : 'hover:bg-white/10'}`}
+                        >
+                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                            <Sparkles size={18} />
+                          </span>
+                          Generate image
+                          {imageMode && <Check size={18} className="ml-auto text-accent" />}
+                        </button>
+                      )}
+
+                      <div className="my-1.5 h-px bg-white/10" />
                       {onVoiceCall && (
                         <button
                           onClick={() => {
@@ -254,34 +293,29 @@ export default function Composer({
             )}
           </div>
 
-          {/* Mode chips */}
-          <button
-            onClick={() => { haptic('select'); onToggleWeb() }}
-            className={`pressable flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-              webSearch ? 'accent-gradient-bg text-white' : 'border border-white/15 text-muted hover:text-ink'
-            }`}
-            title="Web search mode"
-          >
-            <Globe size={14} /> Search
-          </button>
-          <button
-            onClick={() => { haptic('select'); onToggleAgent() }}
-            className={`pressable flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-              agent ? 'accent-gradient-bg text-white' : 'border border-white/15 text-muted hover:text-ink'
-            }`}
-            title="Agent mode (autonomous web research)"
-          >
-            <Bot size={14} /> Agent
-          </button>
-          {onToggleImage && (
+          {/* Active mode pill (modes now live in the + menu) */}
+          {webSearch && (
+            <button
+              onClick={() => { haptic('select'); onToggleWeb() }}
+              className="pressable flex items-center gap-1.5 rounded-full accent-gradient-bg px-3 py-1.5 text-xs font-semibold text-white"
+            >
+              <Globe size={14} /> Search <X size={13} className="opacity-80" />
+            </button>
+          )}
+          {agent && (
+            <button
+              onClick={() => { haptic('select'); onToggleAgent() }}
+              className="pressable flex items-center gap-1.5 rounded-full accent-gradient-bg px-3 py-1.5 text-xs font-semibold text-white"
+            >
+              <Bot size={14} /> Agent <X size={13} className="opacity-80" />
+            </button>
+          )}
+          {imageMode && onToggleImage && (
             <button
               onClick={() => { haptic('select'); onToggleImage?.() }}
-              className={`pressable flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
-                imageMode ? 'accent-gradient-bg text-white' : 'border border-white/15 text-muted hover:text-ink'
-              }`}
-              title="Image generation mode"
+              className="pressable flex items-center gap-1.5 rounded-full accent-gradient-bg px-3 py-1.5 text-xs font-semibold text-white"
             >
-              <Sparkles size={14} /> Image
+              <Sparkles size={14} /> Image <X size={13} className="opacity-80" />
             </button>
           )}
 

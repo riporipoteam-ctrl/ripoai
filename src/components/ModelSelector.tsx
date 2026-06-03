@@ -4,10 +4,13 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, Check, Zap, Sparkles, Gauge } from 'lucide-react'
 import { MODEL_LIST, type ModelTier, type RipoModel } from '../lib/models'
 
-const CATEGORIES: { label: string; ids: ModelTier[] }[] = [
-  { label: 'Latest', ids: ['ripoai-4o-pro', 'ripoai-3o-pro', 'ripoai-3o-instant'] },
+// 4o Pro is featured on top; the rest live in categories that are collapsed by
+// default — tap a category to reveal its (older) models.
+const FEATURED: ModelTier[] = ['ripoai-4o-pro']
+const GROUPS: { label: string; ids: ModelTier[] }[] = [
+  { label: 'RipoAI 3o', ids: ['ripoai-3o-pro', 'ripoai-3o-instant'] },
   { label: 'RipoAI 2o', ids: ['ripoai-2o-pro', 'ripoai-2o-instant'] },
-  { label: 'Older — RipoAI 1o', ids: ['ripoai-1o-pro', 'ripoai-1o-instant'] },
+  { label: 'RipoAI 1o', ids: ['ripoai-1o-pro', 'ripoai-1o-instant'] },
 ]
 
 function modelIcon(m: RipoModel) {
@@ -31,14 +34,26 @@ export default function ModelSelector({
   onOpenChange?: (open: boolean) => void
 }) {
   const [open, setOpen] = useState(false)
+  const [openGroups, setOpenGroups] = useState<Set<string>>(new Set())
   const current = MODEL_LIST.find((m) => m.id === value) ?? MODEL_LIST[0]
 
   function setOpenState(v: boolean) {
     setOpen(v)
     onOpenChange?.(v)
+    // When opening, auto-expand the category that holds the current model.
+    if (v) {
+      const g = GROUPS.find((g) => g.ids.includes(value))
+      setOpenGroups(new Set(g ? [g.label] : []))
+    }
+  }
+  function toggleGroup(label: string) {
+    setOpenGroups((prev) => {
+      const next = new Set(prev)
+      next.has(label) ? next.delete(label) : next.add(label)
+      return next
+    })
   }
 
-  // Lock background scroll while the sheet is open.
   useEffect(() => {
     if (!open) return
     const prev = document.body.style.overflow
@@ -47,6 +62,48 @@ export default function ModelSelector({
       document.body.style.overflow = prev
     }
   }, [open])
+
+  function ModelButton({ id }: { id: ModelTier }) {
+    const m = MODEL_LIST.find((x) => x.id === id)
+    if (!m) return null
+    const Icon = modelIcon(m)
+    const selected = m.id === value
+    return (
+      <button
+        onClick={() => {
+          onChange(m.id)
+          setOpenState(false)
+        }}
+        className={`pressable flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition ${
+          selected ? 'border-accent/50 bg-accent/10' : 'border-white/10 hover:bg-white/5'
+        }`}
+      >
+        <span
+          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+            selected ? 'accent-gradient-bg text-white' : 'bg-white/10 text-accent'
+          }`}
+        >
+          <Icon size={18} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-1.5">
+            <span className="truncate font-semibold">{m.name}</span>
+            {m.badge && (
+              <span
+                className={`rounded-full bg-gradient-to-r px-1.5 py-px text-[9px] font-bold text-white ${
+                  badgeColor[m.badge] ?? 'from-accent to-blue-500'
+                }`}
+              >
+                {m.badge}
+              </span>
+            )}
+          </span>
+          <span className="block truncate text-xs text-muted">{m.tagline}</span>
+        </span>
+        {selected && <Check size={18} className="shrink-0 text-accent" />}
+      </button>
+    )
+  }
 
   return (
     <>
@@ -59,8 +116,6 @@ export default function ModelSelector({
         <ChevronDown size={15} className={`shrink-0 text-muted transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
-      {/* Rendered in a portal so it escapes the composer's backdrop-filter
-          stacking context — nothing (including the pet) can paint over it. */}
       {createPortal(
         <AnimatePresence>
           {open && (
@@ -70,11 +125,7 @@ export default function ModelSelector({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              {/* dimmed, blurred backdrop */}
-              <div
-                className="absolute inset-0 bg-black/45 backdrop-blur-sm"
-                onClick={() => setOpenState(false)}
-              />
+              <div className="absolute inset-0 bg-black/45 backdrop-blur-sm" onClick={() => setOpenState(false)} />
 
               <motion.div
                 initial={{ y: '100%' }}
@@ -83,62 +134,46 @@ export default function ModelSelector({
                 transition={{ type: 'spring', stiffness: 360, damping: 34 }}
                 className="glass-strong relative w-full max-w-lg rounded-t-[28px] p-3 pb-[max(env(safe-area-inset-bottom),1rem)] shadow-2xl sm:mb-0 sm:rounded-[28px]"
               >
-                {/* grab handle */}
                 <div className="mx-auto mb-2 h-1.5 w-10 rounded-full bg-[rgb(var(--muted)/0.4)] sm:hidden" />
                 <div className="px-2 pb-2 text-base font-bold">Choose a model</div>
                 <div className="max-h-[68vh] space-y-2 overflow-y-auto">
-                  {CATEGORIES.map((cat) => {
-                    const models = cat.ids.map((id) => MODEL_LIST.find((m) => m.id === id)!).filter(Boolean)
-                    if (!models.length) return null
+                  {/* Featured */}
+                  {FEATURED.map((id) => (
+                    <ModelButton key={id} id={id} />
+                  ))}
+
+                  {/* Collapsible categories (closed by default) */}
+                  {GROUPS.map((g) => {
+                    const isOpen = openGroups.has(g.label)
                     return (
-                      <div key={cat.label}>
-                        <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-muted/70">
-                          {cat.label}
-                        </div>
-                        <div className="space-y-1.5">
-                          {models.map((m) => {
-                            const Icon = modelIcon(m)
-                            const selected = m.id === value
-                            return (
-                              <button
-                                key={m.id}
-                                onClick={() => {
-                                  onChange(m.id)
-                                  setOpenState(false)
-                                }}
-                                className={`pressable flex w-full items-center gap-3 rounded-2xl border p-3 text-left transition ${
-                                  selected
-                                    ? 'border-accent/50 bg-accent/10'
-                                    : 'border-white/10 hover:bg-white/5'
-                                }`}
-                              >
-                                <span
-                                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-                                    selected ? 'accent-gradient-bg text-white' : 'bg-white/10 text-accent'
-                                  }`}
-                                >
-                                  <Icon size={18} />
-                                </span>
-                                <span className="min-w-0 flex-1">
-                                  <span className="flex items-center gap-1.5">
-                                    <span className="truncate font-semibold">{m.name}</span>
-                                    {m.badge && (
-                                      <span
-                                        className={`rounded-full bg-gradient-to-r px-1.5 py-px text-[9px] font-bold text-white ${
-                                          badgeColor[m.badge] ?? 'from-accent to-blue-500'
-                                        }`}
-                                      >
-                                        {m.badge}
-                                      </span>
-                                    )}
-                                  </span>
-                                  <span className="block truncate text-xs text-muted">{m.tagline}</span>
-                                </span>
-                                {selected && <Check size={18} className="shrink-0 text-accent" />}
-                              </button>
-                            )
-                          })}
-                        </div>
+                      <div key={g.label} className="overflow-hidden rounded-2xl border border-white/10">
+                        <button
+                          onClick={() => toggleGroup(g.label)}
+                          className="flex w-full items-center justify-between gap-2 px-3 py-3 text-left text-sm font-semibold hover:bg-white/5"
+                        >
+                          <span>{g.label}</span>
+                          <ChevronDown
+                            size={16}
+                            className={`text-muted transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                          />
+                        </button>
+                        <AnimatePresence initial={false}>
+                          {isOpen && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.2 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="space-y-1.5 p-2 pt-0">
+                                {g.ids.map((id) => (
+                                  <ModelButton key={id} id={id} />
+                                ))}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     )
                   })}
