@@ -22,7 +22,8 @@ import { clearAllChats, clearMemories, deleteMemory } from '../lib/db'
 import { listVoices, getVoicePrefs, setVoicePrefs, speak, stopSpeaking, isSpeechSupported } from '../hooks/useSpeech'
 import { isGmailConnected, connectGmail, disconnectGmail } from '../lib/gmail'
 import { isCalendarConnected, connectCalendar, disconnectCalendar } from '../lib/calendar'
-import { Calendar as CalIcon, Cloud, Map as MapIcon, Bitcoin, Globe } from 'lucide-react'
+import { Calendar as CalIcon, Cloud, Map as MapIcon, Bitcoin, Globe, Wand2 } from 'lucide-react'
+import { loadSkills, deleteSkill, installSkillFromUrl, type Skill } from '../lib/skills'
 
 const ACCENTS = ['#10a37f', '#4ea8ff', '#36e0c0', '#7c5cff', '#ff6b6b', '#ffa94d', '#f06595']
 const TABS = [
@@ -30,6 +31,7 @@ const TABS = [
   { id: 'personal', label: 'Personalization', icon: UserIcon },
   { id: 'voice', label: 'Voice', icon: Volume2 },
   { id: 'memory', label: 'Memory', icon: Brain },
+  { id: 'skills', label: 'Skills', icon: Wand2 },
   { id: 'data', label: 'Data controls', icon: Database },
   { id: 'about', label: 'About', icon: Info },
 ] as const
@@ -51,6 +53,27 @@ export default function Settings() {
   const [gmailErr, setGmailErr] = useState('')
   const [cal, setCal] = useState(isCalendarConnected())
   const [calErr, setCalErr] = useState('')
+  const [skills, setSkills] = useState<Skill[]>([])
+  const [skillUrl, setSkillUrl] = useState('')
+  const [skillBusy, setSkillBusy] = useState(false)
+  const [skillErr, setSkillErr] = useState('')
+  useEffect(() => {
+    if (settingsOpen && user) setSkills(loadSkills(user.uid))
+  }, [settingsOpen, tab, user])
+  async function installSkill() {
+    if (!user || !skillUrl.trim()) return
+    setSkillBusy(true)
+    setSkillErr('')
+    try {
+      await installSkillFromUrl(user.uid, skillUrl.trim())
+      setSkillUrl('')
+      setSkills(loadSkills(user.uid))
+    } catch (e: any) {
+      setSkillErr(e?.message ?? 'Install failed.')
+    } finally {
+      setSkillBusy(false)
+    }
+  }
 
   useEffect(() => {
     if (!isSpeechSupported()) return
@@ -352,6 +375,76 @@ export default function Settings() {
                     ))}
                   </ul>
                 )}
+              </div>
+            </>
+          )}
+
+          {tab === 'skills' && (
+            <>
+              <div>
+                <div className="font-semibold">Skills</div>
+                <p className="mt-1 text-xs text-muted">
+                  Skills are instruction packs RipoAI can follow. Type <code className="rounded bg-white/10 px-1">/</code> in
+                  chat to use one, try <code className="rounded bg-white/10 px-1">/skill-creator</code> to build your own,
+                  or in chat say <code className="rounded bg-white/10 px-1">install this skill: &lt;url&gt;</code>.
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-semibold">Install from a URL</label>
+                <div className="flex gap-2">
+                  <input
+                    value={skillUrl}
+                    onChange={(e) => setSkillUrl(e.target.value)}
+                    placeholder="https://… (GitHub raw / markdown)"
+                    className="field flex-1 text-sm"
+                  />
+                  <button
+                    onClick={installSkill}
+                    disabled={skillBusy || !skillUrl.trim()}
+                    className="accent-gradient-bg rounded-2xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                  >
+                    {skillBusy ? 'Installing…' : 'Install'}
+                  </button>
+                </div>
+                {skillErr && <p className="mt-1 text-xs text-red-400">{skillErr}</p>}
+              </div>
+
+              <div>
+                <div className="mb-2 text-sm font-semibold">Installed skills ({skills.length})</div>
+                <ul className="space-y-2">
+                  {skills.map((s) => (
+                    <li key={s.id} className="flex items-start gap-3 rounded-2xl border border-white/10 px-3 py-2.5">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                        <Wand2 size={16} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-semibold">
+                          {s.name} <span className="font-normal text-muted">/{s.slug}</span>
+                          {s.source === 'builtin' && (
+                            <span className="ml-1.5 rounded-full bg-white/10 px-1.5 py-px text-[9px] font-bold uppercase text-muted">
+                              built-in
+                            </span>
+                          )}
+                        </div>
+                        {s.description && <div className="truncate text-xs text-muted">{s.description}</div>}
+                      </div>
+                      {s.source !== 'builtin' && (
+                        <button
+                          onClick={() => {
+                            if (user) {
+                              deleteSkill(user.uid, s.id)
+                              setSkills(loadSkills(user.uid))
+                            }
+                          }}
+                          className="rounded-lg p-1 text-muted hover:bg-white/10 hover:text-red-400"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </li>
+                  ))}
+                </ul>
               </div>
             </>
           )}

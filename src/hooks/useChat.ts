@@ -12,6 +12,7 @@ import { getModel, type ModelTier } from '../lib/models'
 import { buildSystemPrompt, AGENT_SYSTEM } from '../lib/prompt'
 import { searchModel, shouldAutoSearch } from '../lib/search'
 import { extractMemories } from '../lib/memory'
+import { installSkillFromUrl, detectSkillInstall, detectSlashSkill, findSkill } from '../lib/skills'
 import { haptic } from './useSpeech'
 import { useStore } from '../store'
 import {
@@ -156,6 +157,44 @@ export function useChat(chatId: string | undefined) {
       const model = getModel(opts.model)
       const lastUser = [...history].reverse().find((m) => m.role === 'user')
 
+      // Skill install — "install this skill: <url>" fetches + saves a skill.
+      const installUrl = !opts.image && !opts.systemOverride ? detectSkillInstall(lastUser?.content ?? '') : null
+      if (installUrl) {
+        const assistantId = uid4()
+        setMessages((m) => [
+          ...m,
+          { id: assistantId, role: 'assistant', content: 'Installing skill…', model: opts.model, createdAt: Date.now() },
+        ])
+        setStreaming(true)
+        let finalMsgs: StoredMessage[] = []
+        try {
+          const skill = await installSkillFromUrl(user.uid, installUrl)
+          setMessages((m) => {
+            finalMsgs = m.map((x) =>
+              x.id === assistantId
+                ? {
+                    ...x,
+                    content: `**${skill.name}** is installed. Use it anytime by typing \`/${skill.slug}\`.`,
+                    skillInstalled: { name: skill.name, description: skill.description },
+                  }
+                : x,
+            )
+            return finalMsgs
+          })
+        } catch (e: any) {
+          setMessages((m) => {
+            finalMsgs = m.map((x) =>
+              x.id === assistantId ? { ...x, content: `⚠️ ${e?.message ?? "Couldn't install that skill."}` } : x,
+            )
+            return finalMsgs
+          })
+        }
+        setStreaming(false)
+        if (titleRef.current === 'New chat') titleRef.current = 'Installed a skill'
+        await persist(finalMsgs, id, opts.model, opts.projectId)
+        return
+      }
+
       // Presentation generation — build a slide deck the user can preview + export.
       if (!opts.image && !opts.systemOverride && wantsSlides(lastUser?.content ?? '')) {
         const prompt = (lastUser?.content ?? '').trim()
@@ -286,6 +325,16 @@ export function useChat(chatId: string | undefined) {
           : buildSystemPrompt(model, settings, memories))
 
       const lastText = lastUser?.content ?? ''
+
+      // Skills: if the message starts with "/slug", load that skill and follow it.
+      if (!opts.systemOverride) {
+        const slug = detectSlashSkill(lastText)
+        if (slug) {
+          const skill = findSkill(user.uid, slug)
+          if (skill)
+            system += `\n\n### Active skill: ${skill.name}\nFollow these instructions for this response:\n${skill.content}`
+        }
+      }
 
       // Location awareness: give the AI the user's REAL location (device GPS +
       // reverse geocode) for "where am I / near me / find X" questions, in any

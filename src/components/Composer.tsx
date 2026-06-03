@@ -9,6 +9,9 @@ import { IMAGE_STYLES } from '../lib/imagegen'
 import type { Attachment } from '../lib/db'
 import type { ModelTier } from '../lib/models'
 import { haptic } from '../lib/native'
+import { matchSkills } from '../lib/skills'
+import { useStore } from '../store'
+import { Wand2 } from 'lucide-react'
 
 interface Props {
   model: ModelTier
@@ -47,8 +50,18 @@ export default function Composer({
   showModelSelector = true,
   onVoiceCall,
 }: Props) {
+  const { user } = useStore()
   const [text, setText] = useState('')
   const [attachments, setAttachments] = useState<Attachment[]>([])
+
+  // Slash-command skill picker: typing "/" (before a space) lists matching skills.
+  const slashQuery = text.startsWith('/') && !text.includes(' ') ? text.slice(1) : null
+  const slashSkills = slashQuery !== null && user ? matchSkills(user.uid, slashQuery).slice(0, 6) : []
+  function pickSkill(slug: string) {
+    setText(`/${slug} `)
+    haptic('select')
+    requestAnimationFrame(() => taRef.current?.focus())
+  }
   const [plusOpen, setPlusOpen] = useState(false)
 
   useEffect(() => {
@@ -156,6 +169,37 @@ export default function Composer({
           ))}
         </div>
       )}
+
+      {/* Slash skill picker */}
+      <AnimatePresence>
+        {slashSkills.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            className="glass-strong mb-2 max-h-64 overflow-y-auto rounded-2xl p-1.5 shadow-xl"
+          >
+            <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-muted/70">Skills</div>
+            {slashSkills.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => pickSkill(s.slug)}
+                className="pressable flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left hover:bg-white/10"
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/15 text-accent">
+                  <Wand2 size={16} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold">
+                    {s.name} <span className="font-normal text-muted">/{s.slug}</span>
+                  </span>
+                  {s.description && <span className="block truncate text-xs text-muted">{s.description}</span>}
+                </span>
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="relative z-20 rounded-[26px] border border-white/15 bg-[rgb(var(--glass-bg)/0.5)] p-2 shadow-sm backdrop-blur-xl">
         <textarea

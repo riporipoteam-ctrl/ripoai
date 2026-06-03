@@ -45,6 +45,8 @@ export interface StoredMessage {
   deck?: any
   /** Suggested tappable follow-up prompts (assistant messages). */
   followups?: string[]
+  /** Set when a skill was just installed (shows an install animation card). */
+  skillInstalled?: { name: string; description: string }
   /** User-saved/bookmarked message. */
   bookmarked?: boolean
   createdAt: number

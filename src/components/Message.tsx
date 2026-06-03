@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Copy, Check, RefreshCw, Pencil, FileText, Volume2, Square, Bookmark, ArrowUpRight } from 'lucide-react'
+import { Copy, Check, RefreshCw, Pencil, FileText, Volume2, Square, Bookmark, ArrowUpRight, Wand2 } from 'lucide-react'
 import { Markdown } from './Markdown'
 import Reasoning from './Reasoning'
 import AgentTrace from './AgentTrace'
@@ -11,6 +11,8 @@ import SlidesCard from './SlidesCard'
 import Logo from './Logo'
 import { MODELS } from '../lib/models'
 import { speak, stopSpeaking, isSpeechSupported } from '../hooks/useSpeech'
+import { parseSkillBlock, saveSkill } from '../lib/skills'
+import { useStore } from '../store'
 import type { StoredMessage } from '../lib/db'
 
 interface Props {
@@ -24,6 +26,12 @@ interface Props {
 }
 
 export default function Message({ message, streaming, isLastAssistant, onRegenerate, onEdit, onFollowup, onToggleBookmark }: Props) {
+  const { user } = useStore()
+  const [installedSkill, setInstalledSkill] = useState('')
+  const skillFromBlock =
+    message.role !== 'user' && /```skill[\s\S]*?```/i.test(message.content)
+      ? parseSkillBlock(message.content)
+      : null
   const [copied, setCopied] = useState(false)
   const [editing, setEditing] = useState(false)
   const [speaking, setSpeaking] = useState(false)
@@ -165,6 +173,32 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
             <div className="truncate px-3 py-2 text-xs text-muted">{message.imagePending.prompt}</div>
           </div>
         )}
+        {message.skillInstalled && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92, y: 6 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            className="mb-2 flex items-center gap-3 rounded-2xl border border-accent/30 bg-accent/10 p-3"
+          >
+            <motion.span
+              initial={{ rotate: -20, scale: 0.6 }}
+              animate={{ rotate: 0, scale: 1 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 14, delay: 0.05 }}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl accent-gradient-bg text-white"
+            >
+              <Wand2 size={20} />
+            </motion.span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 text-sm font-bold">
+                {message.skillInstalled.name}
+                <Check size={15} className="text-accent" />
+              </div>
+              {message.skillInstalled.description && (
+                <div className="truncate text-xs text-muted">{message.skillInstalled.description}</div>
+              )}
+            </div>
+          </motion.div>
+        )}
         {message.image && <ImageCard prompt={message.image.prompt} url={message.image.url} />}
         {message.map && <MapCard data={message.map} />}
         {message.weather && <WeatherCard data={message.weather} />}
@@ -173,6 +207,20 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
           <div className={liveStreaming ? 'stream-caret' : ''}>
             <Markdown>{message.content}</Markdown>
           </div>
+        )}
+        {skillFromBlock && !liveStreaming && (
+          <button
+            onClick={() => {
+              if (!user) return
+              saveSkill(user.uid, skillFromBlock)
+              setInstalledSkill(skillFromBlock.name)
+            }}
+            disabled={!!installedSkill}
+            className="pressable mt-3 inline-flex items-center gap-2 rounded-2xl accent-gradient-bg px-4 py-2 text-sm font-semibold text-white disabled:opacity-70"
+          >
+            {installedSkill ? <Check size={16} /> : <Wand2 size={16} />}
+            {installedSkill ? `Installed “${installedSkill}” — use /${skillFromBlock.slug}` : `Install skill “${skillFromBlock.name}”`}
+          </button>
         )}
         {!liveStreaming && message.content && (
           <div className="mt-2 flex items-center gap-1">
