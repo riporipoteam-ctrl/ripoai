@@ -37,15 +37,28 @@
 }
 
 html,
-body,
-#root {
+body {
   height: 100%;
 }
 
-/* Respect device safe areas (notch / status bar / home indicator) in the app. */
+/* Fill the whole screen on installed/home-screen PWAs. iOS standalone mishandles
+   100%/100vh, so use the dynamic viewport unit with sane fallbacks, and lay the
+   app out as a flex column so children stretch edge to edge. */
 #root {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  /* Respect device safe areas (notch / status bar / home indicator). */
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
+}
+/* The app's own root + the routed page must take all available height. */
+#root > * {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 body {

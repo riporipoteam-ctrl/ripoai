@@ -9,7 +9,7 @@ import { IMAGE_STYLES } from '../lib/imagegen'
 import type { Attachment } from '../lib/db'
 import type { ModelTier } from '../lib/models'
 import { haptic } from '../lib/native'
-import Mascot, { type MascotState } from './Mascot'
+import type { MascotState } from './Mascot'
 
 interface Props {
   model: ModelTier
@@ -34,7 +34,6 @@ interface Props {
 export default function Composer({
   model,
   onModelChange,
-  mascotState = 'idle',
   webSearch,
   agent,
   imageMode,
@@ -53,8 +52,6 @@ export default function Composer({
   const [text, setText] = useState('')
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [plusOpen, setPlusOpen] = useState(false)
-  const [modelMenuOpen, setModelMenuOpen] = useState(false)
-  const menuOpen = plusOpen || modelMenuOpen
 
   useEffect(() => {
     if (!plusOpen) return
@@ -108,20 +105,6 @@ export default function Composer({
 
   return (
     <div className="relative mx-auto w-full max-w-3xl">
-      {/* RipoAI mascot perched on the input — hidden while a menu/sheet is open
-          so it can never paint over it. */}
-      <AnimatePresence>
-        {!menuOpen && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            className="absolute -top-9 left-4 z-10"
-          >
-            <Mascot state={mascotState} size={48} />
-          </motion.div>
-        )}
-      </AnimatePresence>
       {err && <p className="mb-2 px-2 text-xs text-red-400">{err}</p>}
       {!!attachments.length && (
         <div className="mb-2 flex flex-wrap gap-2 px-1">
@@ -293,7 +276,7 @@ export default function Composer({
 
           <div className="ml-auto flex items-center gap-1.5">
             {showModelSelector && (
-              <ModelSelector value={model} onChange={onModelChange} onOpenChange={setModelMenuOpen} />
+              <ModelSelector value={model} onChange={onModelChange} />
             )}
             {voice.supported && !streaming && (
               <button

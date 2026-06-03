@@ -8,6 +8,7 @@ import Composer from './Composer'
 import VoiceCall from './VoiceCall'
 import Message from './Message'
 import Logo from './Logo'
+import AssistantHero from './AssistantHero'
 import type { ModelTier } from '../lib/models'
 import type { Attachment } from '../lib/db'
 
@@ -97,18 +98,18 @@ export default function ChatView() {
       )}
       <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto">
         {empty ? (
-          <div className="flex h-full flex-col items-center justify-center px-4">
+          <div className="flex h-full flex-col items-center justify-center px-4 py-6">
             <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
+              initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="mb-5 animate-float"
+              transition={{ type: 'spring', stiffness: 200, damping: 18 }}
             >
-              <Logo size={56} glow />
+              <AssistantHero size={160} />
             </motion.div>
             <motion.h1
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-center text-3xl font-bold sm:text-4xl"
+              className="-mt-2 text-center text-3xl font-bold sm:text-4xl"
             >
               <span className="brand-gradient">{timeGreet}, {greeting}.</span>
             </motion.h1>
@@ -116,11 +117,11 @@ export default function ChatView() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="mt-2 text-center text-lg text-muted"
+              className="mt-2 text-center text-base text-muted sm:text-lg"
             >
               What are you planning to do today?
             </motion.p>
-            <div className="mt-8 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="mt-7 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
               {SUGGESTIONS.map((s, i) => (
                 <motion.button
                   key={s.title}
