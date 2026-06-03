@@ -32,12 +32,24 @@ const NO_SEARCH = [
 export function shouldAutoSearch(text: string): boolean {
   const t = text.trim()
   // Don't auto-search trivial chit-chat / very short greetings.
-  if (t.length < 6) return false
+  if (t.length < 5) return false
   if (NO_SEARCH.some((re) => re.test(t))) return false
+  // Any explicit question mark — language-agnostic, catches non-English queries
+  // like "Gdje se nalazi …?" that the English hints would miss.
+  if (/[?？]/.test(t)) return true
+  // Multilingual interrogatives (Bosnian/Croatian/Serbian + a few common langs)
+  // so factual questions in the user's own language still trigger search.
+  if (
+    /\b(gdje|kako|kada|kad|za[sš]to|koji|koja|koje|kojem|kojoj|[sš]ta|[sš]to|ko|tko|koliko|da li|je li|ima li|gde)\b/i.test(
+      t,
+    )
+  )
+    return true
+  if (/\b(qué|cómo|cuándo|dónde|quién|cuánto|où|comment|pourquoi|quand|qui|combien|was|wie|wo|wann|warum|wer)\b/i.test(t))
+    return true
   if (SEARCH_HINTS.some((re) => re.test(t))) return true
-  // Otherwise: a question that names a proper noun (a capitalised word that
-  // isn't the first word) usually needs facts about the world → search.
-  if (/\?/.test(t) && /\s[A-Z][a-zA-Z]{2,}/.test(t)) return true
+  // A question that names a proper noun usually needs facts about the world.
+  if (/\s[A-Z][a-zA-Z]{2,}/.test(t)) return true
   return false
 }
 

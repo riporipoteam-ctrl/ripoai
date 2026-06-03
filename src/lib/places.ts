@@ -79,3 +79,52 @@ export function getUserLocation(timeout = 8000): Promise<[number, number] | null
     )
   })
 }
+
+export interface UserPlace {
+  lat: number
+  lng: number
+  city?: string
+  country?: string
+  label: string
+}
+
+let cachedPlace: UserPlace | null = null
+
+// The user's real location (device GPS + reverse geocode), cached for the
+// session. Used to give the AI accurate "where am I / near me" context instead
+// of it hallucinating a city.
+export async function getUserPlace(): Promise<UserPlace | null> {
+  if (cachedPlace) return cachedPlace
+  const loc = await getUserLocation()
+  if (!loc) return null
+  let city: string | undefined
+  let country: string | undefined
+  try {
+    const r = await fetch(`https://photon.komoot.io/reverse?lat=${loc[0]}&lon=${loc[1]}`)
+    const d = await r.json()
+    const p = d?.features?.[0]?.properties ?? {}
+    city = p.city || p.town || p.village || p.name || p.county || p.state
+    country = p.country
+  } catch {
+    /* reverse geocode failed — still return coords */
+  }
+  const label =
+    [city, country].filter(Boolean).join(', ') || `${loc[0].toFixed(3)}, ${loc[1].toFixed(3)}`
+  cachedPlace = { lat: loc[0], lng: loc[1], city, country, label }
+  return cachedPlace
+}
+
+// Does the message need the user's location? (multilingual — EN + Bosnian/
+// Croatian/Serbian + common roots) so "where am I", "gdje sam", "u kojem
+// gradu", "near me", "auto servis ... blizu" all trigger location context.
+export function wantsLocationContext(text: string): boolean {
+  return (
+    wantsPlaces(text) ||
+    /\b(where am i|my location|my city|which city|what city|near me|nearby|around me|closest|nearest|here|my area|directions)\b/i.test(
+      text,
+    ) ||
+    /(gdje sam|gdje se|u kojem gradu|koji grad|moja lokacij|gde sam|gde se|blizu mene|u mojoj blizini|pored mene|gdje je|gdje su|najbli|lokacij|grad u kojem)/i.test(
+      text,
+    )
+  )
+}

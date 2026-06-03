@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { streamChat, complete, type ChatMessage, type ContentPart } from '../lib/groq'
 import { imageUrl, styleSuffix, dimsFor } from '../lib/imagegen'
 import { composeTextOnImage } from '../lib/compose'
-import { wantsPlaces, searchPlaces, getUserLocation } from '../lib/places'
+import { wantsPlaces, searchPlaces, getUserLocation, getUserPlace, wantsLocationContext } from '../lib/places'
 import { wantsWeather, getWeather } from '../lib/weather'
 import { wantsCurrency, convertCurrency } from '../lib/currency'
 import { wantsDefine, getDefinition, wantsWiki, getWiki, wantsUnits, convertUnits } from '../lib/tools'
@@ -288,6 +288,15 @@ export function useChat(chatId: string | undefined) {
 
       const lastText = lastUser?.content ?? ''
 
+      // Location awareness: give the AI the user's REAL location (device GPS +
+      // reverse geocode) for "where am I / near me / find X" questions, in any
+      // language — so it stops hallucinating a city.
+      if (!opts.image && !opts.systemOverride && wantsLocationContext(lastText)) {
+        const place = await getUserPlace()
+        if (place)
+          system += `\n\nThe user's current location (from their device GPS) is: ${place.label} (latitude ${place.lat.toFixed(4)}, longitude ${place.lng.toFixed(4)}). Use this as their actual location. Do NOT guess a different city.`
+      }
+
       // Always-on tools: currency, units, dictionary, wikipedia.
       if (!opts.image && !opts.systemOverride) {
         if (wantsCurrency(lastText)) {
@@ -320,9 +329,9 @@ export function useChat(chatId: string | undefined) {
       let placesData: { center: [number, number]; places: any[]; label: string } | null = null
       if (!opts.image && !opts.systemOverride && !opts.agent && wantsPlaces(lastText)) {
         setMessages((m) => m) // no-op to keep order
-        const near = /\bnear me|nearby|near by|around me|closest|nearest\b/i.test(lastText)
-          ? await getUserLocation()
-          : null
+        // Bias all place searches to the user's real location (cached).
+        const place = await getUserPlace()
+        const near: [number, number] | null = place ? [place.lat, place.lng] : null
         const res = await searchPlaces(lastText, near || undefined)
         if (res && res.places.length) {
           placesData = { center: res.center, places: res.places, label: res.label }
