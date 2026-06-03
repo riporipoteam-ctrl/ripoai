@@ -76,6 +76,14 @@ export function getNvidiaBase(): string {
   return base.replace(/\/$/, '')
 }
 
+// Root of the NVIDIA proxy (worker), used to build /genai/<model> image URLs.
+export function getNvidiaProxyRoot(): string {
+  return getNvidiaBase()
+    .replace(/\/v1\/chat\/completions$/, '')
+    .replace(/\/chat\/completions$/, '')
+    .replace(/\/$/, '')
+}
+
 export function getNvidiaKey(): string {
   try {
     const local = localStorage.getItem(NV_KEY_STORAGE)
@@ -113,6 +121,8 @@ export interface StreamOptions {
   reasoningEffort?: string
   /** 'groq' (default), 'openrouter', or 'nvidia'. */
   provider?: 'groq' | 'openrouter' | 'nvidia'
+  /** Ask GLM (NVIDIA) to emit its thinking as reasoning. */
+  thinking?: boolean
   signal?: AbortSignal
   /** Called with each token of the visible answer. */
   onToken?: (delta: string) => void
@@ -207,6 +217,8 @@ export async function streamChat(opts: StreamOptions): Promise<StreamResult> {
   // Groq uses max_completion_tokens + reasoning_effort; OpenRouter/NVIDIA use max_tokens.
   if (isOR || isNV) {
     body.max_tokens = opts.maxTokens ?? 4096
+    if (isNV && opts.thinking)
+      body.chat_template_kwargs = { enable_thinking: true, clear_thinking: false }
   } else {
     body.max_completion_tokens = opts.maxTokens ?? 8192
     if (opts.reasoningEffort) body.reasoning_effort = opts.reasoningEffort

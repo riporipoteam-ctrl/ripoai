@@ -8,11 +8,15 @@ function withSeed(url: string, seed: number): string {
 
 export default function ImageCard({ prompt, url }: { prompt: string; url: string }) {
   const [src, setSrc] = useState(url)
-  const [loaded, setLoaded] = useState(false)
+  // Data-URL images (NVIDIA FLUX) are already generated and load instantly;
+  // reseeding only applies to the old URL-based provider.
+  const isData = url.startsWith('data:')
+  const [loaded, setLoaded] = useState(isData)
   const [attempt, setAttempt] = useState(0)
   const [failed, setFailed] = useState(false)
 
   function retry() {
+    if (isData) return
     setLoaded(false)
     setFailed(false)
     const next = attempt + 1
@@ -86,17 +90,20 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
         </span>
         {loaded && (
           <div className="flex shrink-0 items-center gap-1">
-            <button
-              onClick={retry}
-              className="pressable rounded-lg p-1.5 text-muted hover:bg-white/10 hover:text-ink"
-              title="Regenerate"
-            >
-              <RefreshCw size={15} />
-            </button>
+            {!isData && (
+              <button
+                onClick={retry}
+                className="pressable rounded-lg p-1.5 text-muted hover:bg-white/10 hover:text-ink"
+                title="Regenerate"
+              >
+                <RefreshCw size={15} />
+              </button>
+            )}
             <a
               href={src}
               target="_blank"
               rel="noreferrer"
+              download="ripoai-image.jpg"
               className="pressable rounded-lg p-1.5 text-muted hover:bg-white/10 hover:text-ink"
               title="Open / download"
             >

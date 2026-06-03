@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { streamChat, complete, type ChatMessage, type ContentPart } from '../lib/groq'
-import { imageUrl, styleSuffix, dimsFor } from '../lib/imagegen'
+import { generateImage, styleSuffix, dimsFor } from '../lib/imagegen'
 import { composeTextOnImage } from '../lib/compose'
 import { wantsPlaces, searchPlaces, getUserLocation, getUserPlace, wantsLocationContext } from '../lib/places'
 import { wantsWeather, getWeather } from '../lib/weather'
@@ -191,7 +191,7 @@ export function useChat(chatId: string | undefined) {
         const assistantId = uid4()
         setMessages((m) => [
           ...m,
-          { id: assistantId, role: 'assistant', content: '', model: opts.model, createdAt: Date.now() },
+          { id: assistantId, role: 'assistant', content: '', model: opts.model, createdAt: Date.now(), imagePending: { prompt: prompt || 'image' } },
         ])
         setStreaming(true)
 
@@ -228,7 +228,23 @@ export function useChat(chatId: string | undefined) {
 
         const styledScene = (scene + styleSuffix(opts.imageStyle)).slice(0, 900)
         const { w, h } = dimsFor(prompt)
-        const baseUrl = editBase || imageUrl(styledScene, { w, h })
+        let baseUrl: string
+        try {
+          baseUrl = editBase || (await generateImage(styledScene, { w, h }))
+        } catch (e: any) {
+          let errMsgs: StoredMessage[] = []
+          setMessages((m) => {
+            errMsgs = m.map((x) =>
+              x.id === assistantId
+                ? { ...x, imagePending: undefined, content: `⚠️ Couldn't generate the image. ${e?.message ?? ''}`.trim() }
+                : x,
+            )
+            return errMsgs
+          })
+          setStreaming(false)
+          await persist(errMsgs, id, opts.model, opts.projectId)
+          return
+        }
         let finalUrl = baseUrl
         if (overlay) {
           try {
@@ -241,7 +257,7 @@ export function useChat(chatId: string | undefined) {
         let finalMsgs: StoredMessage[] = []
         setMessages((m) => {
           finalMsgs = m.map((x) =>
-            x.id === assistantId ? { ...x, content: '', image: { prompt, url: finalUrl } } : x,
+            x.id === assistantId ? { ...x, content: '', imagePending: undefined, image: { prompt, url: finalUrl } } : x,
           )
           return finalMsgs
         })
@@ -458,6 +474,7 @@ export function useChat(chatId: string | undefined) {
                 maxTokens: a.maxTokens,
                 topP: model.topP,
                 reasoningEffort: a.reasoningEffort,
+                thinking: a.provider === 'nvidia' && model.reasoning,
                 signal: ac.signal,
                 onToken,
                 onReasoning,

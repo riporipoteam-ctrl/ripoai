@@ -123,7 +123,7 @@ export const MODELS: Record<ModelTier, RipoModel> = {
     nvModel: 'z-ai/glm-5.1',
     groqModel: 'openai/gpt-oss-120b',
     vision: false,
-    reasoning: false,
+    reasoning: true,
     temperature: 0.7,
     maxTokens: 6000,
     topP: 1,

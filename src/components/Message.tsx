@@ -144,6 +144,27 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
           </div>
         )}
         {message.reasoning && <Reasoning text={message.reasoning} live={liveStreaming && !message.content} />}
+        {message.imagePending && (
+          <div className="w-full max-w-sm overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-lg">
+            <div className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold">
+              <span className="text-accent">✦</span> Generating image
+              <span className="ml-auto flex gap-1">
+                <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent" />
+                <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent [animation-delay:0.2s]" />
+                <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent [animation-delay:0.4s]" />
+              </span>
+            </div>
+            <div className="relative aspect-square w-full">
+              <div className="img-skeleton absolute inset-0">
+                <div className="img-shimmer absolute inset-0" />
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="animate-float text-4xl opacity-70">✦</span>
+              </div>
+            </div>
+            <div className="truncate px-3 py-2 text-xs text-muted">{message.imagePending.prompt}</div>
+          </div>
+        )}
         {message.image && <ImageCard prompt={message.image.prompt} url={message.image.url} />}
         {message.map && <MapCard data={message.map} />}
         {message.weather && <WeatherCard data={message.weather} />}

@@ -9,12 +9,14 @@ export const IMAGE_STYLES: { id: string; label: string; suffix: string }[] = [
   { id: 'sketch', label: 'Sketch', suffix: ', detailed pencil sketch, hand-drawn, black and white' },
 ]
 
+import { getNvidiaProxyRoot } from './groq'
+
 export function styleSuffix(id?: string): string {
   return IMAGE_STYLES.find((s) => s.id === id)?.suffix ?? ''
 }
 
-// Pick sensible dimensions from the request so wallpapers/portraits/banners
-// aren't squeezed into a square. Flux handles non-square sizes well.
+// Pick dimensions from the request. Values are constrained to NVIDIA FLUX's
+// allowed set (768/832/896/960/1024/1088/1152) so requests never 422.
 export function dimsFor(prompt: string): { w: number; h: number } {
   const p = prompt.toLowerCase()
   const portrait =
@@ -23,9 +25,48 @@ export function dimsFor(prompt: string): { w: number; h: number } {
     /\b(landscape|desktop wallpaper|wallpaper|banner|cover|thumbnail|16:9|wide|horizontal|cinematic|panorama)\b/.test(
       p,
     )
-  if (portrait && !landscape) return { w: 768, h: 1344 }
-  if (landscape) return { w: 1344, h: 768 }
+  if (portrait && !landscape) return { w: 896, h: 1152 }
+  if (landscape) return { w: 1152, h: 896 }
   return { w: 1024, h: 1024 }
+}
+
+// Generate an image with NVIDIA FLUX.1-dev (via the proxy worker). Returns a
+// base64 data URL. This replaces the old keyless Pollinations endpoint, which
+// went paid (HTTP 402).
+export async function generateImage(
+  prompt: string,
+  opts: { w?: number; h?: number; seed?: number; signal?: AbortSignal } = {},
+): Promise<string> {
+  const root = getNvidiaProxyRoot()
+  const res = await fetch(`${root}/genai/black-forest-labs/flux.1-dev`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal: opts.signal,
+    body: JSON.stringify({
+      prompt: prompt.slice(0, 9000),
+      mode: 'base',
+      width: opts.w ?? 1024,
+      height: opts.h ?? 1024,
+      steps: 40,
+      cfg_scale: 4.5,
+      samples: 1,
+      seed: opts.seed ?? Math.floor(Math.random() * 1_000_000),
+    }),
+  })
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(`Image generation failed (${res.status}). ${t.slice(0, 160)}`)
+  }
+  const data = await res.json()
+  // NVIDIA/Stability-style responses vary; accept the common shapes.
+  const b64: string | undefined =
+    data?.artifacts?.[0]?.base64 ||
+    data?.data?.[0]?.b64_json ||
+    data?.image ||
+    data?.b64_json ||
+    (Array.isArray(data?.images) ? data.images[0] : undefined)
+  if (!b64) throw new Error('Image generation returned no image.')
+  return b64.startsWith('data:') ? b64 : `data:image/jpeg;base64,${b64}`
 }
 
 // Free, keyless image generation via Pollinations (open CORS — usable directly

@@ -35,6 +35,8 @@ export interface StoredMessage {
   steps?: { type: string; detail?: string }[]
   /** Set when this is an image-generation result. */
   image?: { prompt: string; url: string }
+  /** True while an image is being generated (shows the animated placeholder). */
+  imagePending?: { prompt: string }
   /** Set when this message includes a places/map result. */
   map?: { center: [number, number]; places: { name: string; address: string; lat: number; lng: number; category?: string }[]; label: string }
   /** Set when this message includes a weather result. */
