@@ -8,7 +8,6 @@ import Composer from './Composer'
 import VoiceCall from './VoiceCall'
 import Message from './Message'
 import Logo from './Logo'
-import AssistantHero from './AssistantHero'
 import type { ModelTier } from '../lib/models'
 import type { Attachment } from '../lib/db'
 
@@ -55,17 +54,6 @@ export default function ChatView() {
 
   const opts = { model, webSearch, agent, image: imageMode, imageStyle }
 
-  const lastMsg = messages[messages.length - 1]
-  const mascotState: import('./Mascot').MascotState = streaming
-    ? lastMsg?.steps?.length
-      ? 'searching'
-      : imageMode
-        ? 'coding'
-        : lastMsg?.content
-          ? 'speaking'
-          : 'thinking'
-    : 'idle'
-
   function handleSend(text: string, attachments: Attachment[]) {
     send(text, attachments, opts)
   }
@@ -108,8 +96,9 @@ export default function ChatView() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ type: 'spring', stiffness: 200, damping: 18 }}
+              className="animate-float"
             >
-              <AssistantHero size={160} />
+              <Logo size={72} variant="icon" glow />
             </motion.div>
             <motion.h1
               initial={{ opacity: 0, y: 10 }}
@@ -200,7 +189,6 @@ export default function ChatView() {
         <Composer
           model={model}
           onModelChange={setModel}
-          mascotState={mascotState}
           webSearch={webSearch}
           agent={agent}
           imageMode={imageMode}

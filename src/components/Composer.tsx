@@ -9,12 +9,10 @@ import { IMAGE_STYLES } from '../lib/imagegen'
 import type { Attachment } from '../lib/db'
 import type { ModelTier } from '../lib/models'
 import { haptic } from '../lib/native'
-import type { MascotState } from './Mascot'
 
 interface Props {
   model: ModelTier
   onModelChange: (m: ModelTier) => void
-  mascotState?: MascotState
   webSearch: boolean
   agent: boolean
   imageMode?: boolean
