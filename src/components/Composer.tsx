@@ -157,7 +157,7 @@ export default function Composer({
         </div>
       )}
 
-      <div className="relative z-20 rounded-[26px] border border-[rgb(var(--ink)/0.1)] bg-[rgb(var(--surface)/0.65)] p-2 shadow-sm">
+      <div className="relative z-20 rounded-[26px] border border-white/15 bg-[rgb(var(--glass-bg)/0.5)] p-2 shadow-sm backdrop-blur-xl">
         <textarea
           ref={taRef}
           value={text}

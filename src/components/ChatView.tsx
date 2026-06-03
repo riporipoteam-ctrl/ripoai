@@ -68,7 +68,7 @@ export default function ChatView() {
       {/* Top app bar — gives the screen real structure instead of two lonely
           floating icons. Shown when the sidebar is collapsed (i.e. on mobile). */}
       {!sidebarOpen && (
-        <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-[rgb(var(--ink)/0.06)] bg-[rgb(var(--surface)/0.6)] px-2.5 py-2 backdrop-blur-xl">
+        <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-white/10 bg-[rgb(var(--glass-bg)/0.32)] px-2.5 py-2 backdrop-blur-2xl backdrop-saturate-150">
           <button
             onClick={toggleSidebar}
             className="pressable rounded-xl p-2 text-ink hover:bg-[rgb(var(--ink)/0.06)]"
@@ -168,7 +168,7 @@ export default function ChatView() {
         )}
       </div>
 
-      <div className="relative border-t border-[rgb(var(--ink)/0.08)] bg-[rgb(var(--surface-raised)/0.92)] px-3 pt-2.5 pb-[max(env(safe-area-inset-bottom),0.7rem)] shadow-[0_-12px_40px_-16px_rgba(0,0,0,0.28)] backdrop-blur-2xl sm:px-4 sm:pb-4">
+      <div className="relative border-t border-white/15 bg-[rgb(var(--glass-bg)/0.38)] px-3 pt-2.5 pb-[max(env(safe-area-inset-bottom),0.7rem)] backdrop-blur-2xl backdrop-saturate-150 sm:px-4 sm:pb-4">
         <AnimatePresence>
           {!empty && !atBottom && (
             <motion.button

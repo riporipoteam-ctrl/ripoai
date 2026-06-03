@@ -5,7 +5,9 @@
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image()
-    img.crossOrigin = 'anonymous' // Pollinations sends ACAO:* so canvas stays untainted
+    // Only needed for remote images; data: URLs (NVIDIA FLUX) must NOT set this
+    // or some browsers fail to decode them, yielding a black canvas.
+    if (!src.startsWith('data:')) img.crossOrigin = 'anonymous'
     img.onload = () => resolve(img)
     img.onerror = reject
     img.src = src
@@ -77,14 +79,7 @@ export async function composeTextOnImage(
   ctx.shadowBlur = fontSize * 0.4
   ctx.shadowOffsetY = fontSize * 0.12
   ctx.fillStyle = 'rgba(255,255,255,0.96)'
-  roundRect(ctx, bx, by, bubbleW, bubbleH, fontSize * 0.5)
-  ctx.fill()
-  // little speech-bubble tail
-  ctx.beginPath()
-  ctx.moveTo(cx - fontSize * 0.35, by + bubbleH - 2)
-  ctx.lineTo(cx + fontSize * 0.35, by + bubbleH - 2)
-  ctx.lineTo(cx, by + bubbleH + fontSize * 0.5)
-  ctx.closePath()
+  roundRect(ctx, bx, by, bubbleW, bubbleH, fontSize * 0.4)
   ctx.fill()
   ctx.restore()
 
