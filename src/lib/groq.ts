@@ -67,8 +67,12 @@ const NVIDIA_DIRECT = 'https://integrate.api.nvidia.com/v1/chat/completions'
 const NVIDIA_PROXY_DEFAULT = 'https://ripoai-nvidia.ripo-ripoteam.workers.dev'
 
 export function getNvidiaBase(): string {
-  const base = ((import.meta.env.VITE_NVIDIA_BASE as string) || NVIDIA_PROXY_DEFAULT).trim()
-  if (!base) return NVIDIA_DIRECT
+  let base = ((import.meta.env.VITE_NVIDIA_BASE as string) || '').trim()
+  // Be resilient to a misconfigured secret (e.g. an API key pasted into
+  // VITE_NVIDIA_BASE): anything that isn't an http(s) URL is ignored and we fall
+  // back to the known-good worker. This prevents the app from POSTing to a
+  // relative URL (which a static host answers with 405).
+  if (!/^https?:\/\//i.test(base)) base = NVIDIA_PROXY_DEFAULT
   // Talking straight to NVIDIA (CORS will block browsers — only for proxies/tests).
   if (base.includes('integrate.api.nvidia.com')) return NVIDIA_DIRECT
   if (base.endsWith('/chat/completions')) return base
