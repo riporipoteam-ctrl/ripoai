@@ -178,6 +178,41 @@ export async function installSkillFromUrl(uid: string, url: string): Promise<Ski
   return skill
 }
 
+// Automatically pick the most relevant USER skill for a message (like auto web
+// search). Returns null fast when the user has no custom skills. Uses a keyword
+// shortcut, then a quick LLM classifier.
+export async function autoPickSkill(
+  uid: string,
+  text: string,
+  classify: (model: string, messages: { role: 'system' | 'user' | 'assistant'; content: string }[], opts?: any) => Promise<string>,
+): Promise<Skill | null> {
+  const custom = loadSkills(uid).filter((s) => s.source !== 'builtin')
+  if (!custom.length || text.trim().length < 8) return null
+  const lower = text.toLowerCase()
+  for (const s of custom) {
+    if (lower.includes(s.name.toLowerCase()) || lower.includes(s.slug.replace(/-/g, ' '))) return s
+  }
+  try {
+    const list = custom.map((s, i) => `${i + 1}. ${s.name} — ${s.description}`).join('\n')
+    const ans = await classify(
+      'llama-3.1-8b-instant',
+      [
+        {
+          role: 'system',
+          content:
+            'Pick the single most relevant skill for the user message. Reply with ONLY the skill number, or 0 if none clearly applies.',
+        },
+        { role: 'user', content: `Skills:\n${list}\n\nMessage: "${text.slice(0, 400)}"\n\nNumber:` },
+      ],
+      { maxTokens: 4, temperature: 0 },
+    )
+    const n = parseInt((ans.match(/\d+/) || ['0'])[0], 10)
+    return n >= 1 && n <= custom.length ? custom[n - 1] : null
+  } catch {
+    return null
+  }
+}
+
 // Detect "install this skill: <url>" in a message.
 export function detectSkillInstall(text: string): string | null {
   const m = text.match(/install\s+(?:this\s+)?skill\s*:?\s*(https?:\/\/\S+)/i)

@@ -11,6 +11,13 @@ const IDENTITY_RULES = `IDENTITY (strict): You are "RipoAI". You were created by
 
 const DESIGN_PERSONA = `You have world-class taste in product and UI design. When asked to build or design interfaces, produce modern, polished, responsive results with thoughtful spacing, typography, motion and accessibility.`
 
+/** Is the user asking to build a website (→ premium 3D mode)? */
+export function wantsWebsite(text: string): boolean {
+  return /\b(website|web ?site|web ?page|landing ?page|portfolio site|one ?pager|splash page|marketing site|build (me )?an? (site|website|web ?app|landing)|3d ?(web)?site|hero section|awwwards|scroll(y|-based)? (site|animation))\b/i.test(
+    text,
+  )
+}
+
 /** Builds the system message for a normal chat turn. */
 export function buildSystemPrompt(
   model: RipoModel,
@@ -85,8 +92,28 @@ Design bar (make it genuinely stunning, agency-quality):
   • 3D: Three.js (https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js).
   • Icons: Font Awesome CDN. Fonts: Google Fonts <link>.
 - Use REAL images via hotlinkable URLs: https://picsum.photos/seed/<word>/1200/800, avatars https://api.dicebear.com/9.x/avataaars/svg?seed=<name>. Never leave empty image boxes.
-- Ship a COMPLETE, valid, self-contained page that runs with zero errors. Close every tag. No TODOs, no "rest here", no placeholders. Prioritize FINISHING the page over excessive length so it never gets cut off mid-file.`
+- Ship a COMPLETE, valid, self-contained page that runs with zero errors. Close every tag. No TODOs, no "rest here", no placeholders. Prioritize FINISHING the page over excessive length so it never gets cut off mid-file.
+
+For anything cinematic / portfolio / agency / product / "cool 3D" — go full premium:
+- SMOOTH SCROLL with Lenis (cdn jsdelivr @studio-freight/lenis@1.0.42), driven by a rAF loop.
+- GSAP + ScrollTrigger (cdnjs 3.12.5) for pinned, scrubbed, staggered scroll animations + parallax.
+- A real Three.js (r128) animated WebGL hero in a fixed full-screen canvas behind the content (floating glossy mesh or particle field reacting to mouse + scroll, 60fps, handles resize).
+- Split-text heading reveals, a custom lerped cursor, magnetic buttons, grain overlay. Dark, cinematic, huge display type.`
 
 export const AGENT_SYSTEM = `You are RipoAI Agent — an autonomous research agent with live web search.
 Work in visible steps: state a short plan, search/read the web as needed, then deliver a thorough, well-cited answer.
 Always include source links inline as Markdown when you used the web. Be accurate and current.`
+
+// Injected when the user asks to build a website — turns out award-winning
+// ("Awwwards"-tier) 3D / scroll-animated sites, the kind agencies charge $10k+ for.
+export const WEB3D_INSTRUCTIONS = `PREMIUM 3D WEBSITE MODE — build a cinematic, award-winning ("Awwwards"-tier) site, not a plain landing page. This is the bar.
+Always produce ONE complete, self-contained /index.html that runs with zero errors, with every CDN <script>/<link> in <head>.
+
+Use this stack (CDN, no build step):
+- SMOOTH SCROLL — Lenis: <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>; init it and drive it from a requestAnimationFrame loop (and feed GSAP ScrollTrigger via lenis.on('scroll', ScrollTrigger.update)).
+- SCROLL ANIMATION — GSAP + ScrollTrigger: https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js and .../gsap/3.12.5/ScrollTrigger.min.js. Use pin, scrub, stagger: pin the hero, scrub a 3D object's rotation/position to scroll, reveal sections with stagger, parallax layers at different speeds.
+- 3D — Three.js r128 (https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js): a real animated WebGL hero in a fixed full-screen <canvas> behind the content — e.g. a glossy floating mesh (icosahedron/torusKnot with MeshStandardMaterial + lights) OR a drifting particle field, rotating continuously and reacting to the mouse and to scroll. Keep it 60fps with requestAnimationFrame; handle resize.
+- TEXT — split big headings into per-word/char <span>s and GSAP-stagger them in. Reveal-on-scroll for every section.
+- DETAILS — a custom cursor (a div that lerps toward the mouse), magnetic buttons, a subtle grain/noise overlay, glassmorphism, animated gradients.
+
+Aesthetic: dark and cinematic, HUGE bold display type (Google Fonts e.g. 'Space Grotesk', 'Syne', 'Clash Display'), tons of negative space, gradient accents. Build a SUBSTANTIAL multi-section page (immersive hero, about, features/work gallery, big scroll moment, footer) and FINISH it. Use real hotlinkable images (https://picsum.photos/seed/<word>/1600/1000). No placeholders, no TODOs, close every tag.`

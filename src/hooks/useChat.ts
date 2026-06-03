@@ -9,10 +9,10 @@ import { wantsDefine, getDefinition, wantsWiki, getWiki, wantsUnits, convertUnit
 import { streamPuter } from '../lib/puter'
 import { wantsSlides, generateDeck } from '../lib/slides'
 import { getModel, type ModelTier } from '../lib/models'
-import { buildSystemPrompt, AGENT_SYSTEM } from '../lib/prompt'
+import { buildSystemPrompt, AGENT_SYSTEM, WEB3D_INSTRUCTIONS, wantsWebsite } from '../lib/prompt'
 import { searchModel, shouldAutoSearch } from '../lib/search'
 import { extractMemories } from '../lib/memory'
-import { installSkillFromUrl, detectSkillInstall, detectSlashSkill, findSkill } from '../lib/skills'
+import { installSkillFromUrl, detectSkillInstall, detectSlashSkill, findSkill, autoPickSkill } from '../lib/skills'
 import { haptic } from './useSpeech'
 import { useStore } from '../store'
 import {
@@ -326,14 +326,19 @@ export function useChat(chatId: string | undefined) {
 
       const lastText = lastUser?.content ?? ''
 
-      // Skills: if the message starts with "/slug", load that skill and follow it.
-      if (!opts.systemOverride) {
+      // Skills: explicit "/slug" wins; otherwise auto-pick the most relevant
+      // installed skill (like auto web search) and follow it.
+      if (!opts.systemOverride && !opts.image) {
         const slug = detectSlashSkill(lastText)
-        if (slug) {
-          const skill = findSkill(user.uid, slug)
-          if (skill)
-            system += `\n\n### Active skill: ${skill.name}\nFollow these instructions for this response:\n${skill.content}`
-        }
+        let activeSkill = slug ? findSkill(user.uid, slug) : null
+        if (!activeSkill) activeSkill = await autoPickSkill(user.uid, lastText, complete)
+        if (activeSkill)
+          system += `\n\n### Active skill: ${activeSkill.name}\nFollow these instructions for this response:\n${activeSkill.content}`
+      }
+
+      // Premium 3D website mode when the user asks to build a site.
+      if (!opts.image && !opts.systemOverride && wantsWebsite(lastText)) {
+        system += '\n\n' + WEB3D_INSTRUCTIONS
       }
 
       // Location awareness: give the AI the user's REAL location (device GPS +
