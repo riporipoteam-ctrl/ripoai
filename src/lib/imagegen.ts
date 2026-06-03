@@ -13,6 +13,21 @@ export function styleSuffix(id?: string): string {
   return IMAGE_STYLES.find((s) => s.id === id)?.suffix ?? ''
 }
 
+// Pick sensible dimensions from the request so wallpapers/portraits/banners
+// aren't squeezed into a square. Flux handles non-square sizes well.
+export function dimsFor(prompt: string): { w: number; h: number } {
+  const p = prompt.toLowerCase()
+  const portrait =
+    /\b(portrait|phone wallpaper|mobile wallpaper|story|reel|9:16|vertical|tall|poster)\b/.test(p)
+  const landscape =
+    /\b(landscape|desktop wallpaper|wallpaper|banner|cover|thumbnail|16:9|wide|horizontal|cinematic|panorama)\b/.test(
+      p,
+    )
+  if (portrait && !landscape) return { w: 768, h: 1344 }
+  if (landscape) return { w: 1344, h: 768 }
+  return { w: 1024, h: 1024 }
+}
+
 // Free, keyless image generation via Pollinations (open CORS — usable directly
 // as an <img> src). Returns a stable URL for a given prompt + seed.
 export function imageUrl(

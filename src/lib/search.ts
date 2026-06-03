@@ -5,21 +5,40 @@ import { COMPOUND_MODEL } from './models'
 // surface its executed tools as a live trace.
 
 const SEARCH_HINTS = [
-  /\b(latest|today|tonight|right now|currently|current|recent|recently|news|update|updates|new|just)\b/i,
-  /\b(price|prices|cost|stock|stocks|weather|score|scores|who won|release date|launch|version|rating|reviews?)\b/i,
-  /\b(20(2[3-9]|3\d))\b/, // recent/future years
+  /\b(latest|today|tonight|right now|currently|current|recent|recently|news|update|updates|new|just|now|nowadays|these days)\b/i,
+  /\b(price|prices|pricing|cost|costs|stock|stocks|crypto|weather|forecast|score|scores|who won|release date|released|launch|launched|version|rating|ratings|reviews?|deals?|specs?|salary|population|gdp|standings?)\b/i,
+  /\b(20(1\d|2[0-9]|3\d))\b/, // any explicit year
   /https?:\/\/\S+/i, // explicit URL the user wants read
-  /\bwho is\b|\bwhat happened\b|\bwhen (is|was|will|did)\b|\bwhere (is|can)\b|\bhow much\b/i,
-  /\b(is .* (still|alive|open|out|available|real)|did .* (release|launch|win|die|happen))\b/i,
-  /\b(near me|nearby|directions|schedule|hours|open now|trending|viral|live)\b/i,
-  /\b(compare|vs\.?|versus|best .* (for|to)|top \d+)\b/i,
+  /\b(who|what|which|when|where|why|how)\b.*\?/i, // any wh-question
+  /\b(who|what|which|when|where)('s| is| are| was| were| will)\b/i,
+  /\bhow (much|many|old|tall|long|far|big)\b/i,
+  /\b(is|are|was|were|does|do|did|has|have|can)\b.*\b(still|alive|open|out|available|real|true|legit|released|launched|won|died|happened)\b/i,
+  /\b(near me|nearby|directions|schedule|hours|open now|trending|viral|live|near by)\b/i,
+  /\b(compare|comparison|vs\.?|versus|difference between|best|top \d+|cheapest|fastest|biggest|largest)\b/i,
+  /\b(find|look up|lookup|search( for)?|google|tell me about|info on|information (on|about)|what'?s the|who'?s the)\b/i,
+  /\b(define|definition of|meaning of|what does .* mean)\b/i,
+]
+
+// Things that should NOT trigger a (slow) web search — coding, math, writing,
+// and personal/assistant requests the model handles directly.
+const NO_SEARCH = [
+  /\b(write|create|generate|make|build|code|fix|debug|refactor|implement|design)\b.*\b(code|function|component|app|script|program|class|html|css|website|page)\b/i,
+  /\b(translate|rewrite|summarize this|paraphrase|proofread|fix the grammar|continue (the|this))\b/i,
+  /\b(poem|story|essay|email|message|joke|song|lyrics|caption)\b/i,
+  /^\s*(hi|hey|hello|yo|sup|thanks|thank you|ok|okay|cool|nice|lol|haha|good morning|good night)\b/i,
 ]
 
 /** Heuristic: should we auto-search even when Web Search mode is off? */
 export function shouldAutoSearch(text: string): boolean {
+  const t = text.trim()
   // Don't auto-search trivial chit-chat / very short greetings.
-  if (text.trim().length < 6) return false
-  return SEARCH_HINTS.some((re) => re.test(text))
+  if (t.length < 6) return false
+  if (NO_SEARCH.some((re) => re.test(t))) return false
+  if (SEARCH_HINTS.some((re) => re.test(t))) return true
+  // Otherwise: a question that names a proper noun (a capitalised word that
+  // isn't the first word) usually needs facts about the world → search.
+  if (/\?/.test(t) && /\s[A-Z][a-zA-Z]{2,}/.test(t)) return true
+  return false
 }
 
 /** The Groq model to use when search/agent tooling is required. */

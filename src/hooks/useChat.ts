@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { streamChat, complete, type ChatMessage, type ContentPart } from '../lib/groq'
-import { imageUrl, styleSuffix } from '../lib/imagegen'
+import { imageUrl, styleSuffix, dimsFor } from '../lib/imagegen'
 import { composeTextOnImage } from '../lib/compose'
 import { wantsPlaces, searchPlaces, getUserLocation } from '../lib/places'
 import { wantsWeather, getWeather } from '../lib/weather'
@@ -225,7 +225,8 @@ export function useChat(chatId: string | undefined) {
         else if (/\bbelow\b|\bbottom\b|\bunder\b/i.test(prompt)) position = 'bottom'
 
         const styledScene = (scene + styleSuffix(opts.imageStyle)).slice(0, 900)
-        const baseUrl = editBase || imageUrl(styledScene)
+        const { w, h } = dimsFor(prompt)
+        const baseUrl = editBase || imageUrl(styledScene, { w, h })
         let finalUrl = baseUrl
         if (overlay) {
           try {
