@@ -8,6 +8,10 @@ on:
   workflow_dispatch:
   push:
     tags: ['*-android']
+    branches: ['claude/ripoai-web-app-U0rvk']
+    paths:
+      - '.github/workflows/android.yml'
+      - 'capacitor.config.ts'
 
 permissions:
   contents: write
