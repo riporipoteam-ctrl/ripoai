@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Plus, ArrowUp, Square, Globe, Bot, ImageIcon, Paperclip, X, FileText, Loader2, Mic, Phone, Sparkles } from 'lucide-react'
 import ModelSelector from './ModelSelector'
@@ -52,6 +53,17 @@ export default function Composer({
   const [text, setText] = useState('')
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [plusOpen, setPlusOpen] = useState(false)
+  const [modelMenuOpen, setModelMenuOpen] = useState(false)
+  const menuOpen = plusOpen || modelMenuOpen
+
+  useEffect(() => {
+    if (!plusOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [plusOpen])
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const taRef = useRef<HTMLTextAreaElement>(null)
@@ -96,10 +108,20 @@ export default function Composer({
 
   return (
     <div className="relative mx-auto w-full max-w-3xl">
-      {/* RipoAI mascot perched on the input */}
-      <div className="absolute -top-9 left-4 z-10">
-        <Mascot state={mascotState} size={48} />
-      </div>
+      {/* RipoAI mascot perched on the input — hidden while a menu/sheet is open
+          so it can never paint over it. */}
+      <AnimatePresence>
+        {!menuOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            className="absolute -top-9 left-4 z-10"
+          >
+            <Mascot state={mascotState} size={48} />
+          </motion.div>
+        )}
+      </AnimatePresence>
       {err && <p className="mb-2 px-2 text-xs text-red-400">{err}</p>}
       {!!attachments.length && (
         <div className="mb-2 flex flex-wrap gap-2 px-1">
@@ -171,47 +193,71 @@ export default function Composer({
             >
               {busy ? <Loader2 size={18} className="animate-spin" /> : <Plus size={20} className={plusOpen ? 'rotate-45 transition-transform' : 'transition-transform'} />}
             </button>
-            <AnimatePresence>
-              {plusOpen && (
-                <motion.div
-                  initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                  transition={{ duration: 0.15 }}
-                  className="glass-strong absolute bottom-12 left-0 z-30 w-52 overflow-hidden rounded-2xl p-1.5"
-                >
-                  <button
-                    onClick={() => {
-                      imgInput.current?.click()
-                      setPlusOpen(false)
-                    }}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-white/10"
+            {createPortal(
+              <AnimatePresence>
+                {plusOpen && (
+                  <motion.div
+                    className="fixed inset-0 z-[120] flex items-end justify-center sm:items-center"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
                   >
-                    <ImageIcon size={17} className="text-accent" /> Upload image
-                  </button>
-                  <button
-                    onClick={() => {
-                      fileInput.current?.click()
-                      setPlusOpen(false)
-                    }}
-                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-white/10"
-                  >
-                    <Paperclip size={17} className="text-accent" /> Upload file
-                  </button>
-                  {onVoiceCall && (
-                    <button
-                      onClick={() => {
-                        onVoiceCall()
-                        setPlusOpen(false)
-                      }}
-                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm hover:bg-white/10"
+                    <div
+                      className="absolute inset-0 bg-black/45 backdrop-blur-sm"
+                      onClick={() => setPlusOpen(false)}
+                    />
+                    <motion.div
+                      initial={{ y: '100%' }}
+                      animate={{ y: 0 }}
+                      exit={{ y: '100%' }}
+                      transition={{ type: 'spring', stiffness: 360, damping: 34 }}
+                      className="glass-strong relative w-full max-w-lg rounded-t-[28px] p-3 pb-[max(env(safe-area-inset-bottom),1rem)] shadow-2xl sm:mb-0 sm:rounded-[28px]"
                     >
-                      <Phone size={17} className="text-accent" /> Voice call
-                    </button>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
+                      <div className="mx-auto mb-2 h-1.5 w-10 rounded-full bg-[rgb(var(--muted)/0.4)] sm:hidden" />
+                      <button
+                        onClick={() => {
+                          imgInput.current?.click()
+                          setPlusOpen(false)
+                        }}
+                        className="pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium hover:bg-white/10"
+                      >
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                          <ImageIcon size={18} />
+                        </span>
+                        Upload image
+                      </button>
+                      <button
+                        onClick={() => {
+                          fileInput.current?.click()
+                          setPlusOpen(false)
+                        }}
+                        className="pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium hover:bg-white/10"
+                      >
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                          <Paperclip size={18} />
+                        </span>
+                        Upload file
+                      </button>
+                      {onVoiceCall && (
+                        <button
+                          onClick={() => {
+                            onVoiceCall()
+                            setPlusOpen(false)
+                          }}
+                          className="pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium hover:bg-white/10"
+                        >
+                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                            <Phone size={18} />
+                          </span>
+                          Voice call
+                        </button>
+                      )}
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>,
+              document.body,
+            )}
           </div>
 
           {/* Mode chips */}
@@ -246,7 +292,9 @@ export default function Composer({
           )}
 
           <div className="ml-auto flex items-center gap-1.5">
-            {showModelSelector && <ModelSelector value={model} onChange={onModelChange} />}
+            {showModelSelector && (
+              <ModelSelector value={model} onChange={onModelChange} onOpenChange={setModelMenuOpen} />
+            )}
             {voice.supported && !streaming && (
               <button
                 onClick={() => {
