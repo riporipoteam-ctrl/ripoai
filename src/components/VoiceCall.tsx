@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { PhoneOff, Mic } from 'lucide-react'
-import { streamChat, type ChatMessage } from '../lib/groq'
+import { PhoneOff, Mic, Camera, CameraOff, SwitchCamera } from 'lucide-react'
+import { streamChat, type ChatMessage, type ContentPart } from '../lib/groq'
 import { getModel, type ModelTier } from '../lib/models'
 import { buildSystemPrompt } from '../lib/prompt'
 import { hapticPattern, resolveVoice, getVoicePrefs } from '../hooks/useSpeech'
@@ -65,6 +65,47 @@ export default function VoiceCall({
   const activeRef = useRef(false)
   const voiceRef = useRef<SpeechSynthesisVoice | null>(null)
 
+  // Live camera vision
+  const [camOn, setCamOn] = useState(false)
+  const [facing, setFacing] = useState<'user' | 'environment'>('environment')
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const streamRef = useRef<MediaStream | null>(null)
+
+  async function startCamera(face: 'user' | 'environment' = 'environment') {
+    try {
+      streamRef.current?.getTracks().forEach((t) => t.stop())
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: face }, audio: false })
+      streamRef.current = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play().catch(() => {})
+      }
+      setFacing(face)
+      setCamOn(true)
+      hapticPattern([15])
+    } catch {
+      setCaption("I couldn't access the camera — check permissions.")
+    }
+  }
+  function stopCamera() {
+    streamRef.current?.getTracks().forEach((t) => t.stop())
+    streamRef.current = null
+    setCamOn(false)
+  }
+  // Capture the current frame, downscaled, as a JPEG data URL for the vision model.
+  function captureFrame(): string | null {
+    const v = videoRef.current
+    if (!v || !v.videoWidth) return null
+    const scale = Math.min(1, 720 / v.videoWidth)
+    const c = document.createElement('canvas')
+    c.width = Math.round(v.videoWidth * scale)
+    c.height = Math.round(v.videoHeight * scale)
+    const ctx = c.getContext('2d')
+    if (!ctx) return null
+    ctx.drawImage(v, 0, 0, c.width, c.height)
+    return c.toDataURL('image/jpeg', 0.7)
+  }
+
   useEffect(() => {
     if (!open) return
     activeRef.current = true
@@ -114,6 +155,8 @@ export default function VoiceCall({
         /* ignore */
       }
       window.speechSynthesis?.cancel()
+      streamRef.current?.getTracks().forEach((t) => t.stop())
+      streamRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
@@ -164,19 +207,34 @@ export default function VoiceCall({
     setPhase('thinking')
     setCaption('Thinking…')
     hapticPattern([10])
-    const m = getModel(model)
+    // If the camera is on, grab the current frame and answer with a vision model.
+    const frame = camOn ? captureFrame() : null
+    const m = frame ? getModel('ripoai-2o-instant') : getModel(model)
     const system =
       buildSystemPrompt(m, settings, memories) +
-      '\n\nYou are on a live VOICE call. Reply in a natural, conversational, spoken style — concise (1-4 sentences), no markdown, no lists, no code unless explicitly asked. Sound warm and human.'
+      '\n\nYou are on a live VOICE call. Reply in a natural, conversational, spoken style — concise (1-4 sentences), no markdown, no lists, no code unless explicitly asked. Sound warm and human.' +
+      (frame
+        ? " You can SEE through the user's live camera. Answer naturally about what is actually visible in the image right now; if they ask 'what is this', describe what you see."
+        : '')
     historyRef.current.push({ role: 'user', content: text })
+    const msgs: ChatMessage[] = [{ role: 'system', content: system }, ...historyRef.current.slice(-8)]
+    if (frame) {
+      // Attach the frame only to the current turn (keep history light).
+      msgs[msgs.length - 1] = {
+        role: 'user',
+        content: [
+          { type: 'text', text: text || 'What do you see?' },
+          { type: 'image_url', image_url: { url: frame } },
+        ] as ContentPart[],
+      }
+    }
     let answer = ''
     try {
       const res = await streamChat({
         model: m.groqModel,
-        messages: [{ role: 'system', content: system }, ...historyRef.current.slice(-10)],
+        messages: msgs,
         temperature: 0.7,
         maxTokens: 400,
-        reasoningEffort: m.reasoningEffort,
       })
       answer = res.content
     } catch {
@@ -229,20 +287,38 @@ export default function VoiceCall({
             <div className="mt-1 text-sm text-muted capitalize">{phase}</div>
           </div>
 
-          {/* Animated orb */}
+          {/* Live camera feed (always mounted so the ref exists) + animated orb */}
           <div className="relative flex items-center justify-center">
-            <motion.div
-              className={`h-44 w-44 rounded-full bg-gradient-to-br ${ringColor} blur-xl`}
-              animate={{
-                scale: phase === 'speaking' ? [1, 1.18, 1] : phase === 'listening' ? [1, 1.08, 1] : 1,
-                opacity: phase === 'thinking' ? [0.5, 0.9, 0.5] : 0.8,
-              }}
-              transition={{ duration: phase === 'thinking' ? 1.2 : 1.6, repeat: Infinity }}
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className={`${camOn ? 'block' : 'hidden'} h-72 w-72 rounded-[2rem] object-cover shadow-2xl ring-4`}
+              style={{ ['--tw-ring-color' as any]: 'rgb(var(--accent))' }}
             />
-            <div className={`absolute h-36 w-36 rounded-full bg-gradient-to-br ${ringColor} shadow-2xl`} />
-            <div className="absolute flex h-32 w-32 items-center justify-center rounded-full bg-surface-raised/40 backdrop-blur">
-              <Mic size={40} className="text-white" />
-            </div>
+            {camOn ? (
+              <motion.div
+                className={`pointer-events-none absolute inset-0 rounded-[2rem] bg-gradient-to-br ${ringColor} opacity-20`}
+                animate={{ opacity: phase === 'speaking' ? [0.1, 0.35, 0.1] : [0.08, 0.2, 0.08] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              />
+            ) : (
+              <>
+                <motion.div
+                  className={`h-44 w-44 rounded-full bg-gradient-to-br ${ringColor} blur-xl`}
+                  animate={{
+                    scale: phase === 'speaking' ? [1, 1.18, 1] : phase === 'listening' ? [1, 1.08, 1] : 1,
+                    opacity: phase === 'thinking' ? [0.5, 0.9, 0.5] : 0.8,
+                  }}
+                  transition={{ duration: phase === 'thinking' ? 1.2 : 1.6, repeat: Infinity }}
+                />
+                <div className={`absolute h-36 w-36 rounded-full bg-gradient-to-br ${ringColor} shadow-2xl`} />
+                <div className="absolute flex h-32 w-32 items-center justify-center rounded-full bg-surface-raised/40 backdrop-blur">
+                  <Mic size={40} className="text-white" />
+                </div>
+              </>
+            )}
           </div>
 
           <div className="w-full max-w-md text-center">
@@ -275,18 +351,45 @@ export default function VoiceCall({
               </form>
             )}
 
-            <button
-              onClick={() => {
-                hapticPattern([30])
-                endCall()
-              }}
-              className="mx-auto mt-8 flex h-16 w-16 items-center justify-center rounded-full bg-red-500 text-white shadow-lg shadow-red-500/40 transition active:scale-95"
-              aria-label="End call"
-            >
-              <PhoneOff size={26} />
-            </button>
+            <div className="mt-8 flex items-center justify-center gap-5">
+              <button
+                onClick={() => (camOn ? stopCamera() : startCamera(facing))}
+                className={`flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition active:scale-95 ${
+                  camOn ? 'accent-gradient-bg text-white' : 'bg-surface-raised/60 text-ink backdrop-blur'
+                }`}
+                aria-label={camOn ? 'Turn camera off' : 'Turn camera on'}
+                title={camOn ? 'Camera off' : 'Show camera (live vision)'}
+              >
+                {camOn ? <Camera size={22} /> : <CameraOff size={22} />}
+              </button>
+
+              <button
+                onClick={() => {
+                  hapticPattern([30])
+                  endCall()
+                }}
+                className="flex h-16 w-16 items-center justify-center rounded-full bg-red-500 text-white shadow-lg shadow-red-500/40 transition active:scale-95"
+                aria-label="End call"
+              >
+                <PhoneOff size={26} />
+              </button>
+
+              <button
+                onClick={() => camOn && startCamera(facing === 'environment' ? 'user' : 'environment')}
+                disabled={!camOn}
+                className="flex h-14 w-14 items-center justify-center rounded-full bg-surface-raised/60 text-ink shadow-lg backdrop-blur transition active:scale-95 disabled:opacity-30"
+                aria-label="Flip camera"
+                title="Flip camera"
+              >
+                <SwitchCamera size={22} />
+              </button>
+            </div>
             <p className="mt-3 text-[11px] text-muted">
-              {sttSupported ? "Uses your device's built-in voices." : 'Voice input needs Chrome; replies are spoken aloud.'}
+              {camOn
+                ? 'Live vision on — ask “what is this?” and I’ll look.'
+                : sttSupported
+                  ? "Tap the camera to let me see. Uses your device's voices."
+                  : 'Voice input needs Chrome; replies are spoken aloud.'}
             </p>
           </div>
         </motion.div>
