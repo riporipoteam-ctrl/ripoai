@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from './firebase'
 import { useStore, applyAppearance } from './store'
+import { initNative, syncStatusBarTheme } from './lib/native'
 import SignIn from './pages/SignIn'
 import SignUp from './pages/SignUp'
 import Home from './pages/Home'
@@ -45,6 +46,11 @@ function Protected({ children }: { children: React.ReactNode }) {
 export default function App() {
   const { user, authReady, setUser, setAuthReady, initUserData, teardown, settings } = useStore()
 
+  // Wire up the native shell (status bar, keyboard, back button, haptics).
+  useEffect(() => {
+    initNative()
+  }, [])
+
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u)
@@ -71,6 +77,11 @@ export default function App() {
     const handler = () => applyAppearance(useStore.getState().settings)
     mq.addEventListener('change', handler)
     return () => mq.removeEventListener('change', handler)
+  }, [settings.theme])
+
+  // Keep the native status bar icons readable against the current theme.
+  useEffect(() => {
+    syncStatusBarTheme(document.documentElement.classList.contains('dark'))
   }, [settings.theme])
 
   return (

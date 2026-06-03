@@ -7,6 +7,7 @@ import { fileToAttachment } from '../lib/files'
 import { IMAGE_STYLES } from '../lib/imagegen'
 import type { Attachment } from '../lib/db'
 import type { ModelTier } from '../lib/models'
+import { haptic } from '../lib/native'
 import Mascot, { type MascotState } from './Mascot'
 
 interface Props {
@@ -86,6 +87,7 @@ export default function Composer({
   function submit() {
     if (streaming || busy) return
     if (!text.trim() && attachments.length === 0) return
+    haptic('medium')
     onSend(text, attachments)
     setText('')
     setAttachments([])
@@ -214,7 +216,7 @@ export default function Composer({
 
           {/* Mode chips */}
           <button
-            onClick={onToggleWeb}
+            onClick={() => { haptic('select'); onToggleWeb() }}
             className={`pressable flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
               webSearch ? 'accent-gradient-bg text-white' : 'border border-white/15 text-muted hover:text-ink'
             }`}
@@ -223,7 +225,7 @@ export default function Composer({
             <Globe size={14} /> Search
           </button>
           <button
-            onClick={onToggleAgent}
+            onClick={() => { haptic('select'); onToggleAgent() }}
             className={`pressable flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
               agent ? 'accent-gradient-bg text-white' : 'border border-white/15 text-muted hover:text-ink'
             }`}
@@ -233,7 +235,7 @@ export default function Composer({
           </button>
           {onToggleImage && (
             <button
-              onClick={onToggleImage}
+              onClick={() => { haptic('select'); onToggleImage?.() }}
               className={`pressable flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                 imageMode ? 'accent-gradient-bg text-white' : 'border border-white/15 text-muted hover:text-ink'
               }`}
