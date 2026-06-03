@@ -61,14 +61,19 @@ export function setOpenRouterKey(key: string) {
 // also hold the key, in which case no client key is needed.
 const NV_KEY_STORAGE = 'ripoai-nvidia-key'
 const NVIDIA_DIRECT = 'https://integrate.api.nvidia.com/v1/chat/completions'
+// Default proxy (Cloudflare Worker) that fronts NVIDIA with CORS + holds the key
+// server-side. Hardcoding it is safe — it's just an endpoint, the key lives in
+// the worker, not here. Override with VITE_NVIDIA_BASE if you redeploy it.
+const NVIDIA_PROXY_DEFAULT = 'https://ripoai-nvidia.ripo-ripoteam.workers.dev'
 
 export function getNvidiaBase(): string {
-  const base = (import.meta.env.VITE_NVIDIA_BASE as string) || ''
+  const base = ((import.meta.env.VITE_NVIDIA_BASE as string) || NVIDIA_PROXY_DEFAULT).trim()
   if (!base) return NVIDIA_DIRECT
-  // Accept either a full endpoint or a base origin.
-  return base.endsWith('/chat/completions')
-    ? base
-    : base.replace(/\/$/, '') + '/v1/chat/completions'
+  // Talking straight to NVIDIA (CORS will block browsers — only for proxies/tests).
+  if (base.includes('integrate.api.nvidia.com')) return NVIDIA_DIRECT
+  if (base.endsWith('/chat/completions')) return base
+  // A proxy/worker: POST to it directly; it forwards to NVIDIA's endpoint.
+  return base.replace(/\/$/, '')
 }
 
 export function getNvidiaKey(): string {
@@ -272,10 +277,14 @@ export async function streamChat(opts: StreamOptions): Promise<StreamResult> {
         if (fr) finishReason = fr
         const delta = json.choices?.[0]?.delta
         if (!delta) continue
-        // Native reasoning field (gpt-oss / deepseek style).
-        if (typeof delta.reasoning === 'string' && delta.reasoning) {
-          reasoning += delta.reasoning
-          opts.onReasoning?.(delta.reasoning)
+        // Native reasoning field (gpt-oss / deepseek / GLM style).
+        const reasoningDelta =
+          (typeof delta.reasoning === 'string' && delta.reasoning) ||
+          (typeof delta.reasoning_content === 'string' && delta.reasoning_content) ||
+          ''
+        if (reasoningDelta) {
+          reasoning += reasoningDelta
+          opts.onReasoning?.(reasoningDelta)
         }
         // compound tool/search activity.
         const execTools = delta.executed_tools || json.choices?.[0]?.delta?.executed_tools

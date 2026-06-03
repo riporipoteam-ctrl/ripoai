@@ -118,9 +118,9 @@ export const MODELS: Record<ModelTier, RipoModel> = {
   'ripoai-4o-pro': {
     id: 'ripoai-4o-pro',
     name: 'RipoAI 4o Pro',
-    tagline: 'Frontier — Llama 4 Maverick (NVIDIA)',
+    tagline: 'Frontier reasoning — GLM-5.1 (NVIDIA)',
     provider: 'nvidia',
-    nvModel: 'meta/llama-4-maverick-17b-128e-instruct',
+    nvModel: 'z-ai/glm-5.1',
     groqModel: 'openai/gpt-oss-120b',
     vision: false,
     reasoning: false,
