@@ -337,9 +337,17 @@ export function useChat(chatId: string | undefined) {
       }
 
       // Premium 3D website mode when the user asks to build a site.
-      if (!opts.image && !opts.systemOverride && wantsWebsite(lastText)) {
+      const buildingSite = !opts.image && !opts.systemOverride && wantsWebsite(lastText)
+      if (buildingSite) {
         system += '\n\n' + WEB3D_INSTRUCTIONS
       }
+      // Big code/website outputs need a larger token budget (+ auto-continue below).
+      const bigOutput =
+        buildingSite ||
+        (!opts.image &&
+          /\b(full|complete|entire|whole)\b.*\b(code|app|website|page|game|file|script|component)\b|\b(build|make|create|generate|write)\b.*\b(website|web app|webapp|web page|landing|dashboard|game|app)\b|\b(three\.?js|webgl)\b/i.test(
+            lastText,
+          ))
 
       // Location awareness: give the AI the user's REAL location (device GPS +
       // reverse geocode) for "where am I / near me / find X" questions, in any
@@ -477,19 +485,21 @@ export function useChat(chatId: string | undefined) {
         attempts.push({ provider: 'groq', model: model.groqModel, maxTokens: Math.min(model.maxTokens, 4096) })
         attempts.push({ provider: 'groq', model: 'llama-3.1-8b-instant', maxTokens: 2048 })
       } else if (useNvidia) {
-        attempts.push({ provider: 'nvidia', model: model.nvModel!, maxTokens: Math.min(model.maxTokens, 4096) })
-        attempts.push({ provider: 'groq', model: model.groqModel, maxTokens: Math.min(model.maxTokens, 4096), reasoningEffort: model.reasoningEffort })
+        attempts.push({ provider: 'nvidia', model: model.nvModel!, maxTokens: bigOutput ? 8192 : Math.min(model.maxTokens, 4096) })
+        attempts.push({ provider: 'groq', model: model.groqModel, maxTokens: bigOutput ? Math.min(model.maxTokens, 8000) : Math.min(model.maxTokens, 4096), reasoningEffort: model.reasoningEffort })
         attempts.push({ provider: 'groq', model: 'llama-3.1-8b-instant', maxTokens: 2048 })
       } else if (useOR) {
         attempts.push({ provider: 'openrouter', model: model.orModel!, maxTokens: Math.min(model.maxTokens, 4096) })
         attempts.push({ provider: 'groq', model: model.groqModel, maxTokens: Math.min(model.maxTokens, 4096), reasoningEffort: model.reasoningEffort })
         attempts.push({ provider: 'groq', model: 'llama-3.1-8b-instant', maxTokens: 2048 })
       } else {
-        attempts.push({ provider: 'groq', model: groqModel, maxTokens: fallback.maxTokens, reasoningEffort })
+        attempts.push({ provider: 'groq', model: groqModel, maxTokens: bigOutput ? Math.max(fallback.maxTokens, 8000) : fallback.maxTokens, reasoningEffort })
         if (groqModel !== 'llama-3.1-8b-instant')
           attempts.push({ provider: 'groq', model: 'llama-3.1-8b-instant', maxTokens: 2048 })
       }
 
+      let usedAttempt: Attempt | null = null
+      let lastFinish: string | undefined
       try {
         for (const a of attempts) {
           if (ac.signal.aborted) break
@@ -498,7 +508,7 @@ export function useChat(chatId: string | undefined) {
             finalContent = ''
             finalReasoning = ''
             localSteps.length = 0
-            let res: { content: string; reasoning: string }
+            let res: { content: string; reasoning: string; finishReason?: string }
             if (a.provider === 'puter') {
               const pr = await streamPuter({ model: a.model, messages: groqMessages as any, signal: ac.signal, onToken })
               res = { content: pr.content, reasoning: '' }
@@ -520,10 +530,55 @@ export function useChat(chatId: string | undefined) {
             }
             finalContent = res.content
             finalReasoning = res.reasoning
-            if (finalContent.trim() || finalReasoning.trim()) break
+            if (finalContent.trim() || finalReasoning.trim()) {
+              usedAttempt = a
+              lastFinish = res.finishReason
+              break
+            }
           } catch (err: any) {
             if (err?.name === 'AbortError') throw err
             // try the next model in the chain
+          }
+        }
+
+        // Auto-continue: if the model hit its token limit mid-output (long code /
+        // premium websites), keep asking it to continue and append, seamlessly.
+        let contRounds = 0
+        while (
+          lastFinish === 'length' &&
+          usedAttempt &&
+          usedAttempt.provider !== 'puter' &&
+          finalContent.trim() &&
+          contRounds < 6 &&
+          !ac.signal.aborted
+        ) {
+          contRounds++
+          try {
+            const tail = finalContent.length > 4000 ? finalContent.slice(-3500) : finalContent
+            const cont = await streamChat({
+              provider: usedAttempt.provider as 'groq' | 'openrouter' | 'nvidia' | undefined,
+              model: usedAttempt.model,
+              messages: [
+                ...groqMessages,
+                { role: 'assistant', content: tail },
+                {
+                  role: 'user',
+                  content:
+                    'Continue EXACTLY where you left off — pick up from the very last character. Output ONLY the remaining content; do NOT repeat anything already written, do NOT restart, no commentary or code-fence re-opening unless it was still open.',
+                },
+              ],
+              temperature: model.temperature,
+              maxTokens: usedAttempt.maxTokens,
+              topP: model.topP,
+              signal: ac.signal,
+              onToken,
+              onReasoning,
+            })
+            if (!cont.content.trim()) break
+            finalContent += cont.content
+            lastFinish = cont.finishReason
+          } catch {
+            break
           }
         }
 
