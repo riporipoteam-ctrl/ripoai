@@ -36,8 +36,12 @@ export function applyAppearance(s: UserSettings) {
   } catch {
     /* ignore */
   }
-  root.style.setProperty('--accent', hexToRgb(s.accent))
-  root.style.setProperty('--accent-soft', hexToRgb(s.accent))
+  // Remap the legacy green/purple defaults to the warm clay accent so existing
+  // users get the new Claude-like look without having to reset their settings.
+  const LEGACY = new Set(['#10a37f', '#7c5cff'])
+  const accent = LEGACY.has((s.accent || '').toLowerCase()) ? '#d97757' : s.accent
+  root.style.setProperty('--accent', hexToRgb(accent))
+  root.style.setProperty('--accent-soft', hexToRgb(accent))
   root.style.setProperty('--glass-blur', `${s.glassIntensity}px`)
   root.style.fontSize = `${Math.round(16 * (s.fontScale || 1))}px`
 }

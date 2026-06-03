@@ -4,18 +4,18 @@ const config: CapacitorConfig = {
   appId: 'io.github.riporipoteam.ripoai',
   appName: 'RipoAI',
   webDir: 'dist',
-  backgroundColor: '#0b0b0f',
+  backgroundColor: '#1e1d1b',
   android: {
-    backgroundColor: '#0b0b0f',
+    backgroundColor: '#1e1d1b',
   },
   ios: {
-    backgroundColor: '#0b0b0f',
+    backgroundColor: '#1e1d1b',
     contentInset: 'always',
   },
   plugins: {
     SplashScreen: {
       launchShowDuration: 600,
-      backgroundColor: '#0b0b0f',
+      backgroundColor: '#1e1d1b',
       showSpinner: false,
       androidScaleType: 'CENTER_CROP',
       splashImmersive: true,

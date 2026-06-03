@@ -96,7 +96,7 @@ export interface UserSettings {
 
 export const DEFAULT_SETTINGS: UserSettings = {
   theme: 'system',
-  accent: '#10a37f',
+  accent: '#d97757',
   glassIntensity: 22,
   fontScale: 1,
   defaultModel: 'ripoai-2o-pro',

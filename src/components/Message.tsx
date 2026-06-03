@@ -72,7 +72,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
             <textarea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
-              className="w-full resize-none rounded-2xl border border-white/15 bg-white/5 p-3 outline-none focus:border-accent"
+              className="field resize-none"
               rows={3}
               autoFocus
             />
@@ -100,7 +100,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
         ) : (
           message.content && (
             <div className="group relative max-w-[80%]">
-              <div className="glass whitespace-pre-wrap rounded-3xl rounded-tr-lg px-4 py-2.5">
+              <div className="whitespace-pre-wrap rounded-3xl rounded-tr-lg border border-[rgb(var(--accent)/0.18)] bg-[rgb(var(--accent)/0.1)] px-4 py-2.5 text-ink">
                 {message.content}
               </div>
               {onEdit && (

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, Palette, Globe, Lightbulb, Plane } from 'lucide-react'
+import { ChevronDown, Palette, Globe, Lightbulb, Plane, PanelLeftOpen, PenSquare } from 'lucide-react'
 import { useChat } from '../hooks/useChat'
 import { useStore } from '../store'
 import Composer from './Composer'
@@ -20,7 +20,8 @@ const SUGGESTIONS = [
 
 export default function ChatView() {
   const { chatId } = useParams()
-  const { settings, user } = useStore()
+  const navigate = useNavigate()
+  const { settings, user, sidebarOpen, toggleSidebar } = useStore()
   const [model, setModel] = useState<ModelTier>(settings.defaultModel)
   const [webSearch, setWebSearch] = useState(false)
   const [agent, setAgent] = useState(false)
@@ -70,6 +71,30 @@ export default function ChatView() {
 
   return (
     <div className="flex h-full flex-col">
+      {/* Top app bar — gives the screen real structure instead of two lonely
+          floating icons. Shown when the sidebar is collapsed (i.e. on mobile). */}
+      {!sidebarOpen && (
+        <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-[rgb(var(--ink)/0.06)] bg-[rgb(var(--surface)/0.6)] px-2.5 py-2 backdrop-blur-xl">
+          <button
+            onClick={toggleSidebar}
+            className="pressable rounded-xl p-2 text-ink hover:bg-[rgb(var(--ink)/0.06)]"
+            title="Open sidebar"
+          >
+            <PanelLeftOpen size={20} />
+          </button>
+          <div className="flex items-center gap-2">
+            <Logo size={22} />
+            <span className="text-[17px] font-bold tracking-tight brand-gradient">RipoAI</span>
+          </div>
+          <button
+            onClick={() => navigate('/')}
+            className="pressable rounded-xl p-2 text-ink hover:bg-[rgb(var(--ink)/0.06)]"
+            title="New chat"
+          >
+            <PenSquare size={20} />
+          </button>
+        </header>
+      )}
       <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto">
         {empty ? (
           <div className="flex h-full flex-col items-center justify-center px-4">

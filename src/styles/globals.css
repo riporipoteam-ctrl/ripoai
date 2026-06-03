@@ -3,31 +3,32 @@
 @tailwind utilities;
 
 :root {
-  /* Light theme tokens (RGB triplets for Tailwind alpha support) */
-  --accent: 124 92 255;
-  --accent-soft: 124 92 255;
-  --surface: 247 247 250;
-  --surface-raised: 255 255 255;
-  --ink: 23 23 28;
-  --muted: 110 110 125;
-  --glass-bg: 255 255 255;
+  /* Warm, cozy "paper" light theme (RGB triplets for Tailwind alpha support). */
+  --accent: 217 119 87;
+  --accent-soft: 217 119 87;
+  --surface: 244 242 235;
+  --surface-raised: 255 253 248;
+  --ink: 41 37 33;
+  --muted: 122 114 103;
+  --glass-bg: 255 253 248;
   --glass-border: 255 255 255;
-  --page-grad-1: 235 238 255;
-  --page-grad-2: 245 240 255;
-  --page-grad-3: 235 250 248;
+  --page-grad-1: 246 230 214;
+  --page-grad-2: 250 240 230;
+  --page-grad-3: 244 228 222;
   color-scheme: light;
 }
 
 .dark {
-  --surface: 11 11 15;
-  --surface-raised: 22 22 30;
-  --ink: 236 237 243;
-  --muted: 148 150 168;
-  --glass-bg: 30 31 42;
+  /* Warm charcoal dark theme (not blue-black). */
+  --surface: 30 29 27;
+  --surface-raised: 43 41 38;
+  --ink: 236 232 225;
+  --muted: 162 153 141;
+  --glass-bg: 46 43 40;
   --glass-border: 255 255 255;
-  --page-grad-1: 24 18 48;
-  --page-grad-2: 12 14 32;
-  --page-grad-3: 10 26 30;
+  --page-grad-1: 62 44 33;
+  --page-grad-2: 38 33 29;
+  --page-grad-3: 56 40 35;
   color-scheme: dark;
 }
 
@@ -83,13 +84,13 @@ body {
 .aurora::before {
   top: -16vmax;
   left: -12vmax;
-  background: radial-gradient(circle at 50% 50%, rgb(16 163 127 / 0.55), transparent 62%);
+  background: radial-gradient(circle at 50% 50%, rgb(217 119 87 / 0.5), transparent 62%);
   animation: drift1 28s ease-in-out infinite;
 }
 .aurora::after {
   bottom: -18vmax;
   right: -14vmax;
-  background: radial-gradient(circle at 50% 50%, rgb(124 92 255 / 0.5), transparent 62%);
+  background: radial-gradient(circle at 50% 50%, rgb(224 165 94 / 0.45), transparent 62%);
   animation: drift2 36s ease-in-out infinite;
 }
 .aurora > .aurora-orb {
@@ -101,7 +102,7 @@ body {
   border-radius: 50%;
   filter: blur(100px);
   opacity: 0.5;
-  background: radial-gradient(circle at 50% 50%, rgb(78 168 255 / 0.5), transparent 60%);
+  background: radial-gradient(circle at 50% 50%, rgb(214 132 110 / 0.45), transparent 60%);
   animation: drift3 32s ease-in-out infinite;
   will-change: transform;
 }

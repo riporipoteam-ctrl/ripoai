@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import { PanelLeftOpen, PenSquare } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
@@ -15,13 +15,17 @@ const ProjectsView = lazy(() => import('../components/ProjectsView'))
 export default function Home() {
   const { sidebarOpen, toggleSidebar } = useStore()
   const navigate = useNavigate()
+  const location = useLocation()
+  // ChatView renders its own top bar; only the Projects view needs the
+  // floating fallback controls when the sidebar is collapsed.
+  const onProject = location.pathname.startsWith('/project')
 
   return (
     <div className="flex h-full w-full overflow-hidden">
       <Sidebar />
       <main className="relative flex min-w-0 flex-1 flex-col">
-        {/* Floating controls when sidebar is collapsed */}
-        {!sidebarOpen && (
+        {/* Floating controls when sidebar is collapsed (non-chat routes) */}
+        {!sidebarOpen && onProject && (
           <div className="absolute left-3 top-3 z-20 flex gap-1">
             <button
               onClick={toggleSidebar}
