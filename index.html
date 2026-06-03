@@ -35,6 +35,21 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
+      // Register the network-first service worker so the installed app always
+      // pulls the latest deploy. Reload once when a new worker takes control.
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('./sw.js').catch(function () {});
+        });
+        var __ripoRefreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+          if (__ripoRefreshing) return;
+          __ripoRefreshing = true;
+          location.reload();
+        });
+      }
+    </script>
+    <script>
       // Auto-update: if a newer build has been deployed, reload to it once so
       // users never get stuck on a stale cached bundle.
       window.addEventListener('load', function () {
