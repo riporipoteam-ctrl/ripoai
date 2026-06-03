@@ -8,6 +8,10 @@ const config: CapacitorConfig = {
   android: {
     backgroundColor: '#0b0b0f',
   },
+  ios: {
+    backgroundColor: '#0b0b0f',
+    contentInset: 'always',
+  },
 }
 
 export default config

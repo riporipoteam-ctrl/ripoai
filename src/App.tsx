@@ -7,6 +7,7 @@ import SignIn from './pages/SignIn'
 import SignUp from './pages/SignUp'
 import Home from './pages/Home'
 import Onboarding from './components/Onboarding'
+import InstallHint from './components/InstallHint'
 import Logo from './components/Logo'
 import Spinner from './components/ui/Spinner'
 
@@ -95,6 +96,7 @@ export default function App() {
           />
         </Routes>
       </div>
+      <InstallHint />
     </>
   )
 }

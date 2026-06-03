@@ -91,6 +91,32 @@ produce a signed release build.
 > `@capacitor-firebase/authentication` plugin.) `localhost` must be in Firebase
 > Authorized domains (it is by default).
 
+## iOS app
+
+iPhone/iPad get RipoAI two ways:
+
+**1. Add to Home Screen (free, no Mac, recommended).** Open the deployed RipoAI
+site in **Safari** → tap **Share** → **Add to Home Screen**. RipoAI installs with
+its app icon and launches **full‑screen** (no Safari chrome), respecting the
+notch and home indicator — it behaves like a native app. The app even shows a
+one‑time hint explaining this. This is a real PWA install and needs no Apple
+account.
+
+**2. Native build via Capacitor (needs a Mac for device install).** GitHub
+Actions builds the iOS app on a macOS runner:
+
+1. **Actions** tab → **Build iOS app** → **Run workflow**.
+2. Download from the run's **Artifacts** (or the **`ios-latest` Release**):
+   - `RipoAI-iOS-Simulator.zip` — runs in Xcode's iOS Simulator on a Mac.
+   - `RipoAI-iOS-Xcode-project.zip` — open `App/App.xcodeworkspace` in Xcode,
+     set your **Signing Team**, plug in your iPhone, press **Run** to install.
+
+> ⚠️ Apple does **not** allow installing **unsigned** apps on a physical device.
+> Running on a real iPhone requires an **Apple Developer account** ($99/yr) and
+> code signing — that's an Apple rule, not a RipoAI limitation. The PWA path
+> above sidesteps all of it. Inside the iOS WebView, Google sign‑in (popup) may
+> not work — use **email/password**.
+
 ## One‑time setup (required for production)
 
 1. **Firebase → Authentication → Sign‑in method**: enable **Email/Password** and **Google**.
