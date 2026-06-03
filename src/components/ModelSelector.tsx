@@ -5,7 +5,7 @@ import { ChevronDown, Check, Zap, Sparkles, Gauge } from 'lucide-react'
 import { MODEL_LIST, type ModelTier, type RipoModel } from '../lib/models'
 
 const CATEGORIES: { label: string; ids: ModelTier[] }[] = [
-  { label: 'Latest', ids: ['ripoai-3o-pro', 'ripoai-3o-instant'] },
+  { label: 'Latest', ids: ['ripoai-4o-pro', 'ripoai-3o-pro', 'ripoai-3o-instant'] },
   { label: 'RipoAI 2o', ids: ['ripoai-2o-pro', 'ripoai-2o-instant'] },
   { label: 'Older — RipoAI 1o', ids: ['ripoai-1o-pro', 'ripoai-1o-instant'] },
 ]

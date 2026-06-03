@@ -155,6 +155,16 @@ the **`.web.app` install is the reliable one for Google in a PWA**. Email/
 password works everywhere regardless. In the **native APK/iOS app**, use
 email/password (native Google would need the Capacitor Firebase Auth plugin).
 
+## RipoAI 4o Pro (NVIDIA — needs a proxy)
+
+**RipoAI 4o Pro** runs NVIDIA's **Llama‑4 Maverick**. NVIDIA's API doesn't send
+CORS headers, so a static browser app can't call it directly — deploy the tiny
+Cloudflare Worker in [`worker/nvidia-proxy.js`](./worker/nvidia-proxy.js)
+(instructions in the file), then set the repo Actions secret **`VITE_NVIDIA_BASE`**
+to the worker URL and redeploy. The worker holds your `nvapi-…` key, so it never
+ships in the client bundle. Until then, **4o Pro automatically falls back** to a
+strong Groq model, so it still works.
+
 ## One‑time setup (required for production)
 
 1. **Firebase → Authentication → Sign‑in method**: enable **Email/Password** and **Google**.

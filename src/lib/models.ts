@@ -8,6 +8,7 @@ export type ModelTier =
   | 'ripoai-2o-pro'
   | 'ripoai-3o-instant'
   | 'ripoai-3o-pro'
+  | 'ripoai-4o-pro'
 
 export interface RipoModel {
   id: ModelTier
@@ -15,10 +16,13 @@ export interface RipoModel {
   tagline: string
   groqModel: string
   /** Provider backing this model. */
-  provider?: 'groq' | 'openrouter' | 'puter'
+  provider?: 'groq' | 'openrouter' | 'puter' | 'nvidia'
   /** OpenRouter model id (when provider === 'openrouter'); groqModel is the
    * automatic fallback when OpenRouter is rate-limited or errors. */
   orModel?: string
+  /** NVIDIA NIM model id (when provider === 'nvidia'); groqModel is the
+   * automatic fallback. NVIDIA needs a proxy (no CORS) — see VITE_NVIDIA_BASE. */
+  nvModel?: string
   /** Puter model id (when provider === 'puter'). */
   puterModel?: string
   /** Supports image inputs (vision). */
@@ -103,6 +107,20 @@ export const MODELS: Record<ModelTier, RipoModel> = {
     tagline: 'Our most powerful — best for building & design',
     provider: 'openrouter',
     orModel: 'moonshotai/kimi-k2.6:free',
+    groqModel: 'openai/gpt-oss-120b',
+    vision: false,
+    reasoning: false,
+    temperature: 0.7,
+    maxTokens: 6000,
+    topP: 1,
+    badge: 'MAX',
+  },
+  'ripoai-4o-pro': {
+    id: 'ripoai-4o-pro',
+    name: 'RipoAI 4o Pro',
+    tagline: 'Frontier — Llama 4 Maverick (NVIDIA)',
+    provider: 'nvidia',
+    nvModel: 'meta/llama-4-maverick-17b-128e-instruct',
     groqModel: 'openai/gpt-oss-120b',
     vision: false,
     reasoning: false,

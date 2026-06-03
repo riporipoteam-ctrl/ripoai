@@ -30,6 +30,8 @@ jobs:
           # Actions → New repository secret → name VITE_GROQ_API_KEY.
           VITE_GROQ_API_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
           VITE_OPENROUTER_API_KEY: ${{ secrets.VITE_OPENROUTER_API_KEY }}
+          VITE_NVIDIA_BASE: ${{ secrets.VITE_NVIDIA_BASE }}
+          VITE_NVIDIA_API_KEY: ${{ secrets.VITE_NVIDIA_API_KEY }}
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

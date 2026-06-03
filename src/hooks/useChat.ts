@@ -410,8 +410,9 @@ export function useChat(chatId: string | undefined) {
 
       // Ordered fallback chain — try the best model, then progressively more
       // reliable/faster ones, so a rate-limit never shows as the answer.
-      type Attempt = { provider?: 'openrouter' | 'groq' | 'puter'; model: string; maxTokens: number; reasoningEffort?: string }
+      type Attempt = { provider?: 'openrouter' | 'groq' | 'puter' | 'nvidia'; model: string; maxTokens: number; reasoningEffort?: string }
       const usePuter = model.provider === 'puter' && !!model.puterModel && !hasImages && !useCompound
+      const useNvidia = model.provider === 'nvidia' && !!model.nvModel && !hasImages && !useCompound
       const attempts: Attempt[] = []
       if (useCompound) {
         attempts.push({ provider: 'groq', model: searchModel(), maxTokens: 2048 })
@@ -421,6 +422,10 @@ export function useChat(chatId: string | undefined) {
       } else if (usePuter) {
         attempts.push({ provider: 'puter', model: model.puterModel!, maxTokens: model.maxTokens })
         attempts.push({ provider: 'groq', model: model.groqModel, maxTokens: Math.min(model.maxTokens, 4096) })
+        attempts.push({ provider: 'groq', model: 'llama-3.1-8b-instant', maxTokens: 2048 })
+      } else if (useNvidia) {
+        attempts.push({ provider: 'nvidia', model: model.nvModel!, maxTokens: Math.min(model.maxTokens, 4096) })
+        attempts.push({ provider: 'groq', model: model.groqModel, maxTokens: Math.min(model.maxTokens, 4096), reasoningEffort: model.reasoningEffort })
         attempts.push({ provider: 'groq', model: 'llama-3.1-8b-instant', maxTokens: 2048 })
       } else if (useOR) {
         attempts.push({ provider: 'openrouter', model: model.orModel!, maxTokens: Math.min(model.maxTokens, 4096) })
@@ -446,7 +451,7 @@ export function useChat(chatId: string | undefined) {
               res = { content: pr.content, reasoning: '' }
             } else {
               res = await streamChat({
-                provider: a.provider as 'groq' | 'openrouter' | undefined,
+                provider: a.provider as 'groq' | 'openrouter' | 'nvidia' | undefined,
                 model: a.model,
                 messages: groqMessages,
                 temperature: model.temperature,

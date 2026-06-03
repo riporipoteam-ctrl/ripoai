@@ -55,6 +55,41 @@ export function setOpenRouterKey(key: string) {
   }
 }
 
+// NVIDIA NIM. NVIDIA's API does NOT send CORS headers, so the browser can't call
+// it directly — point VITE_NVIDIA_BASE at a tiny proxy (see worker/nvidia-proxy)
+// that forwards to https://integrate.api.nvidia.com and adds CORS. The proxy can
+// also hold the key, in which case no client key is needed.
+const NV_KEY_STORAGE = 'ripoai-nvidia-key'
+const NVIDIA_DIRECT = 'https://integrate.api.nvidia.com/v1/chat/completions'
+
+export function getNvidiaBase(): string {
+  const base = (import.meta.env.VITE_NVIDIA_BASE as string) || ''
+  if (!base) return NVIDIA_DIRECT
+  // Accept either a full endpoint or a base origin.
+  return base.endsWith('/chat/completions')
+    ? base
+    : base.replace(/\/$/, '') + '/v1/chat/completions'
+}
+
+export function getNvidiaKey(): string {
+  try {
+    const local = localStorage.getItem(NV_KEY_STORAGE)
+    if (local) return local
+  } catch {
+    /* ignore */
+  }
+  return (import.meta.env.VITE_NVIDIA_API_KEY as string) || ''
+}
+
+export function setNvidiaKey(key: string) {
+  try {
+    if (key) localStorage.setItem(NV_KEY_STORAGE, key)
+    else localStorage.removeItem(NV_KEY_STORAGE)
+  } catch {
+    /* ignore */
+  }
+}
+
 export type TextPart = { type: 'text'; text: string }
 export type ImagePart = { type: 'image_url'; image_url: { url: string } }
 export type ContentPart = TextPart | ImagePart
@@ -71,8 +106,8 @@ export interface StreamOptions {
   maxTokens?: number
   topP?: number
   reasoningEffort?: string
-  /** 'groq' (default) or 'openrouter'. */
-  provider?: 'groq' | 'openrouter'
+  /** 'groq' (default), 'openrouter', or 'nvidia'. */
+  provider?: 'groq' | 'openrouter' | 'nvidia'
   signal?: AbortSignal
   /** Called with each token of the visible answer. */
   onToken?: (delta: string) => void
@@ -144,9 +179,12 @@ class ThinkSplitter {
 
 export async function streamChat(opts: StreamOptions): Promise<StreamResult> {
   const isOR = opts.provider === 'openrouter'
-  const url = isOR ? OPENROUTER_URL : GROQ_URL
-  const apiKey = isOR ? getOpenRouterKey() : getApiKey()
-  if (!apiKey) {
+  const isNV = opts.provider === 'nvidia'
+  const url = isNV ? getNvidiaBase() : isOR ? OPENROUTER_URL : GROQ_URL
+  const apiKey = isNV ? getNvidiaKey() : isOR ? getOpenRouterKey() : getApiKey()
+  // NVIDIA may be fronted by a proxy that holds the key, so a client key is
+  // optional there; Groq/OpenRouter require one.
+  if (!apiKey && !isNV) {
     throw new Error(
       isOR
         ? 'No OpenRouter API key set (Settings → General → OpenRouter key).'
@@ -161,18 +199,16 @@ export async function streamChat(opts: StreamOptions): Promise<StreamResult> {
     top_p: opts.topP ?? 1,
     stream: true,
   }
-  // Groq uses max_completion_tokens + reasoning_effort; OpenRouter uses max_tokens.
-  if (isOR) {
+  // Groq uses max_completion_tokens + reasoning_effort; OpenRouter/NVIDIA use max_tokens.
+  if (isOR || isNV) {
     body.max_tokens = opts.maxTokens ?? 4096
   } else {
     body.max_completion_tokens = opts.maxTokens ?? 8192
     if (opts.reasoningEffort) body.reasoning_effort = opts.reasoningEffort
   }
 
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${apiKey}`,
-    'Content-Type': 'application/json',
-  }
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (apiKey) headers.Authorization = `Bearer ${apiKey}`
   if (isOR) {
     headers['HTTP-Referer'] = 'https://riporipoteam-ctrl.github.io/ripoai/'
     headers['X-Title'] = 'RipoAI'
