@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, Check, Zap, Sparkles, Gauge } from 'lucide-react'
+import { ChevronDown, Check, Zap, Sparkles, Gauge, Wand2 } from 'lucide-react'
 import { MODEL_LIST, type ModelTier, type RipoModel } from '../lib/models'
 
 // 4o Pro is featured on top; the rest live in categories that are collapsed by
 // default — tap a category to reveal its (older) models.
-const FEATURED: ModelTier[] = ['ripoai-4o-pro']
+const FEATURED: ModelTier[] = ['auto', 'ripoai-4o-pro', 'ripoai-4o-instant']
 const GROUPS: { label: string; ids: ModelTier[] }[] = [
   { label: 'RipoAI 3o', ids: ['ripoai-3o-pro', 'ripoai-3o-instant'] },
   { label: 'RipoAI 2o', ids: ['ripoai-2o-pro', 'ripoai-2o-instant'] },
@@ -14,6 +14,7 @@ const GROUPS: { label: string; ids: ModelTier[] }[] = [
 ]
 
 function modelIcon(m: RipoModel) {
+  if (m.id === 'auto') return Wand2
   if (m.badge === 'MAX' || m.badge === 'PRO') return Sparkles
   return m.name.includes('instant') ? Zap : Gauge
 }

@@ -3,7 +3,45 @@
 @tailwind utilities;
 
 :root {
-  /* Warm, cozy "paper" light theme (RGB triplets for Tailwind alpha support). */
+  /* Default = ChatGPT-style neutral light theme. */
+  --accent: 16 163 127;
+  --accent-soft: 16 163 127;
+  --surface: 247 247 248;
+  --surface-raised: 255 255 255;
+  --ink: 13 13 13;
+  --muted: 108 108 122;
+  --glass-bg: 255 255 255;
+  --glass-border: 255 255 255;
+  --page-grad-1: 235 236 240;
+  --page-grad-2: 244 244 247;
+  --page-grad-3: 238 240 243;
+  --orb-1: 120 130 150;
+  --orb-2: 150 150 165;
+  --orb-3: 130 140 160;
+  --orb-alpha: 0.16;
+  color-scheme: light;
+}
+
+.dark {
+  /* ChatGPT-style neutral dark theme (#212121). */
+  --surface: 33 33 33;
+  --surface-raised: 47 47 47;
+  --ink: 236 236 238;
+  --muted: 154 154 166;
+  --glass-bg: 52 52 54;
+  --glass-border: 255 255 255;
+  --page-grad-1: 42 42 46;
+  --page-grad-2: 33 33 36;
+  --page-grad-3: 46 46 50;
+  --orb-1: 120 130 150;
+  --orb-2: 140 140 158;
+  --orb-3: 120 135 155;
+  --orb-alpha: 0.14;
+  color-scheme: dark;
+}
+
+/* Claude = warm "paper" palette (opt-in via Settings). */
+.ui-claude {
   --accent: 217 119 87;
   --accent-soft: 217 119 87;
   --surface: 244 242 235;
@@ -11,25 +49,24 @@
   --ink: 41 37 33;
   --muted: 122 114 103;
   --glass-bg: 255 253 248;
-  --glass-border: 255 255 255;
   --page-grad-1: 246 230 214;
   --page-grad-2: 250 240 230;
   --page-grad-3: 244 228 222;
-  color-scheme: light;
+  --orb-1: 217 119 87;
+  --orb-2: 224 165 94;
+  --orb-3: 214 132 110;
+  --orb-alpha: 0.5;
 }
-
-.dark {
-  /* Warm charcoal dark theme (not blue-black). */
+.dark.ui-claude {
   --surface: 30 29 27;
   --surface-raised: 43 41 38;
   --ink: 236 232 225;
   --muted: 162 153 141;
   --glass-bg: 46 43 40;
-  --glass-border: 255 255 255;
   --page-grad-1: 62 44 33;
   --page-grad-2: 38 33 29;
   --page-grad-3: 56 40 35;
-  color-scheme: dark;
+  --orb-alpha: 0.45;
 }
 
 * {
@@ -99,13 +136,13 @@ body {
 .aurora::before {
   top: -16vmax;
   left: -12vmax;
-  background: radial-gradient(circle at 50% 50%, rgb(217 119 87 / 0.5), transparent 62%);
+  background: radial-gradient(circle at 50% 50%, rgb(var(--orb-1) / var(--orb-alpha)), transparent 62%);
   animation: drift1 28s ease-in-out infinite;
 }
 .aurora::after {
   bottom: -18vmax;
   right: -14vmax;
-  background: radial-gradient(circle at 50% 50%, rgb(224 165 94 / 0.45), transparent 62%);
+  background: radial-gradient(circle at 50% 50%, rgb(var(--orb-2) / var(--orb-alpha)), transparent 62%);
   animation: drift2 36s ease-in-out infinite;
 }
 .aurora > .aurora-orb {
@@ -117,7 +154,7 @@ body {
   border-radius: 50%;
   filter: blur(100px);
   opacity: 0.5;
-  background: radial-gradient(circle at 50% 50%, rgb(214 132 110 / 0.45), transparent 60%);
+  background: radial-gradient(circle at 50% 50%, rgb(var(--orb-3) / var(--orb-alpha)), transparent 60%);
   animation: drift3 32s ease-in-out infinite;
   will-change: transform;
 }

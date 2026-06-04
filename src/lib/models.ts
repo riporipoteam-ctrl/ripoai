@@ -2,12 +2,14 @@
 // validated against the live Groq /models endpoint.
 
 export type ModelTier =
+  | 'auto'
   | 'ripoai-1o-instant'
   | 'ripoai-2o-instant'
   | 'ripoai-1o-pro'
   | 'ripoai-2o-pro'
   | 'ripoai-3o-instant'
   | 'ripoai-3o-pro'
+  | 'ripoai-4o-instant'
   | 'ripoai-4o-pro'
 
 export interface RipoModel {
@@ -115,10 +117,24 @@ export const MODELS: Record<ModelTier, RipoModel> = {
     topP: 1,
     badge: 'MAX',
   },
+  'ripoai-4o-instant': {
+    id: 'ripoai-4o-instant',
+    name: 'RipoAI 4o instant',
+    tagline: 'New — fast and very capable',
+    provider: 'nvidia',
+    nvModel: 'meta/llama-4-maverick-17b-128e-instruct',
+    groqModel: 'llama-3.3-70b-versatile',
+    vision: false,
+    reasoning: false,
+    temperature: 0.7,
+    maxTokens: 4096,
+    topP: 1,
+    badge: 'NEW',
+  },
   'ripoai-4o-pro': {
     id: 'ripoai-4o-pro',
     name: 'RipoAI 4o Pro',
-    tagline: 'Frontier reasoning — GLM-5.1 (NVIDIA)',
+    tagline: 'Our most advanced — deepest reasoning',
     provider: 'nvidia',
     nvModel: 'z-ai/glm-5.1',
     groqModel: 'openai/gpt-oss-120b',
@@ -128,6 +144,17 @@ export const MODELS: Record<ModelTier, RipoModel> = {
     maxTokens: 6000,
     topP: 1,
     badge: 'MAX',
+  },
+  auto: {
+    id: 'auto',
+    name: 'Auto',
+    tagline: 'RipoAI picks the best model for each task',
+    groqModel: 'openai/gpt-oss-120b',
+    vision: false,
+    reasoning: false,
+    temperature: 0.7,
+    maxTokens: 5120,
+    topP: 1,
   },
 }
 
@@ -144,4 +171,18 @@ export const CODER_MODEL = 'openai/gpt-oss-120b'
 
 export function getModel(id: ModelTier): RipoModel {
   return MODELS[id] ?? MODELS[DEFAULT_MODEL]
+}
+
+// Auto mode: pick the best real model for the task (like auto web search).
+export function resolveAutoModel(text: string): ModelTier {
+  const t = (text || '').toLowerCase()
+  if (/\b(website|web ?app|landing|portfolio site|3d|three\.?js|webgl|game)\b/.test(t)) return 'ripoai-4o-pro'
+  if (/\b(code|coding|function|component|script|debug|refactor|algorithm|program|api|regex|sql|build (me )?an? (app|tool))\b/.test(t))
+    return 'ripoai-2o-pro'
+  if (
+    t.length > 260 ||
+    /\b(explain|why|how come|analy|reason|prove|solve|step[- ]by[- ]step|essay|compare|strateg|in depth|research|complex|architecture|trade-?offs?)\b/.test(t)
+  )
+    return 'ripoai-4o-pro'
+  return 'ripoai-4o-instant'
 }

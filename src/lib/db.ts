@@ -89,6 +89,8 @@ export interface Memory {
 export interface UserSettings {
   displayName?: string
   theme: 'light' | 'dark' | 'system'
+  /** Visual palette: 'chatgpt' (neutral, default) or 'claude' (warm). */
+  uiTheme?: 'chatgpt' | 'claude'
   accent: string
   glassIntensity: number
   fontScale: number
@@ -104,6 +106,7 @@ export interface UserSettings {
 
 export const DEFAULT_SETTINGS: UserSettings = {
   theme: 'system',
+  uiTheme: 'chatgpt',
   accent: '#d97757',
   glassIntensity: 22,
   fontScale: 1,

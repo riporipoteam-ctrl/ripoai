@@ -8,7 +8,7 @@ import { wantsCurrency, convertCurrency } from '../lib/currency'
 import { wantsDefine, getDefinition, wantsWiki, getWiki, wantsUnits, convertUnits } from '../lib/tools'
 import { streamPuter } from '../lib/puter'
 import { wantsSlides, generateDeck } from '../lib/slides'
-import { getModel, type ModelTier } from '../lib/models'
+import { getModel, resolveAutoModel, type ModelTier } from '../lib/models'
 import { buildSystemPrompt, AGENT_SYSTEM, WEB3D_INSTRUCTIONS, wantsWebsite } from '../lib/prompt'
 import { searchModel, shouldAutoSearch } from '../lib/search'
 import { extractMemories } from '../lib/memory'
@@ -154,8 +154,10 @@ export function useChat(chatId: string | undefined) {
   const run = useCallback(
     async (history: StoredMessage[], opts: SendOptions, id: string) => {
       if (!user) return
-      const model = getModel(opts.model)
       const lastUser = [...history].reverse().find((m) => m.role === 'user')
+      // Auto mode → pick the best real model for this task.
+      const effModel = opts.model === 'auto' ? resolveAutoModel(lastUser?.content ?? '') : opts.model
+      const model = getModel(effModel)
 
       // Skill install — "install this skill: <url>" fetches + saves a skill.
       const installUrl = !opts.image && !opts.systemOverride ? detectSkillInstall(lastUser?.content ?? '') : null
@@ -386,10 +388,20 @@ export function useChat(chatId: string | undefined) {
       // Weather: if the user asks about weather, fetch a forecast card.
       let weatherData: any = null
       if (!opts.image && !opts.systemOverride && !opts.agent && wantsWeather(lastText)) {
-        const near = /\bnear me|here|my (location|area)\b/i.test(lastText) ? await getUserLocation() : null
-        weatherData = await getWeather(lastText, near || undefined)
+        // For "my location / near me / here" (or when no city is named), use the
+        // device's real GPS (cached + reverse-geocoded) so it never says it can't.
+        const wantsHere = /\bnear me|nearby|here|my (location|area|city|place|position)|current location|where i am|around me\b/i.test(lastText)
+        const hasNamedPlace = /\b(in|at|for)\s+[A-Z][a-z]/.test(lastText)
+        let near: [number, number] | undefined
+        if (wantsHere || !hasNamedPlace) {
+          const place = await getUserPlace()
+          if (place) near = [place.lat, place.lng]
+        }
+        weatherData = await getWeather(lastText, near)
         if (weatherData)
-          system += `\n\nA weather card for ${weatherData.place} is already shown (now ${weatherData.current.temp}°). Give a brief, friendly comment (1-2 sentences) — don't list all the numbers.`
+          system += `\n\nLive weather for ${weatherData.place}: ${weatherData.current.temp}° (wind ${weatherData.current.wind}, humidity ${weatherData.current.humidity}%). A weather card is already shown. Give a brief, friendly 1-2 sentence comment using THIS data — never say you can't access the weather.`
+        else if (near)
+          system += `\n\nThe user's device location is available; if you still cannot fetch live weather, give your best general guidance for their region rather than refusing.`
       }
 
       // Maps: if the user is looking for places, search OSM and attach a map.

@@ -36,10 +36,13 @@ export function applyAppearance(s: UserSettings) {
   } catch {
     /* ignore */
   }
-  // Remap the legacy green/purple defaults to the warm clay accent so existing
-  // users get the new Claude-like look without having to reset their settings.
-  const LEGACY = new Set(['#10a37f', '#7c5cff'])
-  const accent = LEGACY.has((s.accent || '').toLowerCase()) ? '#d97757' : s.accent
+  // Visual palette: ChatGPT (neutral, default) vs Claude (warm).
+  const ui = s.uiTheme ?? 'chatgpt'
+  root.classList.toggle('ui-claude', ui === 'claude')
+  // Accent follows the theme unless the user picked a truly custom colour.
+  const themeAccent = ui === 'claude' ? '#d97757' : '#10a37f'
+  const DEFAULTS = new Set(['#10a37f', '#7c5cff', '#d97757'])
+  const accent = DEFAULTS.has((s.accent || '').toLowerCase()) ? themeAccent : s.accent
   root.style.setProperty('--accent', hexToRgb(accent))
   root.style.setProperty('--accent-soft', hexToRgb(accent))
   root.style.setProperty('--glass-blur', `${s.glassIntensity}px`)
