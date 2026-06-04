@@ -326,7 +326,7 @@ export default function Sidebar() {
             {/* Profile */}
             <div className="border-t border-white/10 p-2">
               <div className="flex items-center gap-2 rounded-2xl px-2 py-2 hover:bg-white/5">
-                <Avatar name={settings.displayName || user?.displayName} photoURL={user?.photoURL} size={34} />
+                <Avatar name={settings.displayName || user?.displayName} photoURL={settings.avatar || user?.photoURL} size={34} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-semibold">
                     {settings.displayName || user?.displayName || 'Account'}

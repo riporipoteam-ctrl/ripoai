@@ -13,13 +13,13 @@ import { Eye, Code2, Terminal, ArrowUp, Square, Sparkles, Wand2, Paperclip, X, F
 import { useStore } from '../store'
 import { streamChat, complete } from '../lib/groq'
 import { fileToAttachment } from '../lib/files'
-import { getModel } from '../lib/models'
+import { getModel, CODER_MODEL, type ModelTier } from '../lib/models'
 import type { Attachment } from '../lib/db'
 import { haptic } from '../hooks/useSpeech'
-import { CODER_MODEL } from '../lib/models'
 import { CODING_SYSTEM } from '../lib/prompt'
 import { parseCodeFiles } from '../lib/parseCode'
 import { saveProject, type Project } from '../lib/db'
+import ModelSelector from './ModelSelector'
 import { Markdown } from './Markdown'
 import Spinner from './ui/Spinner'
 
@@ -67,7 +67,7 @@ export default function ProjectsView() {
   const [streaming, setStreaming] = useState(false)
   const [liveText, setLiveText] = useState('')
   const [mobileView, setMobileView] = useState<'chat' | 'build'>('chat')
-  const [coderModel, setCoderModel] = useState<'fast' | 'smart' | 'pro'>('smart')
+  const [model, setModel] = useState<ModelTier>(settings.defaultModel === 'auto' ? 'ripoai-2o-pro' : settings.defaultModel)
   const [attached, setAttached] = useState<Attachment[]>([])
   const fileRef = useRef<HTMLInputElement>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -79,7 +79,7 @@ export default function ProjectsView() {
     if (!project || loadedRef.current === project.id) return
     loadedRef.current = project.id
     setFiles(project.files)
-    setMessages([])
+    setMessages((project.chat as CodeMsg[]) ?? [])
     setBundlerKey((k) => k + 1)
   }, [project])
 
@@ -99,7 +99,7 @@ export default function ProjectsView() {
     setStreaming(false)
   }
 
-  async function applyAndSave(text: string, newFiles: Record<string, string>) {
+  async function applyAndSave(text: string, newFiles: Record<string, string>, chat?: CodeMsg[]) {
     const parsed = parseCodeFiles(text)
     let updated = { ...newFiles }
     if (parsed.length) {
@@ -114,7 +114,12 @@ export default function ProjectsView() {
       setMobileView('build')
     }
     if (user && project) {
-      const next: Project = { ...project, files: updated, updatedAt: Date.now() }
+      const next: Project = {
+        ...project,
+        files: updated,
+        chat: (chat ?? messages).slice(-60),
+        updatedAt: Date.now(),
+      }
       await saveProject(user.uid, next)
     }
   }
@@ -202,12 +207,30 @@ export default function ProjectsView() {
     // Auto-continue: models cap output; if we stop mid-file, ask to continue and
     // stitch it together so the user never has to type "continue".
     async function runOnce(messages: any[], continuation = false): Promise<string> {
-      // Always use fast, reliable Groq (the free OpenRouter tier was the slow/
-      // dropping path). gpt-oss-120b is strong at code; no reasoning_effort so it
-      // starts writing immediately. Big budget so whole 3D files fit.
-      const useFast = coderModel === 'fast' && !continuation
+      const m = getModel(model)
+      const before = full.length
+      // Try the chosen model (NVIDIA worker for 4o tiers) on the first pass.
+      if (!continuation && m.provider === 'nvidia' && m.nvModel) {
+        try {
+          const r = await streamChat({
+            provider: 'nvidia',
+            model: m.nvModel,
+            messages,
+            temperature: 0.5,
+            maxTokens: 8000,
+            topP: 1,
+            signal: ac.signal,
+            onToken: (d) => { haptic(4); full += d; setLiveText(full) },
+          })
+          if (full.length > before) return r.finishReason || ''
+        } catch {
+          /* fall through to reliable Groq */
+        }
+      }
+      // Fast, reliable Groq: the chosen model's Groq backing (or gpt-oss-120b).
+      const groqModel = m.groqModel && m.provider !== 'openrouter' ? m.groqModel : CODER_MODEL
       const r = await streamChat({
-        model: useFast ? 'llama-3.3-70b-versatile' : CODER_MODEL,
+        model: groqModel || CODER_MODEL,
         messages,
         temperature: 0.5,
         maxTokens: 8000,
@@ -250,9 +273,10 @@ export default function ProjectsView() {
       abortRef.current = null
     }
 
-    setMessages((m) => [...m, { role: 'assistant', content: full }])
+    const finalChat: CodeMsg[] = [...history, { role: 'assistant', content: full }]
+    setMessages(finalChat)
     setLiveText('')
-    await applyAndSave(full, files)
+    await applyAndSave(full, files, finalChat)
   }
 
   const sandpackFiles = Object.fromEntries(Object.entries(files).map(([k, v]) => [k, { code: v }]))
@@ -288,25 +312,8 @@ export default function ProjectsView() {
         <div className="flex items-center gap-2 px-4 py-3">
           <Wand2 size={18} className="text-accent" />
           <div className="truncate font-bold">{project.name}</div>
-          <div className="ml-auto flex gap-0.5 rounded-full bg-white/5 p-0.5">
-            {(
-              [
-                { id: 'fast', label: 'Fast' },
-                { id: 'smart', label: 'Smart' },
-                { id: 'pro', label: 'Pro' },
-              ] as const
-            ).map((o) => (
-              <button
-                key={o.id}
-                onClick={() => setCoderModel(o.id)}
-                title={o.id === 'fast' ? 'Fastest' : o.id === 'smart' ? 'Balanced (recommended)' : 'Most powerful (slower)'}
-                className={`pressable rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
-                  coderModel === o.id ? 'accent-gradient-bg text-white' : 'text-muted hover:text-ink'
-                }`}
-              >
-                {o.label}
-              </button>
-            ))}
+          <div className="ml-auto">
+            <ModelSelector value={model} onChange={setModel} />
           </div>
         </div>
 

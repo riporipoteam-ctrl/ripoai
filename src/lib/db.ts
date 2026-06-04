@@ -76,6 +76,8 @@ export interface Project {
   description?: string
   files: Record<string, string>
   template: 'react' | 'vanilla' | 'static'
+  /** Saved coding-chat transcript for this project. */
+  chat?: { role: 'user' | 'assistant'; content: string }[]
   updatedAt: number
   createdAt: number
 }
@@ -88,6 +90,8 @@ export interface Memory {
 
 export interface UserSettings {
   displayName?: string
+  /** Custom profile picture (data URL). */
+  avatar?: string
   theme: 'light' | 'dark' | 'system'
   /** Visual palette: 'chatgpt' (neutral, default) or 'claude' (warm). */
   uiTheme?: 'chatgpt' | 'claude'
@@ -518,6 +522,7 @@ export function watchProjects(uid: string, cb: (projects: Project[]) => void) {
               description: data.description,
               files: data.files ?? {},
               template: data.template ?? 'static',
+              chat: data.chat ?? [],
               updatedAt: cloudUpdated,
               createdAt: tsMs(data.createdAt),
             })
@@ -549,6 +554,7 @@ export async function saveProject(uid: string, project: Project) {
       description: project.description ?? '',
       files: clean(project.files),
       template: project.template,
+      chat: clean(project.chat ?? []),
       updatedAt: serverTimestamp(),
       createdAt: project.createdAt || Date.now(),
     }),

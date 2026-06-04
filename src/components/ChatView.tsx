@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, Palette, Globe, Lightbulb, Plane, PanelLeftOpen, PenSquare } from 'lucide-react'
+import { ChevronDown, Palette, Globe, Lightbulb, Plane, PanelLeftOpen, PenSquare, Sparkles, Code2, FileText, MapPin } from 'lucide-react'
 import { useChat } from '../hooks/useChat'
 import { useStore } from '../store'
 import Composer from './Composer'
@@ -11,11 +11,15 @@ import Logo from './Logo'
 import type { ModelTier } from '../lib/models'
 import type { Attachment } from '../lib/db'
 
-const SUGGESTIONS = [
-  { title: 'Design a landing page', sub: 'for a productivity startup', icon: Palette },
-  { title: "What's new in AI", sub: 'this week (uses web search)', icon: Globe },
-  { title: 'Explain a hard concept', sub: 'like quantum entanglement, simply', icon: Lightbulb },
-  { title: 'Plan a 3-day trip', sub: 'to Tokyo on a budget', icon: Plane },
+const ALL_SUGGESTIONS = [
+  { title: 'Build a 3D website', sub: 'with scroll animations', icon: Palette },
+  { title: 'Generate an image', sub: 'of anything you imagine', icon: Sparkles },
+  { title: "What's trending today", sub: 'live from the web', icon: Globe },
+  { title: 'Explain it simply', sub: 'any hard concept, in plain words', icon: Lightbulb },
+  { title: 'Plan a trip', sub: 'tailored to your budget', icon: Plane },
+  { title: 'Write & fix code', sub: 'in any language', icon: Code2 },
+  { title: 'Summarize a document', sub: 'upload a PDF and ask', icon: FileText },
+  { title: 'Find places near me', sub: 'restaurants, shops, more', icon: MapPin },
 ]
 
 const SUBTITLES = [
@@ -73,8 +77,12 @@ export default function ChatView() {
   const hour = new Date().getHours()
   const timeGreet = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
   const empty = messages.length === 0
-  // Pick a fresh subtitle each time the empty screen appears.
+  // Pick a fresh subtitle + suggestion set each time the empty screen appears.
   const subtitle = useMemo(() => SUBTITLES[Math.floor(Math.random() * SUBTITLES.length)], [chatId])
+  const suggestions = useMemo(
+    () => [...ALL_SUGGESTIONS].sort(() => Math.random() - 0.5).slice(0, 4),
+    [chatId],
+  )
 
   return (
     <div className="flex h-full flex-col">
@@ -129,7 +137,7 @@ export default function ChatView() {
               {subtitle}
             </motion.p>
             <div className="mt-7 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
-              {SUGGESTIONS.map((s, i) => (
+              {suggestions.map((s, i) => (
                 <motion.button
                   key={s.title}
                   initial={{ opacity: 0, y: 10 }}
