@@ -17,6 +17,7 @@ import { haptic } from './useSpeech'
 import { useStore } from '../store'
 import {
   loadChat,
+  readLocalChat,
   saveChat,
   type Attachment,
   type Chat,
@@ -104,6 +105,15 @@ export function useChat(chatId: string | undefined) {
     }
     if (!user) return
     loadedId.current = chatId
+    // Show the cached chat INSTANTLY (no awaiting Firestore), then reconcile.
+    const cached = readLocalChat(user.uid, chatId)
+    if (cached) {
+      setMessages(cached.messages)
+      titleRef.current = cached.title
+      modelRef.current = cached.model
+      createdAtRef.current = cached.createdAt || Date.now()
+      if (cached.model) setLoadedModel(cached.model)
+    }
     loadChat(user.uid, chatId)
       .then((c) => {
         if (loadedId.current !== chatId) return

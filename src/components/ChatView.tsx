@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, Palette, Globe, Lightbulb, Plane, PanelLeftOpen, PenSquare } from 'lucide-react'
@@ -16,6 +16,17 @@ const SUGGESTIONS = [
   { title: "What's new in AI", sub: 'this week (uses web search)', icon: Globe },
   { title: 'Explain a hard concept', sub: 'like quantum entanglement, simply', icon: Lightbulb },
   { title: 'Plan a 3-day trip', sub: 'to Tokyo on a budget', icon: Plane },
+]
+
+const SUBTITLES = [
+  'What are you planning to do today?',
+  'What should we build together?',
+  'What can I help you with?',
+  'Ready when you are — what’s first?',
+  "What's on your mind?",
+  'Ask me anything, or let’s create something.',
+  'Where should we start today?',
+  'Got a question, an idea, or a project?',
 ]
 
 export default function ChatView() {
@@ -62,6 +73,8 @@ export default function ChatView() {
   const hour = new Date().getHours()
   const timeGreet = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
   const empty = messages.length === 0
+  // Pick a fresh subtitle each time the empty screen appears.
+  const subtitle = useMemo(() => SUBTITLES[Math.floor(Math.random() * SUBTITLES.length)], [chatId])
 
   return (
     <div className="flex h-full flex-col">
@@ -113,7 +126,7 @@ export default function ChatView() {
               transition={{ delay: 0.1 }}
               className="mt-2 text-center text-base text-muted sm:text-lg"
             >
-              What are you planning to do today?
+              {subtitle}
             </motion.p>
             <div className="mt-7 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
               {SUGGESTIONS.map((s, i) => (

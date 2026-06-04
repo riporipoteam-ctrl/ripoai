@@ -12,17 +12,23 @@ import Onboarding from './components/Onboarding'
 import InstallHint from './components/InstallHint'
 import SelectionToolbar from './components/SelectionToolbar'
 import Logo from './components/Logo'
-import Spinner from './components/ui/Spinner'
 
 function FullScreenLoader() {
   return (
     <div className="relative z-10 flex h-full items-center justify-center">
-      <div className="flex flex-col items-center gap-4">
-        <div className="animate-float">
-          <Logo size={56} glow />
+      <div className="flex flex-col items-center gap-5">
+        <div className="relative">
+          {/* pulsing ring behind the mark */}
+          <span className="absolute inset-0 -m-3 animate-ping rounded-full bg-[rgb(var(--accent)/0.18)]" />
+          <div className="animate-float">
+            <Logo size={60} glow />
+          </div>
         </div>
         <div className="text-2xl font-extrabold tracking-tight brand-gradient">RipoAI</div>
-        <Spinner />
+        {/* loading bar shimmer */}
+        <div className="h-1 w-32 overflow-hidden rounded-full bg-[rgb(var(--ink)/0.08)]">
+          <div className="h-full w-1/2 rounded-full bg-[rgb(var(--accent))] [animation:loadbar_1.1s_ease-in-out_infinite]" />
+        </div>
       </div>
     </div>
   )

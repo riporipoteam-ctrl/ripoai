@@ -262,3 +262,9 @@ body {
   animation: pulse-dot 1s steps(2) infinite;
   color: rgb(var(--accent));
 }
+
+/* Loading bar shimmer for the full-screen loader */
+@keyframes loadbar {
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(320%); }
+}

@@ -358,6 +358,11 @@ export function watchChats(uid: string, cb: (chats: ChatMeta[]) => void) {
   }
 }
 
+// Synchronous local-cache read so a chat opens INSTANTLY (no awaiting Firestore).
+export function readLocalChat(uid: string, chatId: string): Chat | null {
+  return read<Chat | null>(uid, `chat:${chatId}`, null)
+}
+
 export async function loadChat(uid: string, chatId: string): Promise<Chat | null> {
   const local = read<Chat | null>(uid, `chat:${chatId}`, null)
   const snap = await withTimeout(getDoc(doc(db, 'users', uid, 'chats', chatId)), 5000, null as any)
