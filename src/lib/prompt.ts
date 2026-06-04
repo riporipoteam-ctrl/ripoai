@@ -97,7 +97,7 @@ Design bar (make it genuinely stunning, agency-quality):
 For anything cinematic / portfolio / agency / product / "cool 3D" — go full premium:
 - SMOOTH SCROLL with Lenis (cdn jsdelivr @studio-freight/lenis@1.0.42), driven by a rAF loop.
 - GSAP + ScrollTrigger (cdnjs 3.12.5) for pinned, scrubbed, staggered scroll animations + parallax.
-- A real Three.js (r128) animated WebGL hero in a fixed full-screen canvas behind the content (floating glossy mesh or particle field reacting to mouse + scroll, 60fps, handles resize).
+- REAL 3D: never ship a bare wireframe primitive as "3D". For a creature/character/object, LOAD a free animated glTF with THREE.GLTFLoader (add GLTFLoader.js + OrbitControls.js from https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/...) and play gltf.animations[0] via THREE.AnimationMixer. Free CORS models: Fox (KhronosGroup/glTF-Sample-Models@master/2.0/Fox/glTF-Binary/Fox.glb), Horse/Parrot/Flamingo/Stork/Soldier/RobotExpressive (mrdoob/three.js@r128/examples/models/gltf/…). Use sRGB encoding, ACESFilmic tone mapping, Hemisphere+Directional lights, shadows; center/scale the model; full-screen canvas behind the content; drive rotation/camera with scroll.
 - Split-text heading reveals, a custom lerped cursor, magnetic buttons, grain overlay. Dark, cinematic, huge display type.`
 
 export const AGENT_SYSTEM = `You are RipoAI Agent — an autonomous research agent with live web search.
@@ -106,14 +106,25 @@ Always include source links inline as Markdown when you used the web. Be accurat
 
 // Injected when the user asks to build a website — turns out award-winning
 // ("Awwwards"-tier) 3D / scroll-animated sites, the kind agencies charge $10k+ for.
-export const WEB3D_INSTRUCTIONS = `PREMIUM 3D WEBSITE MODE — build a cinematic, award-winning ("Awwwards"-tier) site, not a plain landing page. This is the bar.
-Always produce ONE complete, self-contained /index.html that runs with zero errors, with every CDN <script>/<link> in <head>.
+export const WEB3D_INSTRUCTIONS = `PREMIUM 3D WEBSITE MODE — build a cinematic, award-winning ("Awwwards"-tier) site. This is the bar.
+Output ONE complete, self-contained /index.html that runs with zero errors, all CDN <script>/<link> in <head>.
 
-Use this stack (CDN, no build step):
-- SMOOTH SCROLL — Lenis: <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>; init it and drive it from a requestAnimationFrame loop (and feed GSAP ScrollTrigger via lenis.on('scroll', ScrollTrigger.update)).
-- SCROLL ANIMATION — GSAP + ScrollTrigger: https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js and .../gsap/3.12.5/ScrollTrigger.min.js. Use pin, scrub, stagger: pin the hero, scrub a 3D object's rotation/position to scroll, reveal sections with stagger, parallax layers at different speeds.
-- 3D — Three.js r128 (https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js): a real animated WebGL hero in a fixed full-screen <canvas> behind the content — e.g. a glossy floating mesh (icosahedron/torusKnot with MeshStandardMaterial + lights) OR a drifting particle field, rotating continuously and reacting to the mouse and to scroll. Keep it 60fps with requestAnimationFrame; handle resize.
-- TEXT — split big headings into per-word/char <span>s and GSAP-stagger them in. Reveal-on-scroll for every section.
-- DETAILS — a custom cursor (a div that lerps toward the mouse), magnetic buttons, a subtle grain/noise overlay, glassmorphism, animated gradients.
+CRITICAL — REAL 3D, NOT PRIMITIVES: You CANNOT model a detailed creature/object in code. NEVER ship a bare wireframe cube/sphere as "3D". To show a realistic animated subject, LOAD a real glTF model with THREE.GLTFLoader and PLAY its built-in animation with THREE.AnimationMixer.
+Loaders (after three.min.js):
+<script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/controls/OrbitControls.js"></script>
+FREE, animated, CORS-enabled models (pick the closest to the request; if there's no exact match, use the nearest animal/character and say so briefly):
+- Fox (run/walk/survey): https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0/Fox/glTF-Binary/Fox.glb
+- Horse (gallop): https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/models/gltf/Horse.glb
+- Parrot / Flamingo / Stork (flying birds): https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/models/gltf/Parrot.glb (also Flamingo.glb, Stork.glb)
+- Soldier (walking human): https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/models/gltf/Soldier.glb
+- RobotExpressive (many animation clips): https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/models/gltf/RobotExpressive/RobotExpressive.glb
+- Duck: https://cdn.jsdelivr.net/gh/KhronosGroup/glTF-Sample-Models@master/2.0/Duck/glTF-Binary/Duck.glb
+3D scene quality: renderer with antialias, renderer.outputEncoding = THREE.sRGBEncoding, toneMapping = THREE.ACESFilmicToneMapping, shadows on; a HemisphereLight + a DirectionalLight (castShadow) ; a subtle ground/fog; gltf.scene centered & scaled to fit; mixer = new THREE.AnimationMixer(gltf.scene); mixer.clipAction(gltf.animations[0]).play(); update with a THREE.Clock in the rAF loop; handle resize. The 3D lives in a fixed full-screen <canvas> behind the content.
 
-Aesthetic: dark and cinematic, HUGE bold display type (Google Fonts e.g. 'Space Grotesk', 'Syne', 'Clash Display'), tons of negative space, gradient accents. Build a SUBSTANTIAL multi-section page (immersive hero, about, features/work gallery, big scroll moment, footer) and FINISH it. Use real hotlinkable images (https://picsum.photos/seed/<word>/1600/1000). No placeholders, no TODOs, close every tag.`
+Motion stack:
+- SMOOTH SCROLL — Lenis: <script src="https://cdn.jsdelivr.net/npm/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>; init + rAF loop; feed GSAP via lenis.on('scroll', ScrollTrigger.update).
+- GSAP + ScrollTrigger (https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js and .../ScrollTrigger.min.js): pin the hero, scrub the model's rotation/position & camera to scroll, stagger-reveal sections, parallax layers.
+- Split big headings into per-word <span>s and stagger them in. Custom lerped cursor, magnetic buttons, subtle grain/noise overlay.
+
+Aesthetic: dark, cinematic, HUGE display type (Google Fonts 'Space Grotesk' / 'Syne'), lots of negative space, gradient accents. Build a SUBSTANTIAL multi-section page (immersive 3D hero, about, gallery/work, a big scroll moment, footer) and FINISH it. Real images: https://picsum.photos/seed/<word>/1600/1000. No placeholders/TODOs, close every tag.`
