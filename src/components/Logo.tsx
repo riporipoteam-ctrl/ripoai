@@ -27,9 +27,8 @@ export default function Logo({
     >
       <defs>
         <linearGradient id="ripo-grad" x1="4" y1="4" x2="60" y2="60" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#e0935f" />
-          <stop offset="0.5" stopColor="#d97757" />
-          <stop offset="1" stopColor="#c25d3f" />
+          <stop stopColor="rgb(var(--accent))" />
+          <stop offset="1" stopColor="rgb(var(--accent) / 0.72)" />
         </linearGradient>
       </defs>
       {variant === 'icon' ? (

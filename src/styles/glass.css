@@ -54,18 +54,17 @@
   pointer-events: none;
 }
 
-/* Warm accent gradient for the wordmark (Claude-like clay → amber) */
+/* Wordmark + accent surfaces follow the theme accent (so ChatGPT = mono, Claude = warm) */
 .brand-gradient {
-  background: linear-gradient(120deg, #c25d3f, #d97757 45%, #e0a45e);
+  background: linear-gradient(120deg, rgb(var(--accent)), rgb(var(--accent) / 0.7));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
 .accent-gradient-bg {
-  background: linear-gradient(120deg, #d97757, #e0935f 50%, #c96442);
-  background-size: 160% 160%;
-  animation: gradient-pan 8s ease infinite;
+  background: linear-gradient(135deg, rgb(var(--accent)), rgb(var(--accent) / 0.85));
+  color: rgb(var(--accent-ink, 255 255 255)) !important;
 }
 @keyframes gradient-pan {
   0%, 100% { background-position: 0% 50%; }

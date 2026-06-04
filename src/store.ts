@@ -36,15 +36,22 @@ export function applyAppearance(s: UserSettings) {
   } catch {
     /* ignore */
   }
-  // Visual palette: ChatGPT (neutral, default) vs Claude (warm).
+  // Visual palette: ChatGPT (mono black/white, default) vs Claude (warm clay).
   const ui = s.uiTheme ?? 'chatgpt'
   root.classList.toggle('ui-claude', ui === 'claude')
-  // Accent follows the theme unless the user picked a truly custom colour.
-  const themeAccent = ui === 'claude' ? '#d97757' : '#10a37f'
-  const DEFAULTS = new Set(['#10a37f', '#7c5cff', '#d97757'])
-  const accent = DEFAULTS.has((s.accent || '').toLowerCase()) ? themeAccent : s.accent
+  let accent: string
+  let accentInk: string
+  if (ui === 'claude') {
+    accent = '#d97757'
+    accentInk = '#ffffff'
+  } else {
+    // Black & white: accent flips with light/dark so buttons/links stay mono.
+    accent = dark ? '#f2f2f2' : '#1a1a1a'
+    accentInk = dark ? '#1a1a1a' : '#ffffff'
+  }
   root.style.setProperty('--accent', hexToRgb(accent))
   root.style.setProperty('--accent-soft', hexToRgb(accent))
+  root.style.setProperty('--accent-ink', hexToRgb(accentInk))
   root.style.setProperty('--glass-blur', `${s.glassIntensity}px`)
   root.style.fontSize = `${Math.round(16 * (s.fontScale || 1))}px`
 }
