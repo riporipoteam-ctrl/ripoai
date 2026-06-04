@@ -127,4 +127,12 @@ Motion stack:
 - GSAP + ScrollTrigger (https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js and .../ScrollTrigger.min.js): pin the hero, scrub the model's rotation/position & camera to scroll, stagger-reveal sections, parallax layers.
 - Split big headings into per-word <span>s and stagger them in. Custom lerped cursor, magnetic buttons, subtle grain/noise overlay.
 
-Aesthetic: dark, cinematic, HUGE display type (Google Fonts 'Space Grotesk' / 'Syne'), lots of negative space, gradient accents. Build a SUBSTANTIAL multi-section page (immersive 3D hero, about, gallery/work, a big scroll moment, footer) and FINISH it. Real images: https://picsum.photos/seed/<word>/1600/1000. No placeholders/TODOs, close every tag.`
+Aesthetic: dark, cinematic, HUGE display type (Google Fonts 'Space Grotesk' / 'Syne'), lots of negative space, gradient accents. Build a SUBSTANTIAL multi-section page (immersive 3D hero, about, gallery/work, a big scroll moment, footer) and FINISH it. Real images: https://picsum.photos/seed/<word>/1600/1000. No placeholders/TODOs, close every tag.
+
+KINETIC TYPOGRAPHY + SCROLL-LINKED TEXT (the signature of $20k sites like supersonik / quibi — do this):
+- Layer HUGE headlines OVER and AROUND the 3D canvas. z-index so the 3D subject sits BETWEEN text layers (a word behind the model, a word in front). Mix a bold display font with thin italics.
+- Tie text to scroll with ScrollTrigger SCRUB: as the user scrolls, translate words across the screen, scale/rotate/blur/fade them, shift colors. Different lines move at different speeds (parallax text). The 3D model rotates/moves on the same scroll timeline.
+- Split headings into per-char/word <span>s and stagger-reveal on enter. Add a looping marquee/ticker line. Include at least one PINNED section where the headline text swaps/animates while the 3D stays pinned, and one HORIZONTAL-scroll panel (pin + translateX scrub) for a gallery.
+- Keep body copy readable (max-width, strong contrast) even with all the motion.
+
+If the user provides a model URL, you MUST load THAT exact .glb/.gltf via GLTFLoader (it is CORS-enabled) instead of a catalog model.`

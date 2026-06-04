@@ -340,6 +340,12 @@ export function useChat(chatId: string | undefined) {
       const buildingSite = !opts.image && !opts.systemOverride && wantsWebsite(lastText)
       if (buildingSite) {
         system += '\n\n' + WEB3D_INSTRUCTIONS
+        // Let the user drop ANY 3D asset: "use this model: <url>" or a bare .glb/.gltf link.
+        const modelUrl =
+          lastText.match(/use\s+(?:this\s+)?(?:3d\s+)?(?:model|asset)\s*:?\s*(https?:\/\/\S+)/i)?.[1] ||
+          lastText.match(/https?:\/\/\S+\.(?:glb|gltf)(?:\?\S+)?/i)?.[0]
+        if (modelUrl)
+          system += `\n\nMANDATORY: load THIS exact 3D model with THREE.GLTFLoader (do not substitute a catalog model): ${modelUrl.replace(/[)>\].,]+$/, '')}`
       }
       // Big code/website outputs need a larger token budget (+ auto-continue below).
       const bigOutput =
