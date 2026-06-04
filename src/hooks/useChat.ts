@@ -246,7 +246,7 @@ export function useChat(chatId: string | undefined) {
               {
                 role: 'system',
                 content:
-                  'Rewrite the user request as ONE vivid, detailed prompt for an image model. If the user wants any text, name, title, slogan or logo wording, INCLUDE that EXACT text in the prompt so the model renders it in the image (e.g. ...with the text "Auto Servis Sunja" written in a bold modern font). Keep it under 80 words. Output ONLY the final prompt — no quotes, no preamble.',
+                  'You write prompts for the FLUX image model. Rewrite the user request into ONE vivid, detailed, WELL-LIT, colorful, high-detail image prompt with clear subject, composition and lighting. NEVER produce an all-black, dark, empty or plain background unless explicitly asked — prefer bright, professional, photographic or crisp-vector compositions. If the user wants any text/name/title/slogan/logo wording, INCLUDE that EXACT text so FLUX renders it (e.g. the text "Auto Servis Sunja" in a bold modern font). For a logo: a clean, professional, centered design on a white or tasteful brand-colored background. Keep under 80 words. Output ONLY the final prompt — no quotes, no preamble.',
               },
               { role: 'user', content: prompt },
             ],

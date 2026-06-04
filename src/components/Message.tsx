@@ -204,7 +204,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
         {message.weather && <WeatherCard data={message.weather} />}
         {message.deck && <SlidesCard deck={message.deck} />}
         {message.content && (
-          <div className={liveStreaming ? 'stream-caret' : ''}>
+          <div data-answer className={liveStreaming ? 'stream-caret' : ''}>
             <Markdown>{message.content}</Markdown>
           </div>
         )}

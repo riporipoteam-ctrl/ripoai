@@ -72,6 +72,28 @@ export default function Composer({
       document.body.style.overflow = prev
     }
   }, [plusOpen])
+
+  // "Ask RipoAI" from the text-selection toolbar → quote it into the composer.
+  useEffect(() => {
+    function onAsk(e: Event) {
+      const t = (e as CustomEvent).detail as string
+      if (!t) return
+      const quote = t.length > 600 ? t.slice(0, 600) + '…' : t
+      setText((prev) => `Regarding: "${quote}"\n\n${prev}`)
+      requestAnimationFrame(() => {
+        const ta = taRef.current
+        if (ta) {
+          ta.focus()
+          ta.style.height = 'auto'
+          ta.style.height = Math.min(ta.scrollHeight, 220) + 'px'
+          const end = ta.value.length
+          ta.setSelectionRange(end, end)
+        }
+      })
+    }
+    window.addEventListener('ripoai-ask', onAsk as EventListener)
+    return () => window.removeEventListener('ripoai-ask', onAsk as EventListener)
+  }, [])
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const taRef = useRef<HTMLTextAreaElement>(null)
