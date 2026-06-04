@@ -81,7 +81,7 @@ function toGroqMessages(
 
 export function useChat(chatId: string | undefined) {
   const navigate = useNavigate()
-  const { user, settings, memories, refreshMemories } = useStore()
+  const { user, settings, memories, refreshMemories, markUnread, clearUnread } = useStore()
   const [messages, setMessages] = useState<StoredMessage[]>([])
   const [streaming, setStreaming] = useState(false)
   const [steps, setSteps] = useState<{ type: string; detail?: string }[]>([])
@@ -95,16 +95,20 @@ export function useChat(chatId: string | undefined) {
   // Load (or reset) when the active chat id changes.
   useEffect(() => {
     if (chatId === loadedId.current) return
+    // Switching chats: the view is no longer streaming (any in-flight run keeps
+    // going in the background and will flag the chat unread when it finishes).
+    setStreaming(false)
+    setSteps([])
     if (!chatId) {
       loadedId.current = undefined
       titleRef.current = 'New chat'
       createdAtRef.current = 0
       setMessages([])
-      setSteps([])
       return
     }
     if (!user) return
     loadedId.current = chatId
+    clearUnread(chatId) // opening a chat clears its blue dot
     // Show the cached chat INSTANTLY (no awaiting Firestore), then reconcile.
     const cached = readLocalChat(user.uid, chatId)
     if (cached) {
@@ -447,6 +451,10 @@ export function useChat(chatId: string | undefined) {
       const ac = new AbortController()
       abortRef.current = ac
       const localSteps: { type: string; detail?: string }[] = []
+      // True only while THIS run's chat is the one on screen. When you navigate
+      // away, the run keeps going in the background (and still saves) but stops
+      // touching the now-different view.
+      const isLive = () => loadedId.current === id
 
       let finalContent = ''
       let finalReasoning = ''
@@ -464,6 +472,7 @@ export function useChat(chatId: string | undefined) {
         const addR = pendR
         pendC = ''
         pendR = ''
+        if (!isLive()) return
         setMessages((m) =>
           m.map((x) =>
             x.id === assistantId
@@ -488,7 +497,7 @@ export function useChat(chatId: string | undefined) {
       const onTool = (info: { type: string; detail?: string }) => {
         localSteps.push(info)
         setSteps([...localSteps])
-        setMessages((m) => m.map((x) => (x.id === assistantId ? { ...x, steps: [...localSteps] } : x)))
+        if (isLive()) setMessages((m) => m.map((x) => (x.id === assistantId ? { ...x, steps: [...localSteps] } : x)))
       }
       const clearStreamed = () => {
         if (flushTimer) { clearTimeout(flushTimer); flushTimer = null }
@@ -648,16 +657,16 @@ export function useChat(chatId: string | undefined) {
             finalContent = "I couldn't pull together a clean answer for that — please try rephrasing or switch models."
           }
           const fc = finalContent
-          setMessages((m) => m.map((x) => (x.id === assistantId ? { ...x, content: fc } : x)))
+          if (isLive()) setMessages((m) => m.map((x) => (x.id === assistantId ? { ...x, content: fc } : x)))
         } else {
           // Apply the sanitized final content (live stream may have shown raw tags).
           const fc = finalContent
-          setMessages((m) => m.map((x) => (x.id === assistantId ? { ...x, content: fc } : x)))
+          if (isLive()) setMessages((m) => m.map((x) => (x.id === assistantId ? { ...x, content: fc } : x)))
         }
       } catch (err: any) {
         if (err?.name === 'AbortError') {
           // keep whatever streamed so far
-        } else {
+        } else if (isLive()) {
           setMessages((m) =>
             m.map((x) =>
               x.id === assistantId
@@ -667,17 +676,25 @@ export function useChat(chatId: string | undefined) {
           )
         }
       } finally {
-        setStreaming(false)
+        if (isLive()) setStreaming(false)
         abortRef.current = null
       }
 
-      // Snapshot final messages for persistence.
-      let finalMsgs: StoredMessage[] = []
-      setMessages((m) => {
-        finalMsgs = m
-        return m
-      })
-      await new Promise((r) => setTimeout(r, 0))
+      // Build the final transcript explicitly (NOT from the on-screen messages),
+      // so a background run that finished off-screen still saves correctly.
+      const assistantMsg: StoredMessage = {
+        id: assistantId,
+        role: 'assistant',
+        content: finalContent || '⚠️ No response.',
+        reasoning: finalReasoning || undefined,
+        model: opts.model,
+        steps: localSteps.length ? [...localSteps] : undefined,
+        map: placesData ?? undefined,
+        weather: weatherData ?? undefined,
+        createdAt: Date.now(),
+      }
+      const finalMsgs: StoredMessage[] = [...history, assistantMsg]
+      if (isLive()) setMessages(finalMsgs)
 
       // Generate a title from the first exchange.
       const isFirst = history.length <= 1
@@ -700,6 +717,9 @@ export function useChat(chatId: string | undefined) {
       }
 
       await persist(finalMsgs, id, opts.model, opts.projectId)
+      // If the user navigated away while this finished, flag the chat as unread
+      // (blue dot in the sidebar) instead of silently completing.
+      if (!isLive()) markUnread(id)
 
       // Suggested follow-up prompts — generated after the answer so the user can
       // keep the conversation going with one tap. Best-effort, never blocks.
@@ -724,12 +744,9 @@ export function useChat(chatId: string | undefined) {
               ? arr.filter((s) => typeof s === 'string' && s.trim()).slice(0, 3)
               : []
             if (!ups.length) return
-            let updated: StoredMessage[] = []
-            setMessages((mm) => {
-              updated = mm.map((x) => (x.id === assistantId ? { ...x, followups: ups } : x))
-              return updated
-            })
-            persist(updated, id, opts.model, opts.projectId).catch(() => {})
+            const withUps = finalMsgs.map((x) => (x.id === assistantId ? { ...x, followups: ups } : x))
+            if (isLive()) setMessages((mm) => mm.map((x) => (x.id === assistantId ? { ...x, followups: ups } : x)))
+            persist(withUps, id, opts.model, opts.projectId).catch(() => {})
           })
           .catch(() => {})
       }

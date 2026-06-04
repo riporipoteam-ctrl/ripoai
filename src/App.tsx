@@ -66,6 +66,7 @@ export default function App() {
       setUser(u)
       try {
         if (u) {
+          import('./lib/admin').then(({ registerUser }) => registerUser(u))
           await initUserData(u.uid)
         } else {
           teardown()

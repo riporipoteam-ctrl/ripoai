@@ -16,9 +16,12 @@ import {
   Pin,
   Download,
   Bookmark,
+  ShieldCheck,
 } from 'lucide-react'
 import { signOut } from 'firebase/auth'
 import BookmarksView from './BookmarksView'
+import AdminPanel from './AdminPanel'
+import { isAdmin } from '../lib/admin'
 import { auth } from '../firebase'
 import { useStore } from '../store'
 import Avatar from './ui/Avatar'
@@ -56,9 +59,10 @@ function groupByDate(chats: ChatMeta[]) {
 export default function Sidebar() {
   const navigate = useNavigate()
   const { chatId, projectId } = useParams()
-  const { user, settings, chats, projects, sidebarOpen, setSidebar, openSettings } = useStore()
+  const { user, settings, chats, projects, sidebarOpen, setSidebar, openSettings, unreadChats } = useStore()
   const [search, setSearch] = useState('')
   const [bookmarksOpen, setBookmarksOpen] = useState(false)
+  const [adminOpen, setAdminOpen] = useState(false)
   const [menuFor, setMenuFor] = useState<string | null>(null)
   const [renaming, setRenaming] = useState<string | null>(null)
   const [renameVal, setRenameVal] = useState('')
@@ -251,6 +255,9 @@ export default function Sidebar() {
                                 <MessageSquare size={15} className="shrink-0 text-muted" />
                               )}
                               <span className="truncate">{c.title}</span>
+                              {unreadChats.includes(c.id) && (
+                                <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" title="New reply" />
+                              )}
                             </button>
                             <button
                               onClick={() => setMenuFor(menuFor === c.id ? null : c.id)}
@@ -333,6 +340,15 @@ export default function Sidebar() {
                   </div>
                   <div className="truncate text-xs text-muted">{user?.email}</div>
                 </div>
+                {isAdmin(user) && (
+                  <button
+                    onClick={() => setAdminOpen(true)}
+                    className="pressable rounded-xl p-2 text-muted hover:bg-white/10 hover:text-ink"
+                    title="Admin"
+                  >
+                    <ShieldCheck size={18} />
+                  </button>
+                )}
                 <button
                   onClick={openSettings}
                   className="pressable rounded-xl p-2 text-muted hover:bg-white/10 hover:text-ink"
@@ -353,6 +369,7 @@ export default function Sidebar() {
         )}
       </AnimatePresence>
       <BookmarksView open={bookmarksOpen} onClose={() => setBookmarksOpen(false)} />
+      <AdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} />
     </>
   )
 }

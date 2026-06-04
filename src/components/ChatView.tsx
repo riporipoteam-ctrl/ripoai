@@ -10,6 +10,7 @@ import Message from './Message'
 import Logo from './Logo'
 import type { ModelTier } from '../lib/models'
 import type { Attachment } from '../lib/db'
+import { banActive, todaysMessageCount, bumpMessageCount } from '../lib/admin'
 
 const ALL_SUGGESTIONS = [
   { title: 'Build a 3D website', sub: 'with scroll animations', icon: Palette },
@@ -21,6 +22,34 @@ const ALL_SUGGESTIONS = [
   { title: 'Summarize a document', sub: 'upload a PDF and ask', icon: FileText },
   { title: 'Find places near me', sub: 'restaurants, shops, more', icon: MapPin },
 ]
+
+function BanBanner({ ban }: { ban: { until: number; reason: string } }) {
+  const [, tick] = useState(0)
+  useEffect(() => {
+    if (!ban.until) return
+    const t = setInterval(() => tick((n) => n + 1), 1000)
+    return () => clearInterval(t)
+  }, [ban.until])
+  let left = ''
+  if (ban.until) {
+    const d = Math.max(0, ban.until - Date.now())
+    const days = Math.floor(d / 86400e3)
+    const h = Math.floor((d % 86400e3) / 3600e3)
+    const m = Math.floor((d % 3600e3) / 60e3)
+    const s = Math.floor((d % 60e3) / 1000)
+    left = days ? `${days}d ${h}h ${m}m` : `${h}h ${m}m ${s}s`
+  }
+  return (
+    <div className="mx-auto w-full max-w-3xl rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-center">
+      <div className="font-bold text-red-400">You're banned from messaging</div>
+      <div className="mt-1 text-sm text-ink/80">Reason: {ban.reason}</div>
+      <div className="mt-1 text-sm text-muted">
+        {ban.until ? <>Time left: <span className="font-semibold tabular-nums">{left}</span></> : 'This is a permanent ban.'}
+      </div>
+      <div className="mt-2 text-xs text-muted">You can still read your past messages.</div>
+    </div>
+  )
+}
 
 const SUBTITLES = [
   'What are you planning to do today?',
@@ -36,7 +65,10 @@ const SUBTITLES = [
 export default function ChatView() {
   const { chatId } = useParams()
   const navigate = useNavigate()
-  const { settings, user, sidebarOpen, toggleSidebar } = useStore()
+  const { settings, user, sidebarOpen, toggleSidebar, banStatus } = useStore()
+  const ban = banStatus?.ban
+  const banned = banActive(ban)
+  const msgLimit = banStatus?.msgLimit || 0
   const [model, setModel] = useState<ModelTier>(settings.defaultModel)
   const [webSearch, setWebSearch] = useState(false)
   const [agent, setAgent] = useState(false)
@@ -70,6 +102,12 @@ export default function ChatView() {
   const opts = { model, webSearch, agent, image: imageMode, imageStyle }
 
   function handleSend(text: string, attachments: Attachment[]) {
+    if (banned) return
+    if (user && msgLimit > 0 && todaysMessageCount(user.uid) >= msgLimit) {
+      window.alert(`You've reached your daily limit of ${msgLimit} messages. Try again tomorrow.`)
+      return
+    }
+    if (user) bumpMessageCount(user.uid)
     send(text, attachments, opts)
   }
 
@@ -207,22 +245,26 @@ export default function ChatView() {
             </motion.button>
           )}
         </AnimatePresence>
-        <Composer
-          model={model}
-          onModelChange={setModel}
-          webSearch={webSearch}
-          agent={agent}
-          imageMode={imageMode}
-          onToggleWeb={() => { setWebSearch((v) => !v); setImageMode(false) }}
-          onToggleAgent={() => { setAgent((v) => !v); setImageMode(false) }}
-          onToggleImage={() => { setImageMode((v) => !v); setWebSearch(false); setAgent(false) }}
-          imageStyle={imageStyle}
-          onImageStyle={setImageStyle}
-          onSend={handleSend}
-          onStop={stop}
-          streaming={streaming}
-          onVoiceCall={() => setVoiceCall(true)}
-        />
+        {banned ? (
+          <BanBanner ban={ban!} />
+        ) : (
+          <Composer
+            model={model}
+            onModelChange={setModel}
+            webSearch={webSearch}
+            agent={agent}
+            imageMode={imageMode}
+            onToggleWeb={() => { setWebSearch((v) => !v); setImageMode(false) }}
+            onToggleAgent={() => { setAgent((v) => !v); setImageMode(false) }}
+            onToggleImage={() => { setImageMode((v) => !v); setWebSearch(false); setAgent(false) }}
+            imageStyle={imageStyle}
+            onImageStyle={setImageStyle}
+            onSend={handleSend}
+            onStop={stop}
+            streaming={streaming}
+            onVoiceCall={() => setVoiceCall(true)}
+          />
+        )}
       </div>
       <VoiceCall open={voiceCall} onClose={() => setVoiceCall(false)} model={model} />
     </div>

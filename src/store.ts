@@ -67,12 +67,17 @@ interface AppState {
   sidebarOpen: boolean
   settingsOpen: boolean
   synced: boolean
+  banStatus: import('./lib/admin').MyStatus | null
+  unreadChats: string[]
 
   _unsub: Array<() => void>
 
   setUser: (u: User | null) => void
   setAuthReady: (v: boolean) => void
   initUserData: (uid: string) => Promise<void>
+  markUnread: (id: string) => void
+  clearUnread: (id: string) => void
+  setBanStatus: (b: import('./lib/admin').MyStatus | null) => void
   teardown: () => void
   updateSettings: (patch: Partial<UserSettings>) => Promise<void>
   refreshMemories: () => Promise<void>
@@ -94,7 +99,14 @@ export const useStore = create<AppState>((set, get) => ({
   sidebarOpen: true,
   settingsOpen: false,
   synced: false,
+  banStatus: null,
+  unreadChats: [],
   _unsub: [],
+
+  markUnread: (id: string) =>
+    set((s) => (s.unreadChats.includes(id) ? s : { unreadChats: [...s.unreadChats, id] })),
+  clearUnread: (id: string) => set((s) => ({ unreadChats: s.unreadChats.filter((x) => x !== id) })),
+  setBanStatus: (b: import('./lib/admin').MyStatus | null) => set({ banStatus: b }),
 
   setUser: (u) => set({ user: u }),
   setAuthReady: (v) => set({ authReady: v }),
@@ -134,6 +146,11 @@ export const useStore = create<AppState>((set, get) => ({
       _unsub: [unsubChats, unsubProjects, unsubSync],
       sidebarOpen: window.innerWidth >= 768,
     })
+
+    // Load moderation status (ban / message cap) in the background.
+    import('./lib/admin').then(({ getMyStatus }) =>
+      getMyStatus(uid).then((banStatus) => set({ banStatus })).catch(() => {}),
+    )
 
     // Push any existing local data to the cloud (one-time), in the background.
     void migrateLocalToCloud(uid)
