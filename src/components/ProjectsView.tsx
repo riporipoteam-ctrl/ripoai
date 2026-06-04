@@ -11,7 +11,7 @@ import {
 import { motion } from 'framer-motion'
 import { Eye, Code2, Terminal, ArrowUp, Square, Sparkles, Wand2, Paperclip, X, FileText } from 'lucide-react'
 import { useStore } from '../store'
-import { streamChat, complete, getOpenRouterKey } from '../lib/groq'
+import { streamChat, complete } from '../lib/groq'
 import { fileToAttachment } from '../lib/files'
 import { getModel } from '../lib/models'
 import type { Attachment } from '../lib/db'
@@ -170,9 +170,30 @@ export default function ProjectsView() {
     const ac = new AbortController()
     abortRef.current = ac
     let full = ''
+
+    // Search before coding: for real brands / topics / "about X" builds, grab
+    // current facts + good image keywords so the site uses accurate content.
+    let research = ''
+    const needsResearch = /\b(about|company|brand|for (a|the|my) |real|current|latest|product|menu|prices?|portfolio|store|shop|restaurant|startup|agency)\b/i.test(userText)
+    if (needsResearch && messages.length < 3) {
+      try {
+        setLiveText('🔎 Researching…')
+        research = await complete(
+          'groq/compound',
+          [{ role: 'user', content: `For building a website about: "${userText.slice(0, 220)}". Give 4-6 short, accurate, current factual bullets, then a final line "IMAGE KEYWORDS: <comma keywords for loremflickr>".` }],
+          { maxTokens: 450 },
+        )
+        setLiveText('')
+      } catch {
+        setLiveText('')
+      }
+    }
+
     const sysMsg = {
       role: 'system' as const,
-      content: `${CODING_SYSTEM}\n\nProject: ${project.name} (static website, entry /index.html).\nCurrent files:\n${fileContext}`,
+      content:
+        `${CODING_SYSTEM}\n\nProject: ${project.name} (static website, entry /index.html).\nCurrent files:\n${fileContext}` +
+        (research ? `\n\nResearched facts to use (be accurate, use the image keywords with loremflickr):\n${research}` : ''),
     }
     const convo = history.map((m, i) =>
       i === history.length - 1 ? { role: m.role, content: userText } : { role: m.role, content: m.content },
@@ -181,34 +202,16 @@ export default function ProjectsView() {
     // Auto-continue: models cap output; if we stop mid-file, ask to continue and
     // stitch it together so the user never has to type "continue".
     async function runOnce(messages: any[], continuation = false): Promise<string> {
-      const before = full.length
-      // First pass on the selected model; continuations always use fast+reliable
-      // Groq so the file is guaranteed to finish (free OpenRouter often drops).
-      if (!continuation && coderModel === 'pro' && getOpenRouterKey()) {
-        try {
-          const r = await streamChat({
-            provider: 'openrouter',
-            model: 'moonshotai/kimi-k2.6:free',
-            messages,
-            temperature: 0.6,
-            maxTokens: 5000,
-            topP: 1,
-            signal: ac.signal,
-            onToken: (d) => { haptic(4); full += d; setLiveText(full) },
-          })
-          if (full.length > before) return r.finishReason || ''
-        } catch {
-          /* fall through to Groq */
-        }
-      }
-      const useFast = !continuation && coderModel === 'fast'
+      // Always use fast, reliable Groq (the free OpenRouter tier was the slow/
+      // dropping path). gpt-oss-120b is strong at code; no reasoning_effort so it
+      // starts writing immediately. Big budget so whole 3D files fit.
+      const useFast = coderModel === 'fast' && !continuation
       const r = await streamChat({
         model: useFast ? 'llama-3.3-70b-versatile' : CODER_MODEL,
         messages,
         temperature: 0.5,
-        maxTokens: 5000,
+        maxTokens: 8000,
         topP: 1,
-        reasoningEffort: useFast ? undefined : 'low',
         signal: ac.signal,
         onToken: (d) => { haptic(4); full += d; setLiveText(full) },
       })
@@ -225,7 +228,7 @@ export default function ProjectsView() {
       let messages: any[] = [sysMsg, ...convo]
       let finish = await runOnce(messages)
       let guard = 0
-      while (!ac.signal.aborted && looksTruncated(full, finish) && guard < 4) {
+      while (!ac.signal.aborted && looksTruncated(full, finish) && guard < 7) {
         guard++
         messages = [
           sysMsg,

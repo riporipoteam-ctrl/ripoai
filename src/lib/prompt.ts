@@ -91,7 +91,7 @@ Design bar (make it genuinely stunning, agency-quality):
   • Animation: GSAP (https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js) or AOS.
   • 3D: Three.js (https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js).
   • Icons: Font Awesome CDN. Fonts: Google Fonts <link>.
-- Use REAL images via hotlinkable URLs: https://picsum.photos/seed/<word>/1200/800, avatars https://api.dicebear.com/9.x/avataaars/svg?seed=<name>. Never leave empty image boxes.
+- Use REAL, TOPICAL images: https://loremflickr.com/1200/800/<keywords> (a real photo matching the keywords, e.g. /forest,nature) — preferred; or https://picsum.photos/seed/<word>/1200/800. Avatars: https://api.dicebear.com/9.x/avataaars/svg?seed=<name>. Embed videos with a YouTube <iframe> when relevant. Never leave empty image boxes.
 - Ship a COMPLETE, valid, self-contained page that runs with zero errors. Close every tag. No TODOs, no "rest here", no placeholders. Prioritize FINISHING the page over excessive length so it never gets cut off mid-file.
 
 For anything cinematic / portfolio / agency / product / "cool 3D" — go full premium:
@@ -127,7 +127,7 @@ Motion stack:
 - GSAP + ScrollTrigger (https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js and .../ScrollTrigger.min.js): pin the hero, scrub the model's rotation/position & camera to scroll, stagger-reveal sections, parallax layers.
 - Split big headings into per-word <span>s and stagger them in. Custom lerped cursor, magnetic buttons, subtle grain/noise overlay.
 
-Aesthetic: dark, cinematic, HUGE display type (Google Fonts 'Space Grotesk' / 'Syne'), lots of negative space, gradient accents. Build a SUBSTANTIAL multi-section page (immersive 3D hero, about, gallery/work, a big scroll moment, footer) and FINISH it. Real images: https://picsum.photos/seed/<word>/1600/1000. No placeholders/TODOs, close every tag.
+Aesthetic: dark, cinematic, HUGE display type (Google Fonts 'Space Grotesk' / 'Syne'), lots of negative space, gradient accents. Build a SUBSTANTIAL multi-section page (immersive 3D hero, about, gallery/work, a big scroll moment, footer) and FINISH it. Use REAL topical photos: https://loremflickr.com/1600/1000/<keywords> (matches the keyword, e.g. /perfume,luxury) or https://picsum.photos/seed/<word>/1600/1000; embed a YouTube <iframe> if a video fits. No placeholders/TODOs, close every tag.
 
 KINETIC TYPOGRAPHY + SCROLL-LINKED TEXT (the signature of $20k sites like supersonik / quibi — do this):
 - Layer HUGE headlines OVER and AROUND the 3D canvas. z-index so the 3D subject sits BETWEEN text layers (a word behind the model, a word in front). Mix a bold display font with thin italics.
