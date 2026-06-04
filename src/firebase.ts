@@ -11,13 +11,12 @@ import { getFirestore } from 'firebase/firestore'
 // governed by Firebase Auth + Firestore security rules, not by hiding this.
 const firebaseConfig = {
   apiKey: 'AIzaSyA-4hkATjzLE-nS0eDf09qs_8MWGc_iRPA',
-  // Use the Firebase Hosting domain as the auth domain so that, when the app
-  // is served from https://ripoai-dff5d.web.app, the Google OAuth handler is
-  // SAME-ORIGIN. That's what makes Google sign-in work in an installed
-  // (home-screen) PWA — cross-origin handlers get their storage partitioned
-  // by the browser and the credential never comes back. (.web.app and
-  // .firebaseapp.com are both auto-authorized domains for the project.)
-  authDomain: 'ripoai-dff5d.web.app',
+  // Use the default firebaseapp.com auth domain: its OAuth redirect URI
+  // (/__/auth/handler) is ALWAYS pre-registered for the project, so Google
+  // sign-in works from any authorized domain (Netlify, GitHub Pages, etc.).
+  // (web.app only works if Firebase Hosting is active — it isn't here, which
+  // caused redirect_uri_mismatch.)
+  authDomain: 'ripoai-dff5d.firebaseapp.com',
   databaseURL: 'https://ripoai-dff5d-default-rtdb.firebaseio.com',
   projectId: 'ripoai-dff5d',
   storageBucket: 'ripoai-dff5d.firebasestorage.app',
