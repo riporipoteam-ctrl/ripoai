@@ -159,7 +159,7 @@ export const MODELS: Record<ModelTier, RipoModel> = {
 }
 
 export const MODEL_LIST = Object.values(MODELS)
-export const DEFAULT_MODEL: ModelTier = 'ripoai-2o-pro'
+export const DEFAULT_MODEL: ModelTier = 'ripoai-4o-pro'
 
 // Groq's agentic model with built-in web search. `groq/compound` works reliably
 // (compound-beta started returning 413). Powers Web Search and Agent modes.

@@ -9,7 +9,7 @@ import { wantsDefine, getDefinition, wantsWiki, getWiki, wantsUnits, convertUnit
 import { streamPuter } from '../lib/puter'
 import { wantsSlides, generateDeck } from '../lib/slides'
 import { getModel, resolveAutoModel, type ModelTier } from '../lib/models'
-import { buildSystemPrompt, AGENT_SYSTEM, WEB3D_INSTRUCTIONS, wantsWebsite } from '../lib/prompt'
+import { buildSystemPrompt, AGENT_SYSTEM, WEB3D_INSTRUCTIONS, wantsWebsite, needsDeepThinking } from '../lib/prompt'
 import { searchModel, shouldAutoSearch } from '../lib/search'
 import { extractMemories } from '../lib/memory'
 import { installSkillFromUrl, detectSkillInstall, detectSlashSkill, findSkill, autoPickSkill } from '../lib/skills'
@@ -558,10 +558,10 @@ export function useChat(chatId: string | undefined) {
                 maxTokens: a.maxTokens,
                 topP: model.topP,
                 reasoningEffort: a.reasoningEffort,
-                // Thinking helps reasoning answers but wastes the whole token
-                // budget on big code/websites (the model "thinks forever" and
-                // never writes the file) — so disable it for those.
-                thinking: a.provider === 'nvidia' && model.reasoning && !bigOutput,
+                // Think only when the message is genuinely hard — keeps simple
+                // chats instant and avoids "thinking forever" on big code.
+                thinking:
+                  a.provider === 'nvidia' && model.reasoning && !bigOutput && needsDeepThinking(lastText),
                 signal: ac.signal,
                 onToken,
                 onReasoning,

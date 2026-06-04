@@ -145,10 +145,13 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
         {modelName && <div className="mb-1 text-xs font-semibold text-muted">{modelName}</div>}
         {!!message.steps?.length && <AgentTrace steps={message.steps} live={emptyStreaming} />}
         {emptyStreaming && !message.steps?.length && (
-          <div className="flex items-center gap-1.5 py-2 text-muted">
-            <span className="h-2 w-2 animate-pulse-dot rounded-full bg-accent" />
-            <span className="h-2 w-2 animate-pulse-dot rounded-full bg-accent [animation-delay:0.2s]" />
-            <span className="h-2 w-2 animate-pulse-dot rounded-full bg-accent [animation-delay:0.4s]" />
+          <div className="flex items-center gap-2 py-2 text-sm text-muted">
+            <span className="flex items-center gap-1">
+              <span className="h-2 w-2 animate-pulse-dot rounded-full bg-accent" />
+              <span className="h-2 w-2 animate-pulse-dot rounded-full bg-accent [animation-delay:0.2s]" />
+              <span className="h-2 w-2 animate-pulse-dot rounded-full bg-accent [animation-delay:0.4s]" />
+            </span>
+            <span className="animate-pulse font-medium">Thinking…</span>
           </div>
         )}
         {message.reasoning && <Reasoning text={message.reasoning} live={liveStreaming && !message.content} />}

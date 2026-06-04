@@ -18,6 +18,18 @@ export function wantsWebsite(text: string): boolean {
   )
 }
 
+/** Should the reasoning model actually "think" for this turn? Keeps simple
+ *  messages instant and only spends thinking time on genuinely hard ones. */
+export function needsDeepThinking(text: string): boolean {
+  const t = (text || '').trim()
+  if (t.length < 24) return false
+  if (/^(hi|hey|hello|yo|sup|thanks|thank you|ok|okay|cool|nice|lol|haha|good (morning|afternoon|evening|night)|how are you)\b/i.test(t))
+    return false
+  if (t.length > 200) return true
+  return /\b(why|how (do|does|can|to|come)|explain|prove|solve|calculate|comput|analy|reason|compare|plan|strateg|optimi|debug|design|architect|step[- ]by[- ]step|derive|evaluate|trade-?offs?|pros and cons|should i|best way|algorithm|math|equation|logic|puzzle|riddle)\b/i.test(t) ||
+    /\d\s*[+\-*/^=]\s*\d/.test(t)
+}
+
 /** Builds the system message for a normal chat turn. */
 export function buildSystemPrompt(
   model: RipoModel,

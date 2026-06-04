@@ -114,7 +114,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   accent: '#d97757',
   glassIntensity: 22,
   fontScale: 1,
-  defaultModel: 'ripoai-2o-pro',
+  defaultModel: 'ripoai-4o-pro',
   aboutYou: '',
   responseStyle: '',
   verbosity: 'balanced',
