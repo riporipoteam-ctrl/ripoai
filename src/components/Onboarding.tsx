@@ -1,11 +1,9 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, Moon, Sun, Monitor, MessageSquare, FolderGit2, Globe, Brain } from 'lucide-react'
+import { Sparkles, Moon, Sun, Monitor, MessageSquare, FolderGit2, Globe, Brain, ImageIcon, Mic } from 'lucide-react'
 import { useStore } from '../store'
 import Button from './ui/Button'
 import Logo from './Logo'
-
-const ACCENTS = ['#7c5cff', '#4ea8ff', '#36e0c0', '#ff6b6b', '#ffa94d', '#f06595']
 
 export default function Onboarding() {
   const { settings, updateSettings, user } = useStore()
@@ -40,14 +38,34 @@ export default function Onboarding() {
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Your name"
-        className="mt-5 w-full rounded-2xl border border-white/15 bg-white/5 px-4 py-3 text-lg outline-none focus:border-accent"
+        className="field mt-5 text-lg"
       />
     </div>,
     // 2 — Appearance
     <div key="a">
       <h2 className="text-2xl font-bold">Make it yours</h2>
-      <p className="mt-1 text-muted">Choose a theme and accent. You can change these anytime.</p>
-      <div className="mt-5 flex gap-2">
+      <p className="mt-1 text-muted">Pick a look. You can change these anytime in Settings.</p>
+      <div className="mt-5 grid grid-cols-2 gap-2">
+        {[
+          { v: 'chatgpt', label: 'Black & White', sw: ['#ffffff', '#0d0d0d'] },
+          { v: 'claude', label: 'Orange', sw: ['#f4f2eb', '#d97757'] },
+        ].map((o) => (
+          <button
+            key={o.v}
+            onClick={() => updateSettings({ uiTheme: o.v as any })}
+            className={`flex items-center justify-center gap-2 rounded-2xl border py-4 text-sm font-semibold transition ${
+              (settings.uiTheme ?? 'chatgpt') === o.v ? 'border-accent bg-accent/10' : 'border-white/10 text-muted hover:bg-white/5'
+            }`}
+          >
+            <span className="flex">
+              <span className="h-5 w-5 rounded-l-full border border-black/10" style={{ background: o.sw[0] }} />
+              <span className="h-5 w-5 rounded-r-full" style={{ background: o.sw[1] }} />
+            </span>
+            {o.label}
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 flex gap-2">
         {[
           { v: 'light', icon: Sun, label: 'Light' },
           { v: 'dark', icon: Moon, label: 'Dark' },
@@ -56,22 +74,12 @@ export default function Onboarding() {
           <button
             key={o.v}
             onClick={() => updateSettings({ theme: o.v as any })}
-            className={`flex flex-1 flex-col items-center gap-1 rounded-2xl border py-4 text-xs font-semibold transition ${
+            className={`flex flex-1 flex-col items-center gap-1 rounded-2xl border py-3 text-xs font-semibold transition ${
               settings.theme === o.v ? 'border-accent bg-accent/10' : 'border-white/10 text-muted hover:bg-white/5'
             }`}
           >
-            <o.icon size={20} /> {o.label}
+            <o.icon size={18} /> {o.label}
           </button>
-        ))}
-      </div>
-      <div className="mt-4 flex flex-wrap justify-center gap-3">
-        {ACCENTS.map((c) => (
-          <button
-            key={c}
-            onClick={() => updateSettings({ accent: c })}
-            className="h-10 w-10 rounded-full transition"
-            style={{ background: c, boxShadow: settings.accent === c ? `0 0 0 3px ${c}55` : 'none' }}
-          />
         ))}
       </div>
     </div>,
@@ -84,7 +92,7 @@ export default function Onboarding() {
         onChange={(e) => setAbout(e.target.value)}
         rows={4}
         placeholder="e.g. I'm a frontend developer who loves TypeScript and clean design."
-        className="mt-5 w-full resize-none rounded-2xl border border-white/15 bg-white/5 px-4 py-3 outline-none focus:border-accent"
+        className="field mt-5 resize-none"
       />
     </div>,
     // 4 — Feature tour
@@ -93,16 +101,24 @@ export default function Onboarding() {
       <p className="mt-1 text-center text-muted">Here's what you can do:</p>
       <div className="mt-5 grid grid-cols-2 gap-3">
         {[
-          { icon: MessageSquare, t: 'Chat', d: '4 models, streaming' },
+          { icon: MessageSquare, t: 'Chat', d: 'The latest AI models' },
           { icon: Globe, t: 'Web search', d: 'Live, cited answers' },
-          { icon: FolderGit2, t: 'Projects', d: 'Code with live preview' },
+          { icon: FolderGit2, t: 'Projects', d: 'Build 3D sites live' },
+          { icon: ImageIcon, t: 'Images', d: 'Generate anything' },
+          { icon: Mic, t: 'Voice + Vision', d: 'Talk & show your camera' },
           { icon: Brain, t: 'Memory', d: 'Remembers you' },
-        ].map((f) => (
-          <div key={f.t} className="glass rounded-2xl p-4">
+        ].map((f, i) => (
+          <motion.div
+            key={f.t}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 * i }}
+            className="glass rounded-2xl p-4"
+          >
             <f.icon size={20} className="text-accent" />
             <div className="mt-2 font-semibold">{f.t}</div>
             <div className="text-xs text-muted">{f.d}</div>
-          </div>
+          </motion.div>
         ))}
       </div>
     </div>,
