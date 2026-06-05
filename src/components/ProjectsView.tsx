@@ -17,6 +17,7 @@ import { getModel, CODER_MODEL, type ModelTier } from '../lib/models'
 import type { Attachment } from '../lib/db'
 import { haptic } from '../hooks/useSpeech'
 import { CODING_SYSTEM, WEB3D_INSTRUCTIONS, wants3D } from '../lib/prompt'
+import { buildAssetPrompt } from '../lib/assets3d'
 import { parseCodeFiles, pathFromInfo } from '../lib/parseCode'
 import { saveProject, type Project } from '../lib/db'
 import ModelSelector from './ModelSelector'
@@ -256,6 +257,7 @@ export default function ProjectsView() {
 
     // Search before coding: for real brands / topics / "about X" builds, grab
     // current facts + good image keywords so the site uses accurate content.
+    const want3D = wants3D(userText)
     let research = ''
     const needsResearch = /\b(about|company|brand|for (a|the|my) |real|current|latest|product|menu|prices?|portfolio|store|shop|restaurant|startup|agency)\b/i.test(userText)
     if (needsResearch && messages.length < 3) {
@@ -272,14 +274,35 @@ export default function ProjectsView() {
       }
     }
 
+    // 3D requested → actually search the web for art-direction (what the subject
+    // looks like, motion ideas, palette) and attach a verified, CORS-enabled model
+    // catalog matched to the request so the agent loads a real, good-looking asset.
+    let asset3D = ''
+    if (want3D) {
+      asset3D = `\n\n${buildAssetPrompt(userText)}`
+      if (messages.length < 3) {
+        try {
+          setLiveText('🔎 Finding the best 3D + motion references…')
+          const dir = await complete(
+            'groq/compound',
+            [{ role: 'user', content: `I'm building an Awwwards-tier 3D website for: "${userText.slice(0, 220)}". In 5-7 short bullets give concrete art direction: the hero 3D subject, how it should move/animate on scroll, a color palette (hex), font pairing, and section ideas. End with a line "IMAGE KEYWORDS: <comma keywords for loremflickr>".` }],
+            { maxTokens: 500 },
+          )
+          if (dir) asset3D += `\n\nArt direction (from research — follow it):\n${dir}`
+          setLiveText('')
+        } catch {
+          setLiveText('')
+        }
+      }
+    }
+
     // When the user asks for 3D / scroll motion / animation, fold in the full
     // premium Awwwards-tier 3D directives so it actually loads real glTF models.
-    const want3D = wants3D(userText)
     const sysMsg = {
       role: 'system' as const,
       content:
         `${CODING_SYSTEM}` +
-        (want3D ? `\n\n${WEB3D_INSTRUCTIONS}` : '') +
+        (want3D ? `\n\n${WEB3D_INSTRUCTIONS}${asset3D}` : '') +
         `\n\nProject: ${project.name} (static website, entry /index.html).\nCurrent files:\n${fileContext}` +
         (research ? `\n\nResearched facts to use (be accurate, use the image keywords with loremflickr):\n${research}` : ''),
     }
