@@ -10,6 +10,7 @@ import { streamPuter } from '../lib/puter'
 import { wantsSlides, generateDeck } from '../lib/slides'
 import { getModel, resolveAutoModel, type ModelTier } from '../lib/models'
 import { buildSystemPrompt, AGENT_SYSTEM, WEB3D_INSTRUCTIONS, wantsWebsite, needsDeepThinking } from '../lib/prompt'
+import { extractSocialImages, buildSocialPrompt } from '../lib/social'
 import { searchModel, shouldAutoSearch } from '../lib/search'
 import { extractMemories } from '../lib/memory'
 import { installSkillFromUrl, detectSkillInstall, detectSlashSkill, findSkill, autoPickSkill } from '../lib/skills'
@@ -362,6 +363,9 @@ export function useChat(chatId: string | undefined) {
           lastText.match(/https?:\/\/\S+\.(?:glb|gltf)(?:\?\S+)?/i)?.[0]
         if (modelUrl)
           system += `\n\nMANDATORY: load THIS exact 3D model with THREE.GLTFLoader (do not substitute a catalog model): ${modelUrl.replace(/[)>\].,]+$/, '')}`
+        // Real profile photos from any social handles the user mentioned.
+        const social = buildSocialPrompt(extractSocialImages(lastText))
+        if (social) system += '\n\n' + social
       }
       // Big code/website outputs need a larger token budget (+ auto-continue below).
       const bigOutput =

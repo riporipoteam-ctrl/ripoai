@@ -18,6 +18,7 @@ import type { Attachment } from '../lib/db'
 import { haptic } from '../hooks/useSpeech'
 import { CODING_SYSTEM, WEB3D_INSTRUCTIONS, wants3D } from '../lib/prompt'
 import { buildAssetPrompt } from '../lib/assets3d'
+import { extractSocialImages, buildSocialPrompt } from '../lib/social'
 import { parseCodeFiles, pathFromInfo } from '../lib/parseCode'
 import { saveProject, type Project } from '../lib/db'
 import ModelSelector from './ModelSelector'
@@ -265,8 +266,8 @@ export default function ProjectsView() {
         setLiveText('🔎 Researching…')
         research = await complete(
           'groq/compound',
-          [{ role: 'user', content: `For building a website about: "${userText.slice(0, 220)}". Give 4-6 short, accurate, current factual bullets, then a final line "IMAGE KEYWORDS: <comma keywords for loremflickr>".` }],
-          { maxTokens: 450 },
+          [{ role: 'user', content: `For building a website about: "${userText.slice(0, 220)}". Give 4-6 short, accurate, current factual bullets. Then a line "REAL IMAGE URLS: <up to 4 direct https links to real public images (logos/products/photos) ending in .jpg/.png/.webp if you can find them, else none>". Then a final line "IMAGE KEYWORDS: <comma keywords for loremflickr>".` }],
+          { maxTokens: 500 },
         )
         setLiveText('')
       } catch {
@@ -296,6 +297,9 @@ export default function ProjectsView() {
       }
     }
 
+    // Real profile photos from any social handles the user mentioned.
+    const social = buildSocialPrompt(extractSocialImages(userText))
+
     // When the user asks for 3D / scroll motion / animation, fold in the full
     // premium Awwwards-tier 3D directives so it actually loads real glTF models.
     const sysMsg = {
@@ -303,8 +307,9 @@ export default function ProjectsView() {
       content:
         `${CODING_SYSTEM}` +
         (want3D ? `\n\n${WEB3D_INSTRUCTIONS}${asset3D}` : '') +
+        (social ? `\n\n${social}` : '') +
         `\n\nProject: ${project.name} (static website, entry /index.html).\nCurrent files:\n${fileContext}` +
-        (research ? `\n\nResearched facts to use (be accurate, use the image keywords with loremflickr):\n${research}` : ''),
+        (research ? `\n\nResearched facts to use (be accurate; prefer the REAL IMAGE URLS for real photos with an onerror fallback to loremflickr keywords):\n${research}` : ''),
     }
     const convo = history.map((m, i) =>
       i === history.length - 1 ? { role: m.role, content: userText } : { role: m.role, content: m.content },
@@ -432,7 +437,7 @@ export default function ProjectsView() {
                 the preview. Try:
               </p>
               <div className="mt-3 space-y-2">
-                {['Build a sleek todo app with local storage', 'Make a landing page for a coffee brand', 'Create an animated pricing section'].map(
+                {['Cinematic 3D landing page with a robot that reacts as I scroll', 'Portfolio site using my Instagram @username photos', 'Sleek product page for a sneaker with a spinning 3D model'].map(
                   (s) => (
                     <button
                       key={s}

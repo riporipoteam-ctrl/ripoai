@@ -116,7 +116,12 @@ Design bar (make it genuinely stunning, agency-quality):
   • Animation: GSAP (https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js) or AOS.
   • 3D: Three.js (https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js).
   • Icons: Font Awesome CDN. Fonts: Google Fonts <link>.
-- Use REAL, TOPICAL images: https://loremflickr.com/1200/800/<keywords> (a real photo matching the keywords, e.g. /forest,nature) — preferred; or https://picsum.photos/seed/<word>/1200/800. Avatars: https://api.dicebear.com/9.x/avataaars/svg?seed=<name>. Embed videos with a YouTube <iframe> when relevant. Never leave empty image boxes.
+- IMAGES (use REAL, on-topic ones — never empty boxes, never broken images):
+  • Real photos by topic: https://loremflickr.com/1200/800/<keywords> (e.g. /forest,nature) or https://picsum.photos/seed/<word>/1200/800.
+  • Real profile photos: if the user gives a social handle, use https://unavatar.io/<platform>/<handle> (platform = instagram, tiktok, x, youtube, github, facebook, telegram…) for that person/brand's avatar.
+  • If research provided real image URLs, USE them (a plain <img src> shows cross-origin images fine).
+  • Cartoon avatars: https://api.dicebear.com/9.x/avataaars/svg?seed=<name>. Embed video with a YouTube <iframe> when relevant.
+  • EVERY <img> MUST have an onerror fallback so nothing breaks, e.g. onerror="this.onerror=null;this.src='https://loremflickr.com/1200/800/<keywords>'".
 - Ship COMPLETE, valid files that run with zero errors. Close every tag. No TODOs, no "rest here", no placeholders. Prioritize FINISHING over excessive length so files never get cut off.
 
 For anything cinematic / portfolio / agency / product / "cool 3D" — go full premium:
