@@ -524,7 +524,9 @@ export function useChat(chatId: string | undefined) {
         attempts.push({ provider: 'groq', model: searchModel(), maxTokens: 2048 })
         attempts.push({ provider: 'groq', model: 'llama-3.3-70b-versatile', maxTokens: 1500 })
       } else if (hasImages) {
+        // Two different vision models so a flaky/over-loaded one still answers.
         attempts.push({ provider: 'groq', model: visionModel.groqModel, maxTokens: 1500 })
+        attempts.push({ provider: 'groq', model: 'meta-llama/llama-4-maverick-17b-128e-instruct', maxTokens: 1500 })
       } else if (usePuter) {
         attempts.push({ provider: 'puter', model: model.puterModel!, maxTokens: model.maxTokens })
         attempts.push({ provider: 'groq', model: model.groqModel, maxTokens: Math.min(model.maxTokens, 4096) })
@@ -671,7 +673,9 @@ export function useChat(chatId: string | undefined) {
             /* fall through */
           }
           if (!finalContent.trim()) {
-            finalContent = "I couldn't pull together a clean answer for that — please try rephrasing or switch models."
+            finalContent = hasImages
+              ? "I couldn't read that image clearly. Try a sharper, well-lit photo (JPEG or PNG), or tell me what you're looking at and I'll help."
+              : "I couldn't pull together a clean answer for that — please try rephrasing or switch models."
           }
           const fc = finalContent
           if (isLive()) setMessages((m) => m.map((x) => (x.id === assistantId ? { ...x, content: fc } : x)))
