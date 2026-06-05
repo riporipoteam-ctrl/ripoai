@@ -7,7 +7,10 @@ import {
   loadMemories,
   watchChats,
   watchProjects,
+  watchSettings,
   onSyncStatus,
+  onSyncError,
+  forceSync,
   migrateLocalToCloud,
   type ChatMeta,
   type Memory,
@@ -67,6 +70,8 @@ interface AppState {
   sidebarOpen: boolean
   settingsOpen: boolean
   synced: boolean
+  syncError: string
+  syncing: boolean
   banStatus: import('./lib/admin').MyStatus | null
   unreadChats: string[]
 
@@ -75,6 +80,7 @@ interface AppState {
   setUser: (u: User | null) => void
   setAuthReady: (v: boolean) => void
   initUserData: (uid: string) => Promise<void>
+  resync: () => Promise<void>
   markUnread: (id: string) => void
   clearUnread: (id: string) => void
   setBanStatus: (b: import('./lib/admin').MyStatus | null) => void
@@ -99,6 +105,8 @@ export const useStore = create<AppState>((set, get) => ({
   sidebarOpen: true,
   settingsOpen: false,
   synced: false,
+  syncError: '',
+  syncing: false,
   banStatus: null,
   unreadChats: [],
   _unsub: [],
@@ -130,11 +138,19 @@ export const useStore = create<AppState>((set, get) => ({
 
     let unsubChats = () => {}
     let unsubProjects = () => {}
+    let unsubSettings = () => {}
     let unsubSync = () => {}
+    let unsubErr = () => {}
     try {
       unsubChats = watchChats(uid, (chats) => set({ chats }))
       unsubProjects = watchProjects(uid, (projects) => set({ projects }))
+      // Live-sync personalizations across devices.
+      unsubSettings = watchSettings(uid, (s) => {
+        applyAppearance(s)
+        set({ settings: s })
+      })
       unsubSync = onSyncStatus((b) => set({ synced: b }))
+      unsubErr = onSyncError((e) => set({ syncError: e }))
     } catch {
       /* listeners optional — app still works without history */
     }
@@ -143,7 +159,7 @@ export const useStore = create<AppState>((set, get) => ({
       settings,
       memories,
       dataReady: true,
-      _unsub: [unsubChats, unsubProjects, unsubSync],
+      _unsub: [unsubChats, unsubProjects, unsubSettings, unsubSync, unsubErr],
       sidebarOpen: window.innerWidth >= 768,
     })
 
@@ -154,6 +170,19 @@ export const useStore = create<AppState>((set, get) => ({
 
     // Push any existing local data to the cloud (one-time), in the background.
     void migrateLocalToCloud(uid)
+  },
+
+  resync: async () => {
+    const uid = get().user?.uid
+    if (!uid || get().syncing) return
+    set({ syncing: true })
+    try {
+      await forceSync(uid)
+    } catch {
+      /* errors surface via the sync-error listener */
+    } finally {
+      set({ syncing: false })
+    }
   },
 
   teardown: () => {

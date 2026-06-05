@@ -197,14 +197,48 @@ function setSync(b: boolean) {
   }
 }
 
+// Human-readable reason sync is failing (empty when fine). Surfaced in Settings
+// so a silent rules/setup problem becomes something the user can actually fix.
+let syncErr = ''
+const errListeners = new Set<(s: string) => void>()
+export function onSyncError(cb: (s: string) => void) {
+  errListeners.add(cb)
+  cb(syncErr)
+  return () => errListeners.delete(cb)
+}
+function setSyncErr(s: string) {
+  if (s !== syncErr) {
+    syncErr = s
+    errListeners.forEach((fn) => fn(s))
+  }
+}
+export function fsErrorMessage(e: any): string {
+  const code: string = e?.code || ''
+  if (code.includes('permission-denied'))
+    return "Sync is blocked by Firestore security rules. In the Firebase console → Firestore → Rules, paste this project's firestore.rules and Publish."
+  if (code.includes('unauthenticated')) return 'Signed out of the cloud — sign in again to sync.'
+  if (code.includes('failed-precondition'))
+    return "Firestore isn't set up for this project yet — create the database in the Firebase console."
+  if (code.includes('unavailable') || code.includes('deadline'))
+    return 'Cloud is unreachable right now — check your internet connection.'
+  return e?.message || 'Sync error.'
+}
+
+// Timestamp of the last local settings write, so the live settings watcher
+// doesn't clobber an edit the user is still making with an echoing snapshot.
+let lastSettingsSave = 0
+
 // Best-effort Firestore write that can never throw or hang (8s cap).
 function bgWrite(label: string, fn: () => Promise<unknown>) {
   try {
-    Promise.race([fn(), new Promise((r) => setTimeout(r, 8000))]).catch((e) =>
-      console.warn(`${label} (background):`, (e as Error)?.message ?? e),
-    )
+    Promise.race([fn(), new Promise((r) => setTimeout(r, 8000))]).catch((e) => {
+      // A failed write means the cloud isn't accepting our data — surface why
+      // (e.g. permission-denied → rules not deployed) instead of failing silent.
+      if (e?.code) setSyncErr(fsErrorMessage(e))
+      console.warn(`${label} (background):`, (e as Error)?.message ?? e)
+    })
   } catch (e) {
-    // setDoc validates synchronously and can throw (e.g. undefined fields).
+    if ((e as any)?.code) setSyncErr(fsErrorMessage(e))
     console.warn(`${label} (background):`, (e as Error)?.message ?? e)
   }
 }
@@ -239,9 +273,55 @@ export async function loadSettings(uid: string): Promise<UserSettings> {
 export async function saveSettings(uid: string, patch: Partial<UserSettings>) {
   const next = { ...DEFAULT_SETTINGS, ...read<Partial<UserSettings>>(uid, 'settings', {}), ...patch }
   write(uid, 'settings', next)
+  lastSettingsSave = Date.now()
   bgWrite('saveSettings', () =>
     setDoc(doc(db, 'users', uid), { settings: next, updatedAt: serverTimestamp() }, { merge: true }),
   )
+}
+
+// Live-sync personalizations (name, theme, custom instructions…) across devices.
+// Skips snapshots that just echo our own pending/recent write so it never undoes
+// an edit the user is actively typing.
+export function watchSettings(uid: string, cb: (s: UserSettings) => void) {
+  try {
+    return onSnapshot(
+      doc(db, 'users', uid),
+      (snap) => {
+        setSync(true)
+        setSyncErr('')
+        if (snap.metadata.hasPendingWrites) return // our own unsaved write echoing back
+        if (Date.now() - lastSettingsSave < 4000) return // user just changed it locally
+        const data = snap.data()
+        if (!data?.settings) return
+        const cloud = { ...DEFAULT_SETTINGS, ...data.settings }
+        const local = { ...DEFAULT_SETTINGS, ...read<Partial<UserSettings>>(uid, 'settings', {}) }
+        if (JSON.stringify(cloud) === JSON.stringify(local)) return // nothing changed
+        write(uid, 'settings', cloud)
+        cb(cloud)
+      },
+      (err) => {
+        setSync(false)
+        setSyncErr(fsErrorMessage(err))
+      },
+    )
+  } catch {
+    return () => {}
+  }
+}
+
+// Force-push everything in local storage to the cloud (ignores the one-time
+// migration guard). Used by the "Sync now" button so a user can recover after
+// fixing rules/connectivity without waiting for the next incidental write.
+export async function forceSync(uid: string): Promise<void> {
+  const localS = read<Partial<UserSettings> | null>(uid, 'settings', null)
+  if (localS) await saveSettings(uid, localS)
+  for (const m of read<ChatMeta[]>(uid, 'chats', [])) {
+    const full = read<Chat | null>(uid, `chat:${m.id}`, null)
+    if (full && full.messages?.length) await saveChat(uid, full)
+  }
+  for (const mem of read<Memory[]>(uid, 'memories', []))
+    bgWrite('forceSyncMem', () => setDoc(doc(db, 'users', uid, 'memories', mem.id), mem))
+  for (const p of read<Project[]>(uid, 'projects', [])) await saveProject(uid, p)
 }
 
 /* ----------------------------- Memories ----------------------------- */
@@ -347,12 +427,14 @@ export function watchChats(uid: string, cb: (chats: ChatMeta[]) => void) {
         const merged = [...byId.values()]
         write(uid, 'chats', merged)
         setSync(true)
+        setSyncErr('')
         cb(
           [...merged].sort((a, b) => (!!a.pinned !== !!b.pinned ? (a.pinned ? -1 : 1) : b.updatedAt - a.updatedAt)),
         )
       },
-      () => {
+      (err) => {
         setSync(false) // rules/offline — local fallback already active
+        setSyncErr(fsErrorMessage(err))
       },
     )
   } catch {

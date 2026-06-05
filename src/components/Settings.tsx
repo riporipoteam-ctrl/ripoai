@@ -46,6 +46,10 @@ export default function Settings() {
     memories,
     setMemories,
     user,
+    synced,
+    syncError,
+    syncing,
+    resync,
   } = useStore()
   const [tab, setTab] = useState<(typeof TABS)[number]['id']>('general')
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
@@ -533,6 +537,30 @@ export default function Settings() {
 
           {tab === 'data' && (
             <>
+              <div className="mb-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`h-2.5 w-2.5 rounded-full ${synced ? 'bg-emerald-400' : syncError ? 'bg-red-400' : 'bg-amber-400'}`}
+                  />
+                  <span className="text-sm font-semibold">
+                    {synced ? 'Synced to your account' : syncError ? 'Not syncing' : 'Connecting…'}
+                  </span>
+                  <button
+                    onClick={() => resync()}
+                    disabled={syncing}
+                    className="pressable ml-auto rounded-xl bg-white/10 px-3 py-1.5 text-xs font-semibold hover:bg-white/20 disabled:opacity-50"
+                  >
+                    {syncing ? 'Syncing…' : 'Sync now'}
+                  </button>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-muted">
+                  {synced
+                    ? 'Your chats, projects and personalizations are backed up and sync across every device you sign in on.'
+                    : syncError
+                      ? syncError
+                      : 'Setting up cloud sync… if this stays here, tap “Sync now”. Your data is always saved on this device meanwhile.'}
+                </p>
+              </div>
               <Row
                 title="Clear all chats"
                 desc="Permanently delete your entire chat history."
