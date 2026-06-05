@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Brain, ChevronDown } from 'lucide-react'
 
-export default function Reasoning({ text, live }: { text: string; live?: boolean }) {
+export default function Reasoning({ text, live, thinkMs }: { text: string; live?: boolean; thinkMs?: number }) {
   const [open, setOpen] = useState(false)
   if (!text) return null
+  const secs = thinkMs ? Math.max(1, Math.round(thinkMs / 1000)) : 0
   return (
     <div className="mb-2.5 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.07] to-transparent">
       <button onClick={() => setOpen((o) => !o)} className="flex w-full items-center gap-2.5 px-3 py-2.5">
@@ -16,6 +17,8 @@ export default function Reasoning({ text, live }: { text: string; live?: boolean
             <span className="bg-gradient-to-r from-accent via-ink to-accent bg-[length:200%_100%] bg-clip-text text-transparent animate-shimmer">
               Thinking…
             </span>
+          ) : secs ? (
+            `Thought for ${secs}s`
           ) : (
             'Thought process'
           )}

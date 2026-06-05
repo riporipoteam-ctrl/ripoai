@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Copy, Check, RefreshCw, Pencil, FileText, Volume2, Square, Bookmark, ArrowUpRight, Wand2 } from 'lucide-react'
 import { Markdown } from './Markdown'
@@ -23,6 +23,24 @@ interface Props {
   onEdit?: (text: string) => void
   onFollowup?: (text: string) => void
   onToggleBookmark?: () => void
+}
+
+function ThinkingIndicator() {
+  const [s, setS] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => setS((n) => n + 1), 1000)
+    return () => clearInterval(t)
+  }, [])
+  return (
+    <div className="flex items-center gap-2 py-2 text-sm text-muted">
+      <span className="flex items-center gap-1">
+        <span className="h-2 w-2 animate-pulse-dot rounded-full bg-accent" />
+        <span className="h-2 w-2 animate-pulse-dot rounded-full bg-accent [animation-delay:0.2s]" />
+        <span className="h-2 w-2 animate-pulse-dot rounded-full bg-accent [animation-delay:0.4s]" />
+      </span>
+      <span className="font-medium">Thinking{s >= 2 ? ` · ${s}s` : '…'}</span>
+    </div>
+  )
 }
 
 export default function Message({ message, streaming, isLastAssistant, onRegenerate, onEdit, onFollowup, onToggleBookmark }: Props) {
@@ -144,17 +162,8 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
       <div className="min-w-0 flex-1">
         {modelName && <div className="mb-1 text-xs font-semibold text-muted">{modelName}</div>}
         {!!message.steps?.length && <AgentTrace steps={message.steps} live={emptyStreaming} />}
-        {emptyStreaming && !message.steps?.length && (
-          <div className="flex items-center gap-2 py-2 text-sm text-muted">
-            <span className="flex items-center gap-1">
-              <span className="h-2 w-2 animate-pulse-dot rounded-full bg-accent" />
-              <span className="h-2 w-2 animate-pulse-dot rounded-full bg-accent [animation-delay:0.2s]" />
-              <span className="h-2 w-2 animate-pulse-dot rounded-full bg-accent [animation-delay:0.4s]" />
-            </span>
-            <span className="animate-pulse font-medium">Thinking…</span>
-          </div>
-        )}
-        {message.reasoning && <Reasoning text={message.reasoning} live={liveStreaming && !message.content} />}
+        {emptyStreaming && !message.steps?.length && <ThinkingIndicator />}
+        {message.reasoning && <Reasoning text={message.reasoning} live={liveStreaming && !message.content} thinkMs={message.thinkMs} />}
         {message.imagePending && (
           <div className="w-full max-w-sm overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-lg">
             <div className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold">

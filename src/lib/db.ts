@@ -29,6 +29,8 @@ export interface StoredMessage {
   role: 'user' | 'assistant'
   content: string
   reasoning?: string
+  /** How long the model spent thinking (ms), if it reasoned. */
+  thinkMs?: number
   model?: ModelTier
   attachments?: Attachment[]
   /** Tool/search steps surfaced during generation. */

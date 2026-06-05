@@ -458,6 +458,8 @@ export function useChat(chatId: string | undefined) {
 
       let finalContent = ''
       let finalReasoning = ''
+      let thinkStart = 0
+      let thinkEnd = 0
 
       // Batched stream handlers: accumulate tokens and flush to state ~25fps
       // instead of on every token. This keeps streaming fast even with heavy
@@ -486,10 +488,12 @@ export function useChat(chatId: string | undefined) {
       }
       const onToken = (delta: string) => {
         haptic(5)
+        if (thinkStart && !thinkEnd) thinkEnd = Date.now()
         pendC += delta
         schedule()
       }
       const onReasoning = (delta: string) => {
+        if (!thinkStart) thinkStart = Date.now()
         haptic(4)
         pendR += delta
         schedule()
@@ -522,9 +526,18 @@ export function useChat(chatId: string | undefined) {
         attempts.push({ provider: 'groq', model: model.groqModel, maxTokens: Math.min(model.maxTokens, 4096) })
         attempts.push({ provider: 'groq', model: 'llama-3.1-8b-instant', maxTokens: 2048 })
       } else if (useNvidia) {
-        attempts.push({ provider: 'nvidia', model: model.nvModel!, maxTokens: bigOutput ? 8192 : Math.min(model.maxTokens, 4096) })
-        attempts.push({ provider: 'groq', model: model.groqModel, maxTokens: bigOutput ? Math.min(model.maxTokens, 8000) : Math.min(model.maxTokens, 4096), reasoningEffort: model.reasoningEffort })
-        attempts.push({ provider: 'groq', model: 'llama-3.1-8b-instant', maxTokens: 2048 })
+        // 4o Pro: only use the (slower, deeper) GLM model when the task is hard
+        // or is big code. For simple/short messages, answer FAST with Groq so a
+        // "hi" is instant instead of waiting on GLM.
+        const deepThink = model.reasoning && needsDeepThinking(lastText)
+        if (deepThink || bigOutput) {
+          attempts.push({ provider: 'nvidia', model: model.nvModel!, maxTokens: bigOutput ? 8192 : Math.min(model.maxTokens, 4096) })
+          attempts.push({ provider: 'groq', model: model.groqModel, maxTokens: bigOutput ? Math.min(model.maxTokens, 8000) : Math.min(model.maxTokens, 4096), reasoningEffort: model.reasoningEffort })
+          attempts.push({ provider: 'groq', model: 'llama-3.1-8b-instant', maxTokens: 2048 })
+        } else {
+          attempts.push({ provider: 'groq', model: 'llama-3.3-70b-versatile', maxTokens: Math.min(model.maxTokens, 4096) })
+          attempts.push({ provider: 'groq', model: 'llama-3.1-8b-instant', maxTokens: 2048 })
+        }
       } else if (useOR) {
         attempts.push({ provider: 'openrouter', model: model.orModel!, maxTokens: Math.min(model.maxTokens, 4096) })
         attempts.push({ provider: 'groq', model: model.groqModel, maxTokens: Math.min(model.maxTokens, 4096), reasoningEffort: model.reasoningEffort })
@@ -687,6 +700,7 @@ export function useChat(chatId: string | undefined) {
         role: 'assistant',
         content: finalContent || '⚠️ No response.',
         reasoning: finalReasoning || undefined,
+        thinkMs: thinkStart ? (thinkEnd || Date.now()) - thinkStart : undefined,
         model: opts.model,
         steps: localSteps.length ? [...localSteps] : undefined,
         map: placesData ?? undefined,
