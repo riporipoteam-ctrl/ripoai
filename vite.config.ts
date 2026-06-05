@@ -10,4 +10,18 @@ export default defineConfig(({ command }) => ({
     host: true,
     port: 5173,
   },
+  build: {
+    rollupOptions: {
+      output: {
+        // Split big, rarely-changing vendors into their own cached chunks so the
+        // app shell loads + parses faster on the phone (and updates re-download
+        // only what actually changed).
+        manualChunks: {
+          firebase: ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+          markdown: ['react-markdown', 'remark-gfm', 'remark-math', 'rehype-katex', 'katex'],
+          motion: ['framer-motion'],
+        },
+      },
+    },
+  },
 }))

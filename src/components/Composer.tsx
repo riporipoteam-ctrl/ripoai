@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, ArrowUp, Square, Globe, Bot, ImageIcon, Paperclip, X, FileText, Loader2, Mic, Phone, Sparkles, Check } from 'lucide-react'
+import { Plus, ArrowUp, Square, Globe, Bot, ImageIcon, Paperclip, X, FileText, Loader2, Mic, Phone, Sparkles, Check, Camera } from 'lucide-react'
 import ModelSelector from './ModelSelector'
 import { useVoiceInput, hapticPattern } from '../hooks/useSpeech'
 import { fileToAttachment } from '../lib/files'
@@ -98,6 +98,7 @@ export default function Composer({
   const [err, setErr] = useState('')
   const taRef = useRef<HTMLTextAreaElement>(null)
   const imgInput = useRef<HTMLInputElement>(null)
+  const camInput = useRef<HTMLInputElement>(null)
   const fileInput = useRef<HTMLInputElement>(null)
   const voice = useVoiceInput((t) => {
     setText(t)
@@ -276,6 +277,18 @@ export default function Composer({
                       <div className="mx-auto mb-2 h-1.5 w-10 rounded-full bg-[rgb(var(--muted)/0.4)] sm:hidden" />
                       <button
                         onClick={() => {
+                          camInput.current?.click()
+                          setPlusOpen(false)
+                        }}
+                        className="pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium hover:bg-white/10"
+                      >
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                          <Camera size={18} />
+                        </span>
+                        Take photo
+                      </button>
+                      <button
+                        onClick={() => {
                           imgInput.current?.click()
                           setPlusOpen(false)
                         }}
@@ -433,6 +446,17 @@ export default function Composer({
         type="file"
         accept="image/*"
         multiple
+        hidden
+        onChange={(e) => {
+          handleFiles(e.target.files)
+          e.target.value = ''
+        }}
+      />
+      <input
+        ref={camInput}
+        type="file"
+        accept="image/*"
+        capture="environment"
         hidden
         onChange={(e) => {
           handleFiles(e.target.files)
