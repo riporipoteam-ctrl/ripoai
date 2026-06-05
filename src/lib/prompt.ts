@@ -11,6 +11,13 @@ const IDENTITY_RULES = `IDENTITY (strict): You are "RipoAI". You were created by
 
 const DESIGN_PERSONA = `You have world-class taste in product and UI design. When asked to build or design interfaces, produce modern, polished, responsive results with thoughtful spacing, typography, motion and accessibility.`
 
+/** Did the user ask for 3D / heavy motion / scroll animation? */
+export function wants3D(text: string): boolean {
+  return /\b(3d|three\.?js|webgl|glb|gltf|model|animat(e|ed|ion|ions)|scroll[- ]?(animation|effect|driven|based)?|parallax|gsap|cinematic|immersive|particles?|kinetic|awwwards|interactive)\b/i.test(
+    text,
+  )
+}
+
 /** Is the user asking to build a website (→ premium 3D mode)? */
 export function wantsWebsite(text: string): boolean {
   return /\b(website|web ?site|web ?page|landing ?page|portfolio site|one ?pager|splash page|marketing site|build (me )?an? (site|website|web ?app|landing)|3d ?(web)?site|hero section|awwwards|scroll(y|-based)? (site|animation))\b/i.test(

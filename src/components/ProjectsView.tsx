@@ -16,12 +16,11 @@ import { fileToAttachment } from '../lib/files'
 import { getModel, CODER_MODEL, type ModelTier } from '../lib/models'
 import type { Attachment } from '../lib/db'
 import { haptic } from '../hooks/useSpeech'
-import { CODING_SYSTEM } from '../lib/prompt'
-import { parseCodeFiles } from '../lib/parseCode'
+import { CODING_SYSTEM, WEB3D_INSTRUCTIONS, wants3D } from '../lib/prompt'
+import { parseCodeFiles, pathFromInfo } from '../lib/parseCode'
 import { saveProject, type Project } from '../lib/db'
 import ModelSelector from './ModelSelector'
 import { Markdown } from './Markdown'
-import Spinner from './ui/Spinner'
 
 interface CodeMsg {
   role: 'user' | 'assistant'
@@ -33,8 +32,19 @@ function proseOf(text: string): string {
   return text
     .replace(/```[\s\S]*?```/g, '')
     .replace(/```[\s\S]*$/, '')
+    .replace(/<!doctype html>[\s\S]*$/i, '')
+    .replace(/<html[\s\S]*$/i, '')
+    .replace(/<[^>]+>/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
+    .replace(/[ \t]{2,}/g, ' ')
     .trim()
+}
+// A short, friendly one-liner for the chat transcript — never raw code/HTML.
+function summaryOf(text: string, fileCount: number): string {
+  let s = proseOf(text).split('\n').filter(Boolean).slice(0, 2).join(' ').trim()
+  if (s.length > 220) s = s.slice(0, 220).trim() + '…'
+  if (!s) s = fileCount ? `Built ${fileCount} file${fileCount === 1 ? '' : 's'} — check the preview.` : 'Done.'
+  return s
 }
 function fileList(text: string): string[] {
   return Array.from(new Set(parseCodeFiles(text).map((f) => f.path)))
@@ -42,12 +52,73 @@ function fileList(text: string): string[] {
 function FileChips({ paths }: { paths: string[] }) {
   if (!paths.length) return null
   return (
-    <div className="mt-1.5 flex flex-wrap gap-1.5">
+    <div className="mt-2 flex flex-wrap gap-1.5">
       {paths.map((p) => (
         <span key={p} className="flex items-center gap-1 rounded-lg bg-white/8 px-2 py-1 text-xs text-muted">
           <Code2 size={12} className="text-accent" /> {p.replace(/^\//, '')}
         </span>
       ))}
+    </div>
+  )
+}
+
+// Live "watch it code" view: parses the in-flight stream into per-file blocks and
+// shows the code typing out into an editor-like panel as it arrives.
+interface StreamBlock {
+  path: string
+  code: string
+  open: boolean
+}
+function streamBlocks(text: string): StreamBlock[] {
+  const parts = text.split('```')
+  const out: StreamBlock[] = []
+  for (let i = 1; i < parts.length; i += 2) {
+    const block = parts[i]
+    const nl = block.indexOf('\n')
+    const info = (nl === -1 ? block : block.slice(0, nl)).trim()
+    const code = nl === -1 ? '' : block.slice(nl + 1)
+    const open = i === parts.length - 1 // a trailing, still-streaming block
+    if (!info && !code.trim()) continue
+    out.push({ path: pathFromInfo(info) || info || 'code', code, open })
+  }
+  return out
+}
+
+function LiveCodePanel({ text }: { text: string }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const blocks = streamBlocks(text)
+  const active = blocks.length ? blocks[blocks.length - 1] : null
+  const status = !blocks.length ? proseOf(text) || text.trim() : ''
+  useEffect(() => {
+    ref.current?.scrollTo({ top: ref.current.scrollHeight })
+  }, [text])
+  return (
+    <div className="flex h-full flex-col overflow-hidden rounded-[20px] border border-white/10 bg-[#0c0d12]">
+      <div className="flex items-center gap-2 border-b border-white/10 px-3 py-2 text-xs">
+        <span className="flex gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-red-400/80" />
+          <span className="h-2.5 w-2.5 rounded-full bg-yellow-400/80" />
+          <span className="h-2.5 w-2.5 rounded-full bg-green-400/80" />
+        </span>
+        <span className="font-mono text-white/70">
+          {active ? active.path.replace(/^\//, '') : 'workspace'}
+        </span>
+        <span className="ml-auto flex items-center gap-1 text-accent">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-accent" /> live
+        </span>
+      </div>
+      <div ref={ref} className="no-scrollbar flex-1 overflow-y-auto p-3 font-mono text-[12px] leading-relaxed text-white/85">
+        {status && <div className="text-white/60">{status}</div>}
+        {blocks.map((b, i) => (
+          <div key={i} className="mb-4">
+            <div className="mb-1 text-[11px] uppercase tracking-wide text-accent/80">{b.path.replace(/^\//, '')}</div>
+            <pre className="whitespace-pre-wrap break-words">
+              {b.code}
+              {b.open && <span className="ml-0.5 inline-block h-3.5 w-1.5 animate-pulse bg-accent align-middle" />}
+            </pre>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -100,7 +171,13 @@ export default function ProjectsView() {
   }
 
   async function applyAndSave(text: string, newFiles: Record<string, string>, chat?: CodeMsg[]) {
-    const parsed = parseCodeFiles(text)
+    let parsed = parseCodeFiles(text)
+    // Last-ditch salvage: the model clearly wrote HTML but in a shape the parser
+    // missed — wrap the raw markup as index.html so the build never comes up empty.
+    if (!parsed.length && /<\/?(html|body|div|section|header|main|h1|canvas)\b/i.test(text)) {
+      const start = text.search(/<!doctype html>|<html|<body|<section|<header|<main|<div/i)
+      if (start >= 0) parsed = [{ path: '/index.html', code: text.slice(start) }]
+    }
     let updated = { ...newFiles }
     if (parsed.length) {
       // If a file was streamed across multiple blocks (truncation + continue),
@@ -166,6 +243,7 @@ export default function ProjectsView() {
     setAttached([])
     setStreaming(true)
     setLiveText('')
+    setMobileView('build') // let the user watch it code live
 
     const fileContext = Object.entries(files)
       .map(([path, code]) => `--- ${path} ---\n${code}`)
@@ -194,10 +272,15 @@ export default function ProjectsView() {
       }
     }
 
+    // When the user asks for 3D / scroll motion / animation, fold in the full
+    // premium Awwwards-tier 3D directives so it actually loads real glTF models.
+    const want3D = wants3D(userText)
     const sysMsg = {
       role: 'system' as const,
       content:
-        `${CODING_SYSTEM}\n\nProject: ${project.name} (static website, entry /index.html).\nCurrent files:\n${fileContext}` +
+        `${CODING_SYSTEM}` +
+        (want3D ? `\n\n${WEB3D_INSTRUCTIONS}` : '') +
+        `\n\nProject: ${project.name} (static website, entry /index.html).\nCurrent files:\n${fileContext}` +
         (research ? `\n\nResearched facts to use (be accurate, use the image keywords with loremflickr):\n${research}` : ''),
     }
     const convo = history.map((m, i) =>
@@ -340,20 +423,37 @@ export default function ProjectsView() {
               </div>
             </div>
           )}
-          {messages.map((m, i) =>
-            m.role === 'user' ? (
-              <div key={i} className="flex justify-end">
-                <div className="glass max-w-[85%] whitespace-pre-wrap rounded-3xl rounded-tr-lg px-4 py-2.5 text-sm">
-                  {m.content}
+          {messages.map((m, i) => {
+            if (m.role === 'user') {
+              return (
+                <div key={i} className="flex justify-end">
+                  <div className="glass max-w-[85%] whitespace-pre-wrap rounded-3xl rounded-tr-lg px-4 py-2.5 text-sm">
+                    {m.content}
+                  </div>
                 </div>
-              </div>
-            ) : (
+              )
+            }
+            const paths = fileList(m.content)
+            // Built something → clean status card (never dump raw code in chat).
+            if (paths.length) {
+              return (
+                <div key={i} className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm">
+                  <div className="flex items-start gap-2 font-medium text-ink">
+                    <Code2 size={15} className="mt-0.5 shrink-0 text-accent" />
+                    <span>{summaryOf(m.content, paths.length)}</span>
+                  </div>
+                  <FileChips paths={paths} />
+                </div>
+              )
+            }
+            // Pure prose (a question/answer with no code) → render normally.
+            const prose = proseOf(m.content)
+            return prose ? (
               <div key={i} className="text-sm">
-                {proseOf(m.content) && <Markdown>{proseOf(m.content)}</Markdown>}
-                <FileChips paths={fileList(m.content)} />
+                <Markdown>{prose}</Markdown>
               </div>
-            ),
-          )}
+            ) : null
+          })}
           {streaming && (
             <div className="flex items-center gap-2 py-1 text-sm font-medium text-muted">
               <span className="bg-gradient-to-r from-accent via-ink to-accent bg-[length:200%_100%] bg-clip-text text-transparent animate-shimmer">
@@ -488,6 +588,9 @@ export default function ProjectsView() {
           animate={{ opacity: 1 }}
           className="min-h-0 flex-1 px-3 pb-3"
         >
+          {streaming ? (
+            <LiveCodePanel text={liveText} />
+          ) : (
           <SandpackProvider
             key={bundlerKey}
             template={sandpackTemplate}
@@ -507,6 +610,7 @@ export default function ProjectsView() {
               {tab === 'console' && <SandpackConsole style={{ height: '100%' }} />}
             </SandpackLayout>
           </SandpackProvider>
+          )}
         </motion.div>
       </div>
     </div>

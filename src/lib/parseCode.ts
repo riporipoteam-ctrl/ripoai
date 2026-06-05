@@ -8,7 +8,10 @@ export interface ParsedFile {
   code: string
 }
 
-const FENCE = /```([^\n`]*)\n([\s\S]*?)```/g
+// Matches a fenced block. The closing ``` is OPTIONAL (anchored to end of string)
+// so a truncated/streaming final block is still captured instead of being lost —
+// this is what stops the agent from "not coding" when the output gets cut off.
+const FENCE = /```([^\n`]*)\n([\s\S]*?)(?:```|$)/g
 
 function looksLikePath(token: string): boolean {
   return token.includes('/') || /\.[a-z0-9]+$/i.test(token)
@@ -23,30 +26,40 @@ function langToPath(lang: string): string | null {
   return null
 }
 
+/** Resolve a fence info string ("html /index.html", "css", "/about.html") to a path. */
+export function pathFromInfo(info: string): string | null {
+  const tokens = info.trim().split(/\s+/)
+  let path: string | undefined
+  if (tokens.length >= 2 && looksLikePath(tokens[tokens.length - 1])) {
+    path = tokens[tokens.length - 1]
+  } else if (tokens.length === 1 && looksLikePath(tokens[0])) {
+    path = tokens[0]
+  }
+  if (!path) path = langToPath(tokens[0]) ?? undefined
+  if (!path) return null
+  if (!path.startsWith('/')) path = '/' + path
+  return path
+}
+
 export function parseCodeFiles(markdown: string): ParsedFile[] {
   const files: ParsedFile[] = []
   let m: RegExpExecArray | null
+  FENCE.lastIndex = 0
   while ((m = FENCE.exec(markdown))) {
     const info = m[1].trim()
     const code = m[2].replace(/\n$/, '')
-    if (!info) continue
-    const tokens = info.split(/\s+/)
-    let path: string | undefined
-    if (tokens.length >= 2 && looksLikePath(tokens[tokens.length - 1])) {
-      path = tokens[tokens.length - 1]
-    } else if (tokens.length === 1 && looksLikePath(tokens[0])) {
-      path = tokens[0]
-    }
-    // No explicit path → fall back to the language (so ```html becomes /index.html).
-    if (!path) path = langToPath(tokens[0]) ?? undefined
+    if (!info || !code.trim()) continue
+    const path = pathFromInfo(info)
     if (!path) continue
-    if (!path.startsWith('/')) path = '/' + path
     files.push({ path, code })
   }
-  // Still nothing? Salvage a full HTML document written without a proper fence.
+  // Still nothing? Salvage an HTML document written without a proper fence —
+  // including a truncated one that never reached </html>.
   if (!files.length) {
-    const doc = markdown.match(/<!doctype html>[\s\S]*?<\/html>/i) || markdown.match(/<html[\s\S]*?<\/html>/i)
-    if (doc) files.push({ path: '/index.html', code: doc[0] })
+    const full = markdown.match(/<!doctype html>[\s\S]*?<\/html>/i) || markdown.match(/<html[\s\S]*?<\/html>/i)
+    const partial = markdown.match(/<!doctype html>[\s\S]*$/i) || markdown.match(/<html[\s\S]*$/i)
+    const doc = full || partial
+    if (doc && doc[0].trim().length > 40) files.push({ path: '/index.html', code: doc[0] })
   }
   return files
 }
