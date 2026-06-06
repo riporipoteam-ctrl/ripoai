@@ -14,6 +14,7 @@ import { speak, stopSpeaking, isSpeechSupported } from '../hooks/useSpeech'
 import { parseSkillBlock, saveSkill } from '../lib/skills'
 import { useStore } from '../store'
 import type { StoredMessage } from '../lib/db'
+import { useMotionVariants } from '../lib/motion'
 
 interface Props {
   message: StoredMessage
@@ -45,6 +46,7 @@ function ThinkingIndicator() {
 
 export default function Message({ message, streaming, isLastAssistant, onRegenerate, onEdit, onFollowup, onToggleBookmark }: Props) {
   const { user } = useStore()
+  const motionVariants = useMotionVariants()
   const [installedSkill, setInstalledSkill] = useState('')
   const skillFromBlock =
     message.role !== 'user' && /```skill[\s\S]*?```/i.test(message.content)
@@ -69,8 +71,10 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
   if (isUser) {
     return (
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
+        variants={motionVariants.fadeUp}
+        initial="initial"
+        animate="animate"
+        transition={motionVariants.transitions.fade}
         className="flex flex-col items-end gap-2"
       >
         {!!message.attachments?.length && (
@@ -152,8 +156,10 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
+      variants={motionVariants.fadeUp}
+      initial="initial"
+      animate="animate"
+      transition={motionVariants.transitions.fade}
       className={`flex gap-3 ${message.bookmarked ? 'rounded-2xl border-l-2 border-accent bg-accent/5 py-2 pl-3 pr-2' : ''}`}
     >
       <div className="mt-0.5 shrink-0">
@@ -165,7 +171,13 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
         {emptyStreaming && !message.steps?.length && <ThinkingIndicator />}
         {message.reasoning && <Reasoning text={message.reasoning} live={liveStreaming && !message.content} thinkMs={message.thinkMs} />}
         {message.imagePending && (
-          <div className="w-full max-w-sm overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-lg">
+          <motion.div
+            variants={motionVariants.fadeUp}
+            initial="initial"
+            animate="animate"
+            transition={motionVariants.transitions.fade}
+            className="w-full max-w-sm overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-lg"
+          >
             <div className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold">
               <span className="text-accent">✦</span> Generating image
               <span className="ml-auto flex gap-1">
@@ -183,19 +195,20 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
               </div>
             </div>
             <div className="truncate px-3 py-2 text-xs text-muted">{message.imagePending.prompt}</div>
-          </div>
+          </motion.div>
         )}
         {message.skillInstalled && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.92, y: 6 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            variants={motionVariants.scalePop}
+            initial="initial"
+            animate="animate"
+            transition={motionVariants.transitions.spring}
             className="mb-2 flex items-center gap-3 rounded-2xl border border-accent/30 bg-accent/10 p-3"
           >
             <motion.span
-              initial={{ rotate: -20, scale: 0.6 }}
+              initial={motionVariants.prefersReducedMotion ? { rotate: 0, scale: 1 } : { rotate: -20, scale: 0.6 }}
               animate={{ rotate: 0, scale: 1 }}
-              transition={{ type: 'spring', stiffness: 260, damping: 14, delay: 0.05 }}
+              transition={{ ...motionVariants.transitions.spring, delay: motionVariants.prefersReducedMotion ? 0 : 0.05 }}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl accent-gradient-bg text-white"
             >
               <Wand2 size={20} />

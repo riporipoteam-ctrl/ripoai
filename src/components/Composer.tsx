@@ -10,6 +10,7 @@ import type { Attachment } from '../lib/db'
 import type { ModelTier } from '../lib/models'
 import { haptic } from '../lib/native'
 import { matchSkills } from '../lib/skills'
+import { useMotionVariants } from '../lib/motion'
 import { useStore } from '../store'
 import { Wand2 } from 'lucide-react'
 
@@ -51,6 +52,7 @@ export default function Composer({
   onVoiceCall,
 }: Props) {
   const { user } = useStore()
+  const motionVariants = useMotionVariants()
   const [text, setText] = useState('')
   const [attachments, setAttachments] = useState<Attachment[]>([])
 
@@ -153,32 +155,52 @@ export default function Composer({
     <div className="relative mx-auto w-full max-w-3xl">
       {err && <p className="mb-2 px-2 text-xs text-red-400">{err}</p>}
       {!!attachments.length && (
-        <div className="mb-2 flex flex-wrap gap-2 px-1">
-          {attachments.map((a, i) => (
-            <div key={i} className="glass relative flex items-center gap-2 rounded-2xl p-1.5 pr-7">
-              {a.kind === 'image' && a.url ? (
-                <img src={a.url} alt={a.name} className="h-12 w-12 rounded-xl object-cover" />
-              ) : (
-                <div className="flex items-center gap-2 px-2 py-1.5 text-xs">
-                  <FileText size={16} className="text-accent" />
-                  <span className="max-w-[140px] truncate">{a.name}</span>
-                </div>
-              )}
-              <button
-                onClick={() => setAttachments((arr) => arr.filter((_, j) => j !== i))}
-                className="absolute right-1.5 top-1.5 rounded-full bg-black/50 p-0.5 text-white hover:bg-black/70"
+        <motion.div
+          variants={motionVariants.listStagger}
+          initial="initial"
+          animate="animate"
+          className="mb-2 flex flex-wrap gap-2 px-1"
+        >
+          <AnimatePresence>
+            {attachments.map((a, i) => (
+              <motion.div
+                key={`${a.name}-${i}`}
+                variants={motionVariants.scalePop}
+                exit="exit"
+                transition={motionVariants.transitions.spring}
+                className="glass relative flex items-center gap-2 rounded-2xl p-1.5 pr-7"
               >
-                <X size={12} />
-              </button>
-            </div>
-          ))}
-        </div>
+                {a.kind === 'image' && a.url ? (
+                  <img src={a.url} alt={a.name} className="h-12 w-12 rounded-xl object-cover" />
+                ) : (
+                  <div className="flex items-center gap-2 px-2 py-1.5 text-xs">
+                    <FileText size={16} className="text-accent" />
+                    <span className="max-w-[140px] truncate">{a.name}</span>
+                  </div>
+                )}
+                <button
+                  onClick={() => setAttachments((arr) => arr.filter((_, j) => j !== i))}
+                  className="absolute right-1.5 top-1.5 rounded-full bg-black/50 p-0.5 text-white hover:bg-black/70"
+                >
+                  <X size={12} />
+                </button>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </motion.div>
       )}
 
       {imageMode && onImageStyle && (
-        <div className="no-scrollbar mb-2 flex gap-1.5 overflow-x-auto px-1">
+        <motion.div
+          variants={motionVariants.listStagger}
+          initial="initial"
+          animate="animate"
+          className="no-scrollbar mb-2 flex gap-1.5 overflow-x-auto px-1"
+        >
           {IMAGE_STYLES.map((s) => (
-            <button
+            <motion.button
+              variants={motionVariants.fadeUp}
+              transition={motionVariants.transitions.fade}
               key={s.id}
               onClick={() => onImageStyle(s.id)}
               className={`pressable shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
@@ -188,18 +210,20 @@ export default function Composer({
               }`}
             >
               {s.label}
-            </button>
+            </motion.button>
           ))}
-        </div>
+        </motion.div>
       )}
 
       {/* Slash skill picker */}
       <AnimatePresence>
         {slashSkills.length > 0 && (
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
+            variants={motionVariants.fadeUp}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={motionVariants.transitions.fade}
             className="glass-strong mb-2 max-h-64 overflow-y-auto rounded-2xl p-1.5 shadow-xl"
           >
             <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-muted/70">Skills</div>
@@ -259,19 +283,22 @@ export default function Composer({
                 {plusOpen && (
                   <motion.div
                     className="fixed inset-0 z-[120] flex items-end justify-center sm:items-center"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
+                    variants={motionVariants.sheetOverlay}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    transition={motionVariants.transitions.fade}
                   >
                     <div
                       className="absolute inset-0 bg-black/45 backdrop-blur-sm"
                       onClick={() => setPlusOpen(false)}
                     />
                     <motion.div
-                      initial={{ y: '100%' }}
-                      animate={{ y: 0 }}
-                      exit={{ y: '100%' }}
-                      transition={{ type: 'spring', stiffness: 360, damping: 34 }}
+                      variants={motionVariants.sheet}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      transition={motionVariants.transitions.sheet}
                       className="glass-strong relative w-full max-w-lg rounded-t-[28px] p-3 pb-[max(env(safe-area-inset-bottom),1rem)] shadow-2xl sm:mb-0 sm:rounded-[28px]"
                     >
                       <div className="mx-auto mb-2 h-1.5 w-10 rounded-full bg-[rgb(var(--muted)/0.4)] sm:hidden" />
@@ -373,30 +400,51 @@ export default function Composer({
           </div>
 
           {/* Active mode pill (modes now live in the + menu) */}
-          {webSearch && (
-            <button
-              onClick={() => { haptic('select'); onToggleWeb() }}
-              className="pressable flex items-center gap-1.5 rounded-full accent-gradient-bg px-3 py-1.5 text-xs font-semibold text-white"
-            >
-              <Globe size={14} /> Search <X size={13} className="opacity-80" />
-            </button>
-          )}
-          {agent && (
-            <button
-              onClick={() => { haptic('select'); onToggleAgent() }}
-              className="pressable flex items-center gap-1.5 rounded-full accent-gradient-bg px-3 py-1.5 text-xs font-semibold text-white"
-            >
-              <Bot size={14} /> Agent <X size={13} className="opacity-80" />
-            </button>
-          )}
-          {imageMode && onToggleImage && (
-            <button
-              onClick={() => { haptic('select'); onToggleImage?.() }}
-              className="pressable flex items-center gap-1.5 rounded-full accent-gradient-bg px-3 py-1.5 text-xs font-semibold text-white"
-            >
-              <Sparkles size={14} /> Image <X size={13} className="opacity-80" />
-            </button>
-          )}
+          <AnimatePresence>
+            {webSearch && (
+              <motion.button
+                variants={motionVariants.scalePop}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={motionVariants.transitions.spring}
+                onClick={() => { haptic('select'); onToggleWeb() }}
+                className="pressable flex items-center gap-1.5 rounded-full accent-gradient-bg px-3 py-1.5 text-xs font-semibold text-white"
+              >
+                <Globe size={14} /> Search <X size={13} className="opacity-80" />
+              </motion.button>
+            )}
+          </AnimatePresence>
+          <AnimatePresence>
+            {agent && (
+              <motion.button
+                variants={motionVariants.scalePop}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={motionVariants.transitions.spring}
+                onClick={() => { haptic('select'); onToggleAgent() }}
+                className="pressable flex items-center gap-1.5 rounded-full accent-gradient-bg px-3 py-1.5 text-xs font-semibold text-white"
+              >
+                <Bot size={14} /> Agent <X size={13} className="opacity-80" />
+              </motion.button>
+            )}
+          </AnimatePresence>
+          <AnimatePresence>
+            {imageMode && onToggleImage && (
+              <motion.button
+                variants={motionVariants.scalePop}
+                initial="initial"
+                animate="animate"
+                exit="exit"
+                transition={motionVariants.transitions.spring}
+                onClick={() => { haptic('select'); onToggleImage?.() }}
+                className="pressable flex items-center gap-1.5 rounded-full accent-gradient-bg px-3 py-1.5 text-xs font-semibold text-white"
+              >
+                <Sparkles size={14} /> Image <X size={13} className="opacity-80" />
+              </motion.button>
+            )}
+          </AnimatePresence>
 
           <div className="ml-auto flex items-center gap-1.5">
             {showModelSelector && (

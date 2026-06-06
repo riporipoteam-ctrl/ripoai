@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Download, RefreshCw, ImageOff, Sparkles } from 'lucide-react'
+import { useMotionVariants } from '../lib/motion'
 
 function withSeed(url: string, seed: number): string {
   return url.replace(/([?&])seed=\d+/, `$1seed=${seed}`)
 }
 
 export default function ImageCard({ prompt, url }: { prompt: string; url: string }) {
+  const motionVariants = useMotionVariants()
   const [src, setSrc] = useState(url)
   // Data-URL images (NVIDIA FLUX) are already generated and load instantly;
   // reseeding only applies to the old URL-based provider.
@@ -36,7 +38,13 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
   }
 
   return (
-    <div className="w-full max-w-sm overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-lg">
+    <motion.div
+      variants={motionVariants.fadeUp}
+      initial="initial"
+      animate="animate"
+      transition={motionVariants.transitions.fade}
+      className="w-full max-w-sm overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-lg"
+    >
       <div className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold">
         <Sparkles size={15} className="text-accent" />
         {failed ? 'Couldn’t create image' : loaded ? 'Image' : 'Creating image'}
@@ -75,9 +83,11 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
               alt={prompt}
               onLoad={() => setLoaded(true)}
               onError={onError}
-              initial={{ opacity: 0, scale: 1.04 }}
-              animate={{ opacity: loaded ? 1 : 0, scale: loaded ? 1 : 1.04 }}
-              transition={{ duration: 0.5, ease: 'easeOut' }}
+              variants={motionVariants.imageLoad}
+              initial="initial"
+              animate={loaded ? 'animate' : 'initial'}
+              exit="exit"
+              transition={motionVariants.transitions.imageLoad}
               className="absolute inset-0 h-full w-full object-cover"
             />
           </AnimatePresence>
@@ -112,6 +122,6 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }

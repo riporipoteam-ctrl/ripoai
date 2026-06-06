@@ -11,6 +11,7 @@ import Logo from './Logo'
 import type { ModelTier } from '../lib/models'
 import type { Attachment } from '../lib/db'
 import { banActive, todaysMessageCount, bumpMessageCount } from '../lib/admin'
+import { useMotionVariants } from '../lib/motion'
 
 const ALL_SUGGESTIONS = [
   { title: 'Build a 3D website', sub: 'with scroll animations', icon: Palette },
@@ -66,6 +67,7 @@ export default function ChatView() {
   const { chatId } = useParams()
   const navigate = useNavigate()
   const { settings, user, sidebarOpen, toggleSidebar, banStatus } = useStore()
+  const motionVariants = useMotionVariants()
   const ban = banStatus?.ban
   const banned = banActive(ban)
   const msgLimit = banStatus?.msgLimit || 0
@@ -152,36 +154,44 @@ export default function ChatView() {
         {empty ? (
           <div className="flex h-full flex-col items-center justify-center px-4 py-6">
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 18 }}
+              variants={motionVariants.scalePop}
+              initial="initial"
+              animate="animate"
+              transition={motionVariants.transitions.softSpring}
               className="animate-float"
             >
               <Logo size={72} variant="icon" glow />
             </motion.div>
             <motion.h1
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
+              variants={motionVariants.fadeUp}
+              initial="initial"
+              animate="animate"
+              transition={motionVariants.transitions.fade}
               className="-mt-2 text-center text-3xl font-bold sm:text-4xl"
             >
               <span className="brand-gradient">{timeGreet}, {greeting}.</span>
             </motion.h1>
             <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
+              variants={motionVariants.fadeUp}
+              initial="initial"
+              animate="animate"
+              transition={{ ...motionVariants.transitions.fade, delay: motionVariants.prefersReducedMotion ? 0 : 0.1 }}
               className="mt-2 text-center text-base text-muted sm:text-lg"
             >
               {subtitle}
             </motion.p>
-            <div className="mt-7 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
-              {suggestions.map((s, i) => (
+            <motion.div
+              variants={motionVariants.listStagger}
+              initial="initial"
+              animate="animate"
+              className="mt-7 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2"
+            >
+              {suggestions.map((s) => (
                 <motion.button
                   key={s.title}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05 * i }}
-                  whileHover={{ y: -3 }}
+                  variants={motionVariants.fadeUp}
+                  transition={motionVariants.transitions.fade}
+                  whileHover={motionVariants.prefersReducedMotion ? undefined : { y: -3 }}
                   onClick={() => handleSend(`${s.title} ${s.sub}`, [])}
                   className="glass pressable flex items-start gap-3 rounded-2xl p-4 text-left transition hover:brightness-110"
                 >
@@ -194,7 +204,7 @@ export default function ChatView() {
                   </span>
                 </motion.button>
               ))}
-            </div>
+            </motion.div>
           </div>
         ) : (
           <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6">
@@ -231,9 +241,11 @@ export default function ChatView() {
         <AnimatePresence>
           {!empty && !atBottom && (
             <motion.button
-              initial={{ opacity: 0, scale: 0.8, y: 8 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.8, y: 8 }}
+              variants={motionVariants.scalePop}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={motionVariants.transitions.spring}
               onClick={() => {
                 setAtBottom(true)
                 bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
