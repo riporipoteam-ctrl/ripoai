@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Download, RefreshCw, ImageOff, Sparkles } from 'lucide-react'
 
@@ -6,7 +6,13 @@ function withSeed(url: string, seed: number): string {
   return url.replace(/([?&])seed=\d+/, `$1seed=${seed}`)
 }
 
-export default function ImageCard({ prompt, url }: { prompt: string; url: string }) {
+interface ImageCardProps {
+  prompt: string
+  url: string
+  onRegenerate?: () => void
+}
+
+export default function ImageCard({ prompt, url, onRegenerate }: ImageCardProps) {
   const [src, setSrc] = useState(url)
   // Data-URL images (NVIDIA FLUX) are already generated and load instantly;
   // reseeding only applies to the old URL-based provider.
@@ -14,9 +20,20 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
   const [loaded, setLoaded] = useState(isData)
   const [attempt, setAttempt] = useState(0)
   const [failed, setFailed] = useState(false)
+  const canRegenerate = !isData || !!onRegenerate
+
+  useEffect(() => {
+    setSrc(url)
+    setLoaded(url.startsWith('data:'))
+    setAttempt(0)
+    setFailed(false)
+  }, [url])
 
   function retry() {
-    if (isData) return
+    if (isData) {
+      onRegenerate?.()
+      return
+    }
     setLoaded(false)
     setFailed(false)
     const next = attempt + 1
@@ -90,7 +107,7 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
         </span>
         {loaded && (
           <div className="flex shrink-0 items-center gap-1">
-            {!isData && (
+            {canRegenerate && (
               <button
                 onClick={retry}
                 className="pressable rounded-lg p-1.5 text-muted hover:bg-white/10 hover:text-ink"

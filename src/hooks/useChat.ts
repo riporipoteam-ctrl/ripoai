@@ -166,6 +166,34 @@ export function useChat(chatId: string | undefined) {
     setStreaming(false)
   }, [])
 
+  const createGeneratedImage = useCallback(async (prompt: string, imageStyle?: string, editBase?: string) => {
+    // Build a strong FLUX prompt. FLUX renders text well, so we KEEP any
+    // requested words/names/logo text in the prompt and let the model draw
+    // them — no cheap canvas caption box.
+    let scene = prompt
+    try {
+      const j = await complete(
+        'llama-3.3-70b-versatile',
+        [
+          {
+            role: 'system',
+            content:
+              'You write prompts for the FLUX image model. Rewrite the user request into ONE vivid, detailed, WELL-LIT, colorful, high-detail image prompt with clear subject, composition and lighting. NEVER produce an all-black, dark, empty or plain background unless explicitly asked — prefer bright, professional, photographic or crisp-vector compositions. If the user wants any text/name/title/slogan/logo wording, INCLUDE that EXACT text so FLUX renders it (e.g. the text "Auto Servis Sunja" in a bold modern font). For a logo: a clean, professional, centered design on a white or tasteful brand-colored background. Keep under 80 words. Output ONLY the final prompt — no quotes, no preamble.',
+          },
+          { role: 'user', content: prompt },
+        ],
+        { temperature: 0.5, maxTokens: 180 },
+      )
+      if (j && j.trim()) scene = j.trim().replace(/^["']+|["']+$/g, '').slice(0, 800)
+    } catch {
+      /* use raw prompt */
+    }
+
+    const styledScene = (scene + styleSuffix(imageStyle)).slice(0, 900)
+    const { w, h } = dimsFor(prompt)
+    return editBase || (await generateImage(styledScene, { w, h }))
+  }, [])
+
   const run = useCallback(
     async (history: StoredMessage[], opts: SendOptions, id: string) => {
       if (!user) return
@@ -250,33 +278,9 @@ export function useChat(chatId: string | undefined) {
         ])
         setStreaming(true)
 
-        // Build a strong FLUX prompt. FLUX renders text well, so we KEEP any
-        // requested words/names/logo text in the prompt and let the model draw
-        // them — no cheap canvas caption box.
-        let scene = prompt
-        try {
-          const j = await complete(
-            'llama-3.3-70b-versatile',
-            [
-              {
-                role: 'system',
-                content:
-                  'You write prompts for the FLUX image model. Rewrite the user request into ONE vivid, detailed, WELL-LIT, colorful, high-detail image prompt with clear subject, composition and lighting. NEVER produce an all-black, dark, empty or plain background unless explicitly asked — prefer bright, professional, photographic or crisp-vector compositions. If the user wants any text/name/title/slogan/logo wording, INCLUDE that EXACT text so FLUX renders it (e.g. the text "Auto Servis Sunja" in a bold modern font). For a logo: a clean, professional, centered design on a white or tasteful brand-colored background. Keep under 80 words. Output ONLY the final prompt — no quotes, no preamble.',
-              },
-              { role: 'user', content: prompt },
-            ],
-            { temperature: 0.5, maxTokens: 180 },
-          )
-          if (j && j.trim()) scene = j.trim().replace(/^["']+|["']+$/g, '').slice(0, 800)
-        } catch {
-          /* use raw prompt */
-        }
-
-        const styledScene = (scene + styleSuffix(opts.imageStyle)).slice(0, 900)
-        const { w, h } = dimsFor(prompt)
         let baseUrl: string
         try {
-          baseUrl = editBase || (await generateImage(styledScene, { w, h }))
+          baseUrl = await createGeneratedImage(prompt, opts.imageStyle, editBase)
         } catch (e: any) {
           let errMsgs: StoredMessage[] = []
           setMessages((m) => {
@@ -787,7 +791,7 @@ export function useChat(chatId: string | undefined) {
       }
       void finalReasoning
     },
-    [user, settings, memories, persist, refreshMemories],
+    [user, settings, memories, persist, refreshMemories, createGeneratedImage],
   )
 
   const send = useCallback(
@@ -834,6 +838,58 @@ export function useChat(chatId: string | undefined) {
     [user, streaming, chatId, messages, run],
   )
 
+  const regenerateImage = useCallback(
+    async (messageId: string, opts: SendOptions) => {
+      if (!user || streaming || !chatId) return
+      const target = messages.find((m) => m.id === messageId)
+      const prompt = target?.image?.prompt?.trim()
+      if (!target || target.role !== 'assistant' || !prompt) return
+
+      let pendingMsgs: StoredMessage[] = []
+      setMessages((m) => {
+        pendingMsgs = m.map((x) =>
+          x.id === messageId
+            ? { ...x, content: '', image: undefined, imagePending: { prompt }, followups: undefined }
+            : x,
+        )
+        return pendingMsgs
+      })
+      setStreaming(true)
+
+      try {
+        const url = await createGeneratedImage(prompt, opts.imageStyle)
+        let finalMsgs: StoredMessage[] = []
+        setMessages((m) => {
+          finalMsgs = m.map((x) =>
+            x.id === messageId
+              ? { ...x, content: '', model: opts.model, imagePending: undefined, image: { prompt, url } }
+              : x,
+          )
+          return finalMsgs
+        })
+        setStreaming(false)
+        await persist(finalMsgs, chatId, opts.model, opts.projectId)
+      } catch (e: any) {
+        let errMsgs: StoredMessage[] = []
+        setMessages((m) => {
+          errMsgs = m.map((x) =>
+            x.id === messageId
+              ? {
+                  ...x,
+                  imagePending: undefined,
+                  content: `⚠️ Couldn't regenerate the image. ${e?.message ?? ''}`.trim(),
+                }
+              : x,
+          )
+          return errMsgs
+        })
+        setStreaming(false)
+        await persist(errMsgs, chatId, opts.model, opts.projectId)
+      }
+    },
+    [user, streaming, chatId, messages, createGeneratedImage, persist],
+  )
+
   const editAndResend = useCallback(
     async (messageId: string, newText: string, opts: SendOptions) => {
       if (!user || streaming || !chatId) return
@@ -859,5 +915,5 @@ export function useChat(chatId: string | undefined) {
     [user, chatId, persist],
   )
 
-  return { messages, streaming, steps, send, stop, regenerate, editAndResend, toggleBookmark, loadedModel }
+  return { messages, streaming, steps, send, stop, regenerate, regenerateImage, editAndResend, toggleBookmark, loadedModel }
 }

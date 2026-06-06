@@ -75,7 +75,7 @@ export default function ChatView() {
   const [imageMode, setImageMode] = useState(false)
   const [imageStyle, setImageStyle] = useState('auto')
   const [voiceCall, setVoiceCall] = useState(false)
-  const { messages, streaming, send, stop, regenerate, editAndResend, toggleBookmark, loadedModel } = useChat(chatId)
+  const { messages, streaming, send, stop, regenerate, regenerateImage, editAndResend, toggleBookmark, loadedModel } = useChat(chatId)
   const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const [atBottom, setAtBottom] = useState(true)
@@ -207,7 +207,15 @@ export default function ChatView() {
                   message={m}
                   streaming={streaming}
                   isLastAssistant={isLastAssistant}
-                  onRegenerate={isLastAssistant && !streaming ? () => regenerate(opts) : undefined}
+                  onRegenerate={
+                    !streaming && m.role === 'assistant'
+                      ? m.image
+                        ? () => regenerateImage(m.id, opts)
+                        : isLastAssistant
+                          ? () => regenerate(opts)
+                          : undefined
+                      : undefined
+                  }
                   onEdit={
                     m.role === 'user' && !streaming
                       ? (text) => editAndResend(m.id, text, opts)
