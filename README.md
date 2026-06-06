@@ -20,6 +20,8 @@ Firestore, Tailwind, Framer Motion and an iOS‑26 "Liquid Glass" design. Deploy
   auto‑decides whether a query needs the web.
 - **Agent mode** — autonomous, multi‑step web research with a visible step trace.
 - **Uploads** — images (sent to vision models) and files/PDFs (parsed client‑side as context).
+- **Image generation** — ask naturally for a photo, logo, poster, wallpaper, avatar, banner, or
+  illustration and RipoAI returns an image card on both the website and APK.
 - **Projects** — a coding agent + a real in‑browser sandbox (Sandpack) with **Code / Preview /
   Console** tabs. The agent writes files that run instantly.
 - **Memory** — RipoAI extracts durable facts about you and reuses them; manage them in Settings.
@@ -95,6 +97,10 @@ on next launch — no reinstall, no Play Store. The native shell (status bar, ha
 splash, bottom-sheet menus, glassier `.native` styling) still applies, so it looks
 like an app rather than the website. You only need to rebuild/reinstall the APK when
 the native shell itself changes.
+
+The Android workflow also rebuilds the `android-latest` APK release when app source,
+public assets, or build config changes on the deploy branch, so new installers get
+the latest shell and live-site bundle path.
 
 > ⚠️ Inside the Android WebView, **Google sign‑in (popup) does not work** — use
 > **email/password** in the app. (Native Google auth would need the

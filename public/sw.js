@@ -1,7 +1,7 @@
 // RipoAI service worker — NETWORK-FIRST so the installed PWA / browser always
 // gets the latest deploy (no more stale cached versions), with a cache fallback
 // only when offline.
-const CACHE = 'ripoai-runtime-v1'
+const CACHE = 'ripoai-runtime-v2'
 
 self.addEventListener('install', () => {
   self.skipWaiting()
@@ -18,6 +18,10 @@ self.addEventListener('activate', (event) => {
   )
 })
 
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting()
+})
+
 self.addEventListener('fetch', (event) => {
   const req = event.request
   if (req.method !== 'GET') return
@@ -27,7 +31,7 @@ self.addEventListener('fetch', (event) => {
   if (url.origin !== self.location.origin) return
 
   event.respondWith(
-    fetch(req)
+    fetch(req, req.mode === 'navigate' ? { cache: 'no-store' } : undefined)
       .then((res) => {
         if (res && res.status === 200 && res.type === 'basic') {
           const copy = res.clone()

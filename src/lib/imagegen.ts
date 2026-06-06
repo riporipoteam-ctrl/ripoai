@@ -15,6 +15,26 @@ export function styleSuffix(id?: string): string {
   return IMAGE_STYLES.find((s) => s.id === id)?.suffix ?? ''
 }
 
+export function wantsImageGeneration(text: string): boolean {
+  const t = (text || '').toLowerCase().replace(/\s+/g, ' ').trim()
+  if (!t) return false
+  if (/\b(image|photo|picture|logo|poster|wallpaper|avatar|sticker|icon|banner|thumbnail)\s+prompts?\b/.test(t))
+    return false
+  if (/\b(analy[sz]e|describe|explain|read|what'?s in|identify|caption)\b.*\b(image|photo|picture|screenshot)\b/.test(t))
+    return false
+
+  const action =
+    /\b(generate|create|make|draw|design|render|produce|paint|illustrate|visuali[sz]e)\b/.test(t)
+  const target =
+    /\b(image|picture|photo|artwork|illustration|poster|logo|wallpaper|avatar|sticker|icon|banner|thumbnail|cover art|album cover|scene|render)\b/.test(t)
+  const directAsk =
+    /\b(show me|give me|i need|can you make|could you make|make me)\b.*\b(image|picture|photo|logo|poster|wallpaper|avatar|banner|thumbnail|illustration)\b/.test(
+      t,
+    )
+
+  return (action && target) || directAsk
+}
+
 // Pick dimensions from the request. Values are constrained to NVIDIA FLUX's
 // allowed set (768/832/896/960/1024/1088/1152) so requests never 422.
 export function dimsFor(prompt: string): { w: number; h: number } {
@@ -33,7 +53,7 @@ export function dimsFor(prompt: string): { w: number; h: number } {
 // Generate an image with NVIDIA FLUX.1-dev (via the proxy worker). Returns a
 // base64 data URL. This replaces the old keyless Pollinations endpoint, which
 // went paid (HTTP 402).
-export async function generateImage(
+async function generateNvidiaImage(
   prompt: string,
   opts: { w?: number; h?: number; seed?: number; signal?: AbortSignal } = {},
 ): Promise<string> {
@@ -71,6 +91,24 @@ export async function generateImage(
 
 // Free, keyless image generation via Pollinations (open CORS — usable directly
 // as an <img> src). Returns a stable URL for a given prompt + seed.
+export async function generateImage(
+  prompt: string,
+  opts: { w?: number; h?: number; seed?: number; signal?: AbortSignal } = {},
+): Promise<string> {
+  try {
+    return await generateNvidiaImage(prompt, opts)
+  } catch {
+    return imageUrl(prompt, { w: opts.w, h: opts.h, seed: opts.seed, model: 'flux' })
+  }
+}
+
+export async function generateImageAsset(
+  prompt: string,
+  opts: { w?: number; h?: number; seed?: number; signal?: AbortSignal } = {},
+): Promise<string> {
+  return generateImage(prompt, opts)
+}
+
 export function imageUrl(
   prompt: string,
   opts: { w?: number; h?: number; seed?: number; model?: string } = {},

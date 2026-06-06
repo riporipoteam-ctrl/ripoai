@@ -71,7 +71,9 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col items-end gap-2"
+        exit={{ opacity: 0, y: 8, scale: 0.98 }}
+        transition={{ type: 'spring', stiffness: 240, damping: 24 }}
+        className="message-row user-message-row flex flex-col items-end gap-2"
       >
         {!!message.attachments?.length && (
           <div className="flex max-w-[80%] flex-wrap justify-end gap-2">
@@ -128,7 +130,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
         ) : (
           message.content && (
             <div className="group relative max-w-[80%]">
-              <div className="whitespace-pre-wrap rounded-3xl rounded-tr-lg border border-[rgb(var(--accent)/0.18)] bg-[rgb(var(--accent)/0.1)] px-4 py-2.5 text-ink">
+              <div className="user-bubble whitespace-pre-wrap rounded-3xl rounded-tr-lg border border-[rgb(var(--accent)/0.18)] bg-[rgb(var(--accent)/0.1)] px-4 py-2.5 text-ink">
                 {message.content}
               </div>
               {onEdit && (
@@ -154,9 +156,11 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`flex gap-3 ${message.bookmarked ? 'rounded-2xl border-l-2 border-accent bg-accent/5 py-2 pl-3 pr-2' : ''}`}
+      exit={{ opacity: 0, y: 8, scale: 0.98 }}
+      transition={{ type: 'spring', stiffness: 240, damping: 24 }}
+      className={`message-row assistant-message-row flex gap-3 ${message.bookmarked ? 'rounded-2xl border-l-2 border-accent bg-accent/5 py-2 pl-3 pr-2' : ''}`}
     >
-      <div className="mt-0.5 shrink-0">
+      <div className="assistant-avatar mt-0.5 shrink-0">
         <Logo size={32} />
       </div>
       <div className="min-w-0 flex-1">
@@ -165,7 +169,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
         {emptyStreaming && !message.steps?.length && <ThinkingIndicator />}
         {message.reasoning && <Reasoning text={message.reasoning} live={liveStreaming && !message.content} thinkMs={message.thinkMs} />}
         {message.imagePending && (
-          <div className="w-full max-w-sm overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-lg">
+          <div className="image-card w-full max-w-xl overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-lg">
             <div className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold">
               <span className="text-accent">✦</span> Generating image
               <span className="ml-auto flex gap-1">
@@ -174,7 +178,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
                 <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent [animation-delay:0.4s]" />
               </span>
             </div>
-            <div className="relative aspect-square w-full">
+            <div className="image-stage relative aspect-square w-full overflow-hidden">
               <div className="img-skeleton absolute inset-0">
                 <div className="img-shimmer absolute inset-0" />
               </div>

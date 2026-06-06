@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Download, RefreshCw, ImageOff, Sparkles } from 'lucide-react'
+import { dimsFor } from '../lib/imagegen'
 
 function withSeed(url: string, seed: number): string {
   return url.replace(/([?&])seed=\d+/, `$1seed=${seed}`)
@@ -14,6 +15,8 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
   const [loaded, setLoaded] = useState(isData)
   const [attempt, setAttempt] = useState(0)
   const [failed, setFailed] = useState(false)
+  const dims = dimsFor(prompt)
+  const aspectRatio = `${dims.w} / ${dims.h}`
 
   function retry() {
     if (isData) return
@@ -36,9 +39,16 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
   }
 
   return (
-    <div className="w-full max-w-sm overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-lg">
+    <motion.div
+      initial={{ opacity: 0, y: 10, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ type: 'spring', stiffness: 240, damping: 22 }}
+      className="image-card w-full max-w-xl overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-lg"
+    >
       <div className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold">
-        <Sparkles size={15} className="text-accent" />
+        <span className="image-card-icon flex h-7 w-7 items-center justify-center rounded-full bg-accent/15 text-accent">
+          <Sparkles size={15} />
+        </span>
         {failed ? 'Couldn’t create image' : loaded ? 'Image' : 'Creating image'}
         {!loaded && !failed && (
           <span className="ml-auto flex gap-1">
@@ -49,7 +59,7 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
         )}
       </div>
 
-      <div className="relative aspect-square w-full">
+      <div className="image-stage relative w-full overflow-hidden" style={{ aspectRatio }}>
         {/* Shimmer / dot-grid placeholder while generating */}
         {!loaded && !failed && (
           <div className="img-skeleton absolute inset-0">
@@ -112,6 +122,6 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }

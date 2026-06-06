@@ -46,7 +46,7 @@ export default function Composer({
   onSend,
   onStop,
   streaming,
-  placeholder = 'Message RipoAI…',
+  placeholder = 'Message RipoAI...',
   showModelSelector = true,
   onVoiceCall,
 }: Props) {
@@ -153,9 +153,16 @@ export default function Composer({
     <div className="relative mx-auto w-full max-w-3xl">
       {err && <p className="mb-2 px-2 text-xs text-red-400">{err}</p>}
       {!!attachments.length && (
-        <div className="mb-2 flex flex-wrap gap-2 px-1">
+        <motion.div layout className="mb-2 flex flex-wrap gap-2 px-1">
           {attachments.map((a, i) => (
-            <div key={i} className="glass relative flex items-center gap-2 rounded-2xl p-1.5 pr-7">
+            <motion.div
+              key={i}
+              layout
+              initial={{ opacity: 0, y: 6, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 6, scale: 0.96 }}
+              className="glass relative flex items-center gap-2 rounded-2xl p-1.5 pr-7"
+            >
               {a.kind === 'image' && a.url ? (
                 <img src={a.url} alt={a.name} className="h-12 w-12 rounded-xl object-cover" />
               ) : (
@@ -170,27 +177,33 @@ export default function Composer({
               >
                 <X size={12} />
               </button>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
 
       {imageMode && onImageStyle && (
-        <div className="no-scrollbar mb-2 flex gap-1.5 overflow-x-auto px-1">
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 6 }}
+          className="image-style-strip no-scrollbar mb-2 flex gap-1.5 overflow-x-auto px-1"
+        >
           {IMAGE_STYLES.map((s) => (
-            <button
+            <motion.button
               key={s.id}
+              whileTap={{ scale: 0.96 }}
               onClick={() => onImageStyle(s.id)}
-              className={`pressable shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+              className={`image-style-chip pressable shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
                 (imageStyle ?? 'auto') === s.id
                   ? 'accent-gradient-bg text-white'
                   : 'border border-white/15 text-muted hover:text-ink'
               }`}
             >
               {s.label}
-            </button>
+            </motion.button>
           ))}
-        </div>
+        </motion.div>
       )}
 
       {/* Slash skill picker */}
@@ -224,7 +237,10 @@ export default function Composer({
         )}
       </AnimatePresence>
 
-      <div className="relative z-20 rounded-[26px] border border-white/15 bg-[rgb(var(--glass-bg)/0.5)] p-2 shadow-sm backdrop-blur-xl">
+      <motion.div
+        layout
+        className="composer-shell relative z-20 rounded-[26px] border border-white/15 bg-[rgb(var(--glass-bg)/0.5)] p-2 shadow-sm backdrop-blur-xl"
+      >
         <textarea
           ref={taRef}
           value={text}
@@ -240,7 +256,7 @@ export default function Composer({
           }}
           onPaste={handlePaste}
           rows={1}
-          placeholder={imageMode ? 'Describe an image to generate…' : placeholder}
+          placeholder={imageMode ? 'Describe an image to generate...' : placeholder}
           className="no-scrollbar max-h-[220px] w-full resize-none bg-transparent px-3 py-2 text-[0.975rem] outline-none placeholder:text-muted"
         />
 
@@ -376,7 +392,7 @@ export default function Composer({
           {webSearch && (
             <button
               onClick={() => { haptic('select'); onToggleWeb() }}
-              className="pressable flex items-center gap-1.5 rounded-full accent-gradient-bg px-3 py-1.5 text-xs font-semibold text-white"
+              className="mode-chip pressable flex items-center gap-1.5 rounded-full accent-gradient-bg px-3 py-1.5 text-xs font-semibold text-white"
             >
               <Globe size={14} /> Search <X size={13} className="opacity-80" />
             </button>
@@ -384,7 +400,7 @@ export default function Composer({
           {agent && (
             <button
               onClick={() => { haptic('select'); onToggleAgent() }}
-              className="pressable flex items-center gap-1.5 rounded-full accent-gradient-bg px-3 py-1.5 text-xs font-semibold text-white"
+              className="mode-chip pressable flex items-center gap-1.5 rounded-full accent-gradient-bg px-3 py-1.5 text-xs font-semibold text-white"
             >
               <Bot size={14} /> Agent <X size={13} className="opacity-80" />
             </button>
@@ -392,7 +408,7 @@ export default function Composer({
           {imageMode && onToggleImage && (
             <button
               onClick={() => { haptic('select'); onToggleImage?.() }}
-              className="pressable flex items-center gap-1.5 rounded-full accent-gradient-bg px-3 py-1.5 text-xs font-semibold text-white"
+              className="mode-chip pressable flex items-center gap-1.5 rounded-full accent-gradient-bg px-3 py-1.5 text-xs font-semibold text-white"
             >
               <Sparkles size={14} /> Image <X size={13} className="opacity-80" />
             </button>
@@ -436,7 +452,7 @@ export default function Composer({
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
       <p className="mt-2 text-center text-[11px] text-muted">
         RipoAI can make mistakes. Verify important information.
       </p>

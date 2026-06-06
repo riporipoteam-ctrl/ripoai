@@ -35,18 +35,40 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
-      // Register the network-first service worker so the installed app always
-      // pulls the latest deploy. Reload once when a new worker takes control.
+      // Register the network-first service worker so installed web/APK shells
+      // pull the latest deploy. A waiting worker is promoted immediately, then
+      // the page reloads once when the fresh worker takes control.
       if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function () {
-          navigator.serviceWorker.register('./sw.js').catch(function () {});
-        });
         var __ripoRefreshing = false;
-        navigator.serviceWorker.addEventListener('controllerchange', function () {
+        function refreshOnce() {
           if (__ripoRefreshing) return;
           __ripoRefreshing = true;
           location.reload();
+        }
+        function promoteWaitingWorker(reg) {
+          if (reg.waiting && navigator.serviceWorker.controller) {
+            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          }
+        }
+        function watchRegistration(reg) {
+          promoteWaitingWorker(reg);
+          reg.addEventListener('updatefound', function () {
+            var worker = reg.installing;
+            if (!worker) return;
+            worker.addEventListener('statechange', function () {
+              if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                worker.postMessage({ type: 'SKIP_WAITING' });
+              }
+            });
+          });
+          setInterval(function () {
+            reg.update().catch(function () {});
+          }, 60000);
+        }
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('./sw.js').then(watchRegistration).catch(function () {});
         });
+        navigator.serviceWorker.addEventListener('controllerchange', refreshOnce);
       }
     </script>
     <script>

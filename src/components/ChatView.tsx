@@ -11,6 +11,7 @@ import Logo from './Logo'
 import type { ModelTier } from '../lib/models'
 import type { Attachment } from '../lib/db'
 import { banActive, todaysMessageCount, bumpMessageCount } from '../lib/admin'
+import { wantsImageGeneration } from '../lib/imagegen'
 
 const ALL_SUGGESTIONS = [
   { title: 'Build a 3D website', sub: 'with scroll animations', icon: Palette },
@@ -108,7 +109,9 @@ export default function ChatView() {
       return
     }
     if (user) bumpMessageCount(user.uid)
-    send(text, attachments, opts)
+    const autoImage = !imageMode && wantsImageGeneration(text)
+    if (autoImage) setImageMode(true)
+    send(text, attachments, { ...opts, image: imageMode || autoImage })
   }
 
   const greeting = settings.displayName || user?.displayName?.split(' ')[0] || 'there'
@@ -127,7 +130,7 @@ export default function ChatView() {
       {/* Top app bar — gives the screen real structure instead of two lonely
           floating icons. Shown when the sidebar is collapsed (i.e. on mobile). */}
       {!sidebarOpen && (
-        <header className="sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-white/10 bg-[rgb(var(--glass-bg)/0.32)] px-2.5 py-2 backdrop-blur-2xl backdrop-saturate-150">
+        <header className="top-app-bar sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-white/10 bg-[rgb(var(--glass-bg)/0.32)] px-2.5 py-2 backdrop-blur-2xl backdrop-saturate-150">
           <button
             onClick={toggleSidebar}
             className="pressable rounded-xl p-2 text-ink hover:bg-[rgb(var(--ink)/0.06)]"
@@ -148,9 +151,9 @@ export default function ChatView() {
           </button>
         </header>
       )}
-      <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto">
+      <div ref={scrollRef} onScroll={onScroll} className="chat-scroll flex-1 overflow-y-auto">
         {empty ? (
-          <div className="flex h-full flex-col items-center justify-center px-4 py-6">
+          <div className="empty-state flex h-full flex-col items-center justify-center px-4 py-6">
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -174,16 +177,17 @@ export default function ChatView() {
             >
               {subtitle}
             </motion.p>
-            <div className="mt-7 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="empty-suggestions mt-7 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
               {suggestions.map((s, i) => (
                 <motion.button
                   key={s.title}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.05 * i }}
-                  whileHover={{ y: -3 }}
+                  whileHover={{ y: -4, scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => handleSend(`${s.title} ${s.sub}`, [])}
-                  className="glass pressable flex items-start gap-3 rounded-2xl p-4 text-left transition hover:brightness-110"
+                  className="suggestion-card glass pressable flex items-start gap-3 rounded-2xl p-4 text-left transition hover:brightness-110"
                 >
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent">
                     <s.icon size={18} />
@@ -197,37 +201,39 @@ export default function ChatView() {
             </div>
           </div>
         ) : (
-          <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6">
-            {messages.map((m, i) => {
-              const isLastAssistant =
-                m.role === 'assistant' && i === messages.length - 1
-              return (
-                <Message
-                  key={m.id}
-                  message={m}
-                  streaming={streaming}
-                  isLastAssistant={isLastAssistant}
-                  onRegenerate={isLastAssistant && !streaming ? () => regenerate(opts) : undefined}
-                  onEdit={
-                    m.role === 'user' && !streaming
-                      ? (text) => editAndResend(m.id, text, opts)
-                      : undefined
-                  }
-                  onFollowup={!streaming ? (text) => handleSend(text, []) : undefined}
-                  onToggleBookmark={
-                    m.role === 'assistant' && m.content && !streaming
-                      ? () => toggleBookmark(m.id)
-                      : undefined
-                  }
-                />
-              )
-            })}
+          <div className="chat-thread mx-auto w-full max-w-3xl space-y-6 px-4 py-6">
+            <AnimatePresence initial={false}>
+              {messages.map((m, i) => {
+                const isLastAssistant =
+                  m.role === 'assistant' && i === messages.length - 1
+                return (
+                  <Message
+                    key={m.id}
+                    message={m}
+                    streaming={streaming}
+                    isLastAssistant={isLastAssistant}
+                    onRegenerate={isLastAssistant && !streaming ? () => regenerate(opts) : undefined}
+                    onEdit={
+                      m.role === 'user' && !streaming
+                        ? (text) => editAndResend(m.id, text, opts)
+                        : undefined
+                    }
+                    onFollowup={!streaming ? (text) => handleSend(text, []) : undefined}
+                    onToggleBookmark={
+                      m.role === 'assistant' && m.content && !streaming
+                        ? () => toggleBookmark(m.id)
+                        : undefined
+                    }
+                  />
+                )
+              })}
+            </AnimatePresence>
             <div ref={bottomRef} className="h-2" />
           </div>
         )}
       </div>
 
-      <div className="relative border-t border-white/15 bg-[rgb(var(--glass-bg)/0.38)] px-3 pt-2.5 pb-[max(env(safe-area-inset-bottom),0.7rem)] backdrop-blur-2xl backdrop-saturate-150 sm:px-4 sm:pb-4">
+      <div className="composer-dock relative border-t border-white/15 bg-[rgb(var(--glass-bg)/0.38)] px-3 pt-2.5 pb-[max(env(safe-area-inset-bottom),0.7rem)] backdrop-blur-2xl backdrop-saturate-150 sm:px-4 sm:pb-4">
         <AnimatePresence>
           {!empty && !atBottom && (
             <motion.button
