@@ -49,6 +49,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install Capacitor iOS platform
+        run: npm install @capacitor/ios@^6.2.1 --no-save
+
       - name: Build web app (root base, with API keys)
         env:
           VITE_BASE: '/'
