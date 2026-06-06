@@ -1,0 +1,114 @@
+name: Codex web image hotfix
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/ripoai-web-app-U0rvk']
+    paths:
+      - '.github/workflows/codex-web-image-hotfix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/ripoai-web-app-U0rvk
+
+      - name: Patch web image routing
+        run: |
+          node <<'NODE'
+          const fs = require('fs')
+
+          function writeIfChanged(path, next) {
+            const prev = fs.readFileSync(path, 'utf8')
+            if (prev !== next) fs.writeFileSync(path, next)
+          }
+
+          {
+            const path = 'src/lib/webImages.ts'
+            let s = fs.readFileSync(path, 'utf8')
+            s = s.replace(
+              "const searchVerb = /\\b(search|find|look up|lookup|google|browse|get|show|display|preview|pull up|source)\\b/.test(t)",
+              "const searchVerb = /\\b(search|find|look up|lookup|google|browse|get|show|display|preview|pull up|source|send|give|provide|fetch)\\b/.test(t)",
+            )
+            if (!s.includes('const explicitImageSearch =')) {
+              s = s.replace(
+                "  const lookLike = /\\bwhat does\\b.+\\blook like\\b/.test(t)\n  const generationIntent =",
+                "  const lookLike = /\\bwhat does\\b.+\\blook like\\b/.test(t)\n" +
+                  "  const explicitImageSearch =\n" +
+                  "    /\\b(search|find|look up|lookup|google|browse|fetch)\\b.+\\b(images?|pictures?|pics?|photos?|visuals?|wallpapers?|logos?)\\b/.test(t) ||\n" +
+                  "    /\\b(images?|pictures?|pics?|photos?|visuals?|wallpapers?|logos?)\\b.+\\b(search|find|look up|lookup|google|browse|fetch)\\b/.test(t)\n" +
+                  "  const sendOnlineImages =\n" +
+                  "    /\\b(send|give|provide|show|get)\\b.+\\b(images?|pictures?|pics?|photos?|visuals?|wallpapers?|logos?)\\b.+\\b(web|online|internet|source|sources|links?|search)\\b/.test(t)\n" +
+                  "  const generationIntent =",
+              )
+            }
+            s = s.replace(
+              'return (hasImageWord && (searchVerb || sourceHint)) || lookLike',
+              'return explicitImageSearch || sendOnlineImages || (hasImageWord && (searchVerb || sourceHint)) || lookLike',
+            )
+            s = s.replace(
+              ".replace(/\\b(search|find|look up|lookup|google|browse|get|show|display|preview|pull up|source)\\b/gi, ' ')",
+              ".replace(/\\b(search|find|look up|lookup|google|browse|get|show|display|preview|pull up|source|send|give|provide|fetch)\\b/gi, ' ')",
+            )
+            writeIfChanged(path, s)
+          }
+
+          {
+            const path = 'src/hooks/useChat.ts'
+            let s = fs.readFileSync(path, 'utf8')
+            s = s.replace(
+              "if (!opts.image && !opts.systemOverride && !opts.agent && wantsWebImageSearch(lastUser?.content ?? '')) {",
+              "if (!opts.systemOverride && wantsWebImageSearch(lastUser?.content ?? '')) {",
+            )
+            if (!s.includes('stale Image or Agent mode')) {
+              const marker = "\n      // Image generation / editing mode.\n      if (opts.image) {"
+              const guard =
+                "\n      // Online image requests should be handled by the app's image-search\n" +
+                "      // pipeline, even if stale Image or Agent mode was left enabled.\n" +
+                "      if (!opts.systemOverride && wantsWebImageSearch(lastUser?.content ?? '')) {\n" +
+                "        opts = { ...opts, image: false, agent: false }\n" +
+                "      }\n"
+              s = s.replace(marker, guard + marker)
+            }
+            writeIfChanged(path, s)
+          }
+
+          {
+            const path = 'src/lib/db.ts'
+            let s = fs.readFileSync(path, 'utf8')
+            if (!s.includes("import type { WebImageResult } from './webImages'")) {
+              s = s.replace("import type { ModelTier } from './models'", "import type { ModelTier } from './models'\nimport type { WebImageResult } from './webImages'")
+            }
+            if (!s.includes('webImages?: { query: string; images: WebImageResult[] }')) {
+              s = s.replace(
+                '  /** Set when this message includes a generated slide deck. */\n  deck?: any\n',
+                '  /** Set when this message includes a generated slide deck. */\n  deck?: any\n  /** Set when this message includes web image search results. */\n  webImages?: { query: string; images: WebImageResult[] }\n',
+              )
+            }
+            writeIfChanged(path, s)
+          }
+
+          {
+            const path = 'src/main.tsx'
+            let s = fs.readFileSync(path, 'utf8')
+            s = s.replace(/APP_VERSION = 'v[^']+'/g, "APP_VERSION = 'v7.10.2'")
+            writeIfChanged(path, s)
+          }
+          NODE
+
+      - name: Commit source hotfix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/webImages.ts src/hooks/useChat.ts src/lib/db.ts src/main.tsx
+          if git diff --cached --quiet; then
+            echo "No source changes needed."
+          else
+            git commit -m "Force web image requests through image search"
+            git push
+          fi
