@@ -12,6 +12,7 @@ import { getModel, resolveAutoModel, type ModelTier } from '../lib/models'
 import { buildSystemPrompt, AGENT_SYSTEM, WEB3D_INSTRUCTIONS, wantsWebsite, needsDeepThinking } from '../lib/prompt'
 import { extractSocialImages, buildSocialPrompt } from '../lib/social'
 import { searchModel, shouldAutoSearch } from '../lib/search'
+import { searchWebImages, wantsWebImageSearch, webImageQuery } from '../lib/webImages'
 import { extractMemories } from '../lib/memory'
 import { installSkillFromUrl, detectSkillInstall, detectSlashSkill, findSkill, autoPickSkill } from '../lib/skills'
 import { haptic } from './useSpeech'
@@ -302,6 +303,56 @@ export function useChat(chatId: string | undefined) {
         })
         setStreaming(false)
         if (titleRef.current === 'New chat') titleRef.current = (prompt || 'Image').slice(0, 40)
+        await persist(finalMsgs, id, opts.model, opts.projectId)
+        return
+      }
+
+      // Web image search: when the user asks for real images from the web,
+      // return a preview gallery with source links instead of treating it as
+      // image generation.
+      if (!opts.image && !opts.systemOverride && !opts.agent && wantsWebImageSearch(lastUser?.content ?? '')) {
+        const queryText = webImageQuery(lastUser?.content ?? '')
+        const assistantId = uid4()
+        setMessages((m) => [
+          ...m,
+          {
+            id: assistantId,
+            role: 'assistant',
+            content: 'Searching for web images...',
+            model: opts.model,
+            steps: [{ type: 'search', detail: `Image search: ${queryText}` }],
+            createdAt: Date.now(),
+          },
+        ])
+        setStreaming(true)
+
+        let finalMsgs: StoredMessage[] = []
+        try {
+          const images = await searchWebImages(queryText, 8)
+          const content = images.length
+            ? `I found ${images.length} web image${images.length === 1 ? '' : 's'} for "${queryText}". Tap any preview to see the source link, creator, and license details when available.`
+            : `I could not find good web images for "${queryText}" from the public image sources available right now. Try a more specific name or turn on Web Search for a broader answer.`
+          setMessages((m) => {
+            finalMsgs = m.map((x) =>
+              x.id === assistantId
+                ? {
+                    ...x,
+                    content,
+                    webImages: images.length ? { query: queryText, images } : undefined,
+                  }
+                : x,
+            )
+            return finalMsgs
+          })
+        } catch (e: any) {
+          const content = `I could not load web image results right now. ${e?.message ?? ''}`.trim()
+          setMessages((m) => {
+            finalMsgs = m.map((x) => (x.id === assistantId ? { ...x, content } : x))
+            return finalMsgs
+          })
+        }
+        setStreaming(false)
+        if (titleRef.current === 'New chat') titleRef.current = `Images: ${queryText}`.slice(0, 60)
         await persist(finalMsgs, id, opts.model, opts.projectId)
         return
       }

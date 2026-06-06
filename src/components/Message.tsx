@@ -5,6 +5,7 @@ import { Markdown } from './Markdown'
 import Reasoning from './Reasoning'
 import AgentTrace from './AgentTrace'
 import ImageCard from './ImageCard'
+import WebImagesCard from './WebImagesCard'
 import MapCard from './MapCard'
 import WeatherCard from './WeatherCard'
 import SlidesCard from './SlidesCard'
@@ -14,6 +15,7 @@ import { speak, stopSpeaking, isSpeechSupported } from '../hooks/useSpeech'
 import { parseSkillBlock, saveSkill } from '../lib/skills'
 import { useStore } from '../store'
 import type { StoredMessage } from '../lib/db'
+import type { WebImageResult } from '../lib/webImages'
 
 interface Props {
   message: StoredMessage
@@ -55,6 +57,9 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
   const [speaking, setSpeaking] = useState(false)
   const [draft, setDraft] = useState(message.content)
   const isUser = message.role === 'user'
+  const webImages = (
+    message as StoredMessage & { webImages?: { query: string; images: WebImageResult[] } }
+  ).webImages
 
   function copy() {
     navigator.clipboard.writeText(message.content)
@@ -216,6 +221,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
           </motion.div>
         )}
         {message.image && <ImageCard prompt={message.image.prompt} url={message.image.url} />}
+        {webImages && <WebImagesCard query={webImages.query} images={webImages.images} />}
         {message.map && <MapCard data={message.map} />}
         {message.weather && <WeatherCard data={message.weather} />}
         {message.deck && <SlidesCard deck={message.deck} />}

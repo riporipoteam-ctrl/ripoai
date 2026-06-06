@@ -18,10 +18,13 @@ Firestore, Tailwind, Framer Motion and an iOS‑26 "Liquid Glass" design. Deploy
   | RipoAI 2o Pro (flagship) | `openai/gpt-oss-120b` |
 - **Web Search mode** — live, cited answers via Groq's `compound` model. When off, RipoAI
   auto‑decides whether a query needs the web.
+- **Web image search** - ask for real images/photos/logos from the web and RipoAI shows a
+  preview gallery with source links, creator, provider, and license details when available.
 - **Agent mode** — autonomous, multi‑step web research with a visible step trace.
 - **Uploads** — images (sent to vision models) and files/PDFs (parsed client‑side as context).
 - **Image generation** — ask naturally for a photo, logo, poster, wallpaper, avatar, banner, or
-  illustration and RipoAI returns an image card on both the website and APK.
+  illustration and RipoAI returns an image card on both the website and APK. Logo/text prompts
+  use a safer high-contrast path and black/blank generations are retried automatically.
 - **Projects** — a coding agent + a real in‑browser sandbox (Sandpack) with **Code / Preview /
   Console** tabs. The agent writes files that run instantly.
 - **Memory** — RipoAI extracts durable facts about you and reuses them; manage them in Settings.
@@ -109,7 +112,7 @@ the latest shell and live-site bundle path.
 
 ## iOS app
 
-iPhone/iPad get RipoAI two ways:
+iPhone/iPad get RipoAI three ways:
 
 **1. Add to Home Screen (free, no Mac, recommended).** Open the deployed RipoAI
 site in **Safari** → tap **Share** → **Add to Home Screen**. RipoAI installs with
@@ -127,10 +130,25 @@ Actions builds the iOS app on a macOS runner:
    - `RipoAI-iOS-Xcode-project.zip` — open `App/App.xcodeworkspace` in Xcode,
      set your **Signing Team**, plug in your iPhone, press **Run** to install.
 
+**3. Expo iOS shell (live, connected wrapper).** The new [`expo`](./expo)
+app loads the same live RipoAI website in a native WebView, so installed iOS
+users get website updates on next launch without rebuilding the shell. It uses
+`expo-glass-effect` for real Liquid Glass on iOS 26+ and falls back to
+`expo-blur` where Liquid Glass is unavailable.
+
+```bash
+npm run expo:start
+npm run expo:build:ios
+```
+
+The **Build iOS App (Expo)** workflow validates the Expo config on branch pushes.
+It queues a production EAS iOS build only when the repo has an `EXPO_TOKEN`
+secret and Apple/EAS credentials are configured.
+
 > ⚠️ Apple does **not** allow installing **unsigned** apps on a physical device.
 > Running on a real iPhone requires an **Apple Developer account** ($99/yr) and
 > code signing — that's an Apple rule, not a RipoAI limitation. The PWA path
-> above sidesteps all of it. Inside the iOS WebView, Google sign‑in (popup) may
+> above sidesteps all of it. Inside native iOS WebViews, Google sign‑in (popup) may
 > not work — use **email/password**.
 
 ## Google sign‑in in an installed (home‑screen) PWA
@@ -186,8 +204,9 @@ strong Groq model, so it still works.
 
 This is a **static** app (GitHub Pages). Features that require an always‑on server are
 intentionally **not** included rather than faked: a real OS browser agent that drives Chrome,
-arbitrary terminal/command execution, native APK builds, and a persistent Expo preview. The
-Projects sandbox is the genuine in‑browser equivalent for "live code + preview".
+arbitrary terminal/command execution, and a fake 24/7 dev process. The live app stays available
+through GitHub Pages/Firebase/Netlify hosting; the APK and Expo iOS shell load that deployed site.
+The Projects sandbox is the genuine in‑browser equivalent for "live code + preview".
 
 > ⚠️ With a site‑wide key (option 2 above) the key ships in the public client bundle and is
 > abusable. Rotate it in the Groq console if you see abuse. For zero exposure, leave the secret
@@ -196,4 +215,5 @@ Projects sandbox is the genuine in‑browser equivalent for "live code + preview
 ## Tech
 
 React 18 · Vite 6 · TypeScript · Tailwind CSS · Framer Motion · Zustand · Firebase ·
-`@codesandbox/sandpack-react` · react‑markdown · KaTeX · Groq API.
+Expo 56 · `expo-glass-effect` · `@codesandbox/sandpack-react` · react‑markdown ·
+KaTeX · Groq API.

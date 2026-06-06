@@ -5,7 +5,7 @@ export const IMAGE_STYLES: { id: string; label: string; suffix: string }[] = [
   { id: 'anime', label: 'Anime', suffix: ', anime style, vibrant colors, clean line art, studio anime key visual' },
   { id: '3d', label: '3D', suffix: ', 3D render, octane render, soft studio lighting, cinematic, highly detailed' },
   { id: 'art', label: 'Art', suffix: ', digital painting, artstation trending, dramatic lighting, masterpiece' },
-  { id: 'logo', label: 'Logo', suffix: ', minimal flat vector logo, centered, simple, clean solid background' },
+  { id: 'logo', label: 'Logo', suffix: ', minimal flat vector logo, centered, bright white background, high contrast, crisp readable lettering when text is requested, no black canvas' },
   { id: 'sketch', label: 'Sketch', suffix: ', detailed pencil sketch, hand-drawn, black and white' },
 ]
 
@@ -48,6 +48,68 @@ export function dimsFor(prompt: string): { w: number; h: number } {
   if (portrait && !landscape) return { w: 896, h: 1152 }
   if (landscape) return { w: 1152, h: 896 }
   return { w: 1024, h: 1024 }
+}
+
+function isLogoOrTextPrompt(prompt: string): boolean {
+  return /\b(logo|wordmark|typography|lettering|letters|text|says|slogan|brand name|with words|called|named)\b/i.test(
+    prompt,
+  )
+}
+
+function saferPrompt(prompt: string): string {
+  const guard =
+    'well-lit, high contrast, complete visible subject, no black canvas, no blank frame, no empty dark background'
+  if (isLogoOrTextPrompt(prompt)) {
+    return `${prompt}, bright professional vector design, clean white or brand-color background, readable exact lettering, centered composition, ${guard}`.slice(
+      0,
+      1200,
+    )
+  }
+  return `${prompt}, ${guard}`.slice(0, 1200)
+}
+
+async function imageLooksBlank(url: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    const timer = window.setTimeout(() => resolve(false), 8000)
+    img.onload = () => {
+      window.clearTimeout(timer)
+      try {
+        const canvas = document.createElement('canvas')
+        const size = 28
+        canvas.width = size
+        canvas.height = size
+        const ctx = canvas.getContext('2d', { willReadFrequently: true })
+        if (!ctx) return resolve(false)
+        ctx.drawImage(img, 0, 0, size, size)
+        const data = ctx.getImageData(0, 0, size, size).data
+        let dark = 0
+        let total = 0
+        let sum = 0
+        let sumSq = 0
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i + 3] < 20) continue
+          const lum = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]
+          if (lum < 12) dark++
+          total++
+          sum += lum
+          sumSq += lum * lum
+        }
+        if (!total) return resolve(true)
+        const avg = sum / total
+        const variance = sumSq / total - avg * avg
+        resolve((avg < 10 && variance < 18) || dark / total > 0.985)
+      } catch {
+        resolve(false)
+      }
+    }
+    img.onerror = () => {
+      window.clearTimeout(timer)
+      resolve(false)
+    }
+    img.src = url
+  })
 }
 
 // Generate an image with NVIDIA FLUX.1-dev (via the proxy worker). Returns a
@@ -95,10 +157,16 @@ export async function generateImage(
   prompt: string,
   opts: { w?: number; h?: number; seed?: number; signal?: AbortSignal } = {},
 ): Promise<string> {
+  const safe = saferPrompt(prompt)
+  if (isLogoOrTextPrompt(prompt)) {
+    return imageUrl(safe, { w: opts.w, h: opts.h, seed: opts.seed, model: 'flux' })
+  }
   try {
-    return await generateNvidiaImage(prompt, opts)
+    const generated = await generateNvidiaImage(safe, opts)
+    if (await imageLooksBlank(generated)) throw new Error('Generated image was blank.')
+    return generated
   } catch {
-    return imageUrl(prompt, { w: opts.w, h: opts.h, seed: opts.seed, model: 'flux' })
+    return imageUrl(safe, { w: opts.w, h: opts.h, seed: opts.seed, model: 'flux' })
   }
 }
 

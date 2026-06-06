@@ -1,10 +1,41 @@
-import { useState } from 'react'
+import { useState, type SyntheticEvent } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Download, RefreshCw, ImageOff, Sparkles } from 'lucide-react'
 import { dimsFor } from '../lib/imagegen'
 
 function withSeed(url: string, seed: number): string {
   return url.replace(/([?&])seed=\d+/, `$1seed=${seed}`)
+}
+
+async function imageElementLooksBlank(img: HTMLImageElement): Promise<boolean> {
+  try {
+    const canvas = document.createElement('canvas')
+    const size = 28
+    canvas.width = size
+    canvas.height = size
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
+    if (!ctx) return false
+    ctx.drawImage(img, 0, 0, size, size)
+    const data = ctx.getImageData(0, 0, size, size).data
+    let dark = 0
+    let total = 0
+    let sum = 0
+    let sumSq = 0
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] < 20) continue
+      const lum = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2]
+      if (lum < 12) dark++
+      total++
+      sum += lum
+      sumSq += lum * lum
+    }
+    if (!total) return true
+    const avg = sum / total
+    const variance = sumSq / total - avg * avg
+    return (avg < 10 && variance < 18) || dark / total > 0.985
+  } catch {
+    return false
+  }
 }
 
 export default function ImageCard({ prompt, url }: { prompt: string; url: string }) {
@@ -36,6 +67,23 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
     } else {
       setFailed(true)
     }
+  }
+
+  async function onLoad(e: SyntheticEvent<HTMLImageElement>) {
+    const blank = await imageElementLooksBlank(e.currentTarget)
+    if (blank) {
+      if (!isData && attempt < 4) {
+        setLoaded(false)
+        setFailed(false)
+        const next = attempt + 1
+        setAttempt(next)
+        setTimeout(() => setSrc(withSeed(url, Math.floor(Math.random() * 1_000_000) + next)), 250)
+        return
+      }
+      setFailed(true)
+      return
+    }
+    setLoaded(true)
   }
 
   return (
@@ -83,7 +131,8 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
               key={src}
               src={src}
               alt={prompt}
-              onLoad={() => setLoaded(true)}
+              crossOrigin="anonymous"
+              onLoad={onLoad}
               onError={onError}
               initial={{ opacity: 0, scale: 1.04 }}
               animate={{ opacity: loaded ? 1 : 0, scale: loaded ? 1 : 1.04 }}

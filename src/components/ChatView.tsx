@@ -12,6 +12,7 @@ import type { ModelTier } from '../lib/models'
 import type { Attachment } from '../lib/db'
 import { banActive, todaysMessageCount, bumpMessageCount } from '../lib/admin'
 import { wantsImageGeneration } from '../lib/imagegen'
+import { wantsWebImageSearch } from '../lib/webImages'
 
 const ALL_SUGGESTIONS = [
   { title: 'Build a 3D website', sub: 'with scroll animations', icon: Palette },
@@ -109,9 +110,11 @@ export default function ChatView() {
       return
     }
     if (user) bumpMessageCount(user.uid)
-    const autoImage = !imageMode && wantsImageGeneration(text)
+    const autoWebImages = wantsWebImageSearch(text)
+    const autoImage = !imageMode && !autoWebImages && wantsImageGeneration(text)
+    if (autoWebImages && imageMode) setImageMode(false)
     if (autoImage) setImageMode(true)
-    send(text, attachments, { ...opts, image: imageMode || autoImage })
+    send(text, attachments, { ...opts, image: autoWebImages ? false : imageMode || autoImage })
   }
 
   const greeting = settings.displayName || user?.displayName?.split(' ')[0] || 'there'

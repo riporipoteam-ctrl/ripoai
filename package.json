@@ -8,7 +8,10 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "lint": "tsc -b --noEmit"
+    "lint": "tsc -b --noEmit",
+    "expo:start": "npm --prefix expo start",
+    "expo:ios": "npm --prefix expo run ios",
+    "expo:build:ios": "npm --prefix expo run build:ios"
   },
   "dependencies": {
     "@capacitor/app": "^6.0.3",
