@@ -23,7 +23,7 @@ jobs:
         with:
           node-version: 22
 
-      - name: Download and unpack update payload
+      - name: Download and unpack app update payload
         env:
           PAYLOAD_URL: https://prevent-inventory-blank-pole.trycloudflare.com/payload.b64
         run: |
@@ -38,15 +38,14 @@ jobs:
             fs.mkdirSync(path.dirname(file), { recursive: true })
             fs.writeFileSync(file, content, 'utf8')
           }
-          fs.rmSync('.github/workflows/codex-apply-update.yml', { force: true })
           fs.rmSync('payload.b64', { force: true })
           NODE
 
-      - name: Commit unpacked update
+      - name: Commit unpacked app update
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git status --short
-          git add -A
+          git add -A -- ':!*.github/workflows/*'
           git commit -m "Add web image search and Expo iOS shell" -m "- add web-sourced image gallery previews with source links" -m "- harden generated image fallback against black/blank logo outputs" -m "- add Expo iOS wrapper with Liquid Glass support" || exit 0
           git push
