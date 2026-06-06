@@ -33,6 +33,22 @@ export function dimsFor(prompt: string): { w: number; h: number } {
 // Generate an image with NVIDIA FLUX.1-dev (via the proxy worker). Returns a
 // base64 data URL. This replaces the old keyless Pollinations endpoint, which
 // went paid (HTTP 402).
+export type ImageGenerationProvider = 'nvidia' | 'pollinations'
+
+export interface ImageGenerationResult {
+  url: string
+  provider: ImageGenerationProvider
+}
+
+export interface ImageGenerationOptions {
+  w?: number
+  h?: number
+  seed?: number
+  signal?: AbortSignal
+  model?: string
+  preload?: boolean
+}
+
 export async function generateImage(
   prompt: string,
   opts: { w?: number; h?: number; seed?: number; signal?: AbortSignal } = {},
@@ -55,7 +71,11 @@ export async function generateImage(
   })
   if (!res.ok) {
     const t = await res.text().catch(() => '')
-    throw new Error(`Image generation failed (${res.status}). ${t.slice(0, 160)}`)
+    const err = new Error(`Image generation failed (${res.status}). ${t.slice(0, 160)}`) as Error & {
+      status?: number
+    }
+    err.status = res.status
+    throw err
   }
   const data = await res.json()
   // NVIDIA/Stability-style responses vary; accept the common shapes.
@@ -67,6 +87,47 @@ export async function generateImage(
     (Array.isArray(data?.images) ? data.images[0] : undefined)
   if (!b64) throw new Error('Image generation returned no image.')
   return b64.startsWith('data:') ? b64 : `data:image/jpeg;base64,${b64}`
+}
+
+function shouldFallbackToPollinations(err: unknown): boolean {
+  const e = err as { name?: string; status?: number; message?: string; cause?: { status?: number } }
+  if (e?.name === 'AbortError') return false
+
+  const status = e?.status ?? e?.cause?.status
+  if (
+    status === 401 ||
+    status === 402 ||
+    status === 405 ||
+    status === 429 ||
+    (typeof status === 'number' && status >= 500)
+  ) {
+    return true
+  }
+
+  const message = String(e?.message ?? '').toLowerCase()
+  if (/\((401|402|405|429|5\d\d)\)/.test(message)) return true
+  return (
+    err instanceof TypeError ||
+    /network|failed to fetch|fetch failed|load failed|connection|timeout|timed out|econn|enotfound|cors/.test(message)
+  )
+}
+
+// Prefer NVIDIA FLUX via the proxy, but fall back to the keyless Pollinations
+// URL path when the proxy is down, rate-limited, over quota, or unavailable.
+export async function generateImageWithFallback(
+  prompt: string,
+  opts: ImageGenerationOptions = {},
+): Promise<ImageGenerationResult> {
+  try {
+    const url = await generateImage(prompt, opts)
+    return { url, provider: 'nvidia' }
+  } catch (err) {
+    if (!shouldFallbackToPollinations(err)) throw err
+  }
+
+  const url = imageUrl(prompt, opts)
+  if (opts.preload !== false) await preloadImage(url)
+  return { url, provider: 'pollinations' }
 }
 
 // Free, keyless image generation via Pollinations (open CORS — usable directly

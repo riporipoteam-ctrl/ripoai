@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { streamChat, complete, type ChatMessage, type ContentPart } from '../lib/groq'
-import { generateImage, styleSuffix, dimsFor } from '../lib/imagegen'
+import { generateImageWithFallback, styleSuffix, dimsFor, type ImageGenerationResult } from '../lib/imagegen'
 import { wantsPlaces, searchPlaces, getUserLocation, getUserPlace, wantsLocationContext } from '../lib/places'
 import { wantsWeather, getWeather } from '../lib/weather'
 import { wantsCurrency, convertCurrency } from '../lib/currency'
@@ -274,9 +274,15 @@ export function useChat(chatId: string | undefined) {
 
         const styledScene = (scene + styleSuffix(opts.imageStyle)).slice(0, 900)
         const { w, h } = dimsFor(prompt)
+        let imageResult: ImageGenerationResult | null = null
         let baseUrl: string
         try {
-          baseUrl = editBase || (await generateImage(styledScene, { w, h }))
+          if (editBase) {
+            baseUrl = editBase
+          } else {
+            imageResult = await generateImageWithFallback(styledScene, { w, h, preload: true })
+            baseUrl = imageResult.url
+          }
         } catch (e: any) {
           let errMsgs: StoredMessage[] = []
           setMessages((m) => {
@@ -296,7 +302,16 @@ export function useChat(chatId: string | undefined) {
         let finalMsgs: StoredMessage[] = []
         setMessages((m) => {
           finalMsgs = m.map((x) =>
-            x.id === assistantId ? { ...x, content: '', imagePending: undefined, image: { prompt, url: finalUrl } } : x,
+            x.id === assistantId
+              ? {
+                  ...x,
+                  content: '',
+                  imagePending: undefined,
+                  image: imageResult?.provider
+                    ? { prompt, url: finalUrl, provider: imageResult.provider }
+                    : { prompt, url: finalUrl },
+                }
+              : x,
           )
           return finalMsgs
         })
