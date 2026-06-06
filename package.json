@@ -5,8 +5,8 @@
   "type": "module",
   "homepage": "https://riporipoteam-ctrl.github.io/ripoai/",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev": "node scripts/use-source-index.mjs && vite",
+    "build": "node scripts/use-source-index.mjs && tsc -b && vite build",
     "preview": "vite preview",
     "lint": "tsc -b --noEmit",
     "expo:start": "npm --prefix expo start",
