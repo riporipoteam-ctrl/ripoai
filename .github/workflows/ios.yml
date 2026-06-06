@@ -70,7 +70,7 @@ jobs:
         run: |
           cd ios/App
           xcodebuild \
-            -workspace App.xcodeworkspace \
+            -workspace App.xcworkspace \
             -scheme App \
             -configuration Debug \
             -sdk iphonesimulator \
@@ -123,7 +123,7 @@ jobs:
             `xcrun simctl install booted App.app && xcrun simctl launch booted io.github.riporipoteam.ripoai`
 
             **Install on your own device:** download `RipoAI-iOS-Xcode-project.zip`,
-            unzip, open `App/App.xcodeworkspace` in Xcode, select your Signing Team
+            unzip, open `App/App.xcworkspace` in Xcode, select your Signing Team
             under Signing & Capabilities, plug in your iPhone, and press Run.
 
             > Apple does not allow installing unsigned apps on a physical device —
