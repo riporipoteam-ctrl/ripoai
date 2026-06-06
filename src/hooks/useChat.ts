@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { streamChat, complete, type ChatMessage, type ContentPart } from '../lib/groq'
-import { generateImage, styleSuffix, dimsFor } from '../lib/imagegen'
+import { generateImage, editImage, ImageEditUnsupportedError, styleSuffix, dimsFor } from '../lib/imagegen'
 import { wantsPlaces, searchPlaces, getUserLocation, getUserPlace, wantsLocationContext } from '../lib/places'
 import { wantsWeather, getWeather } from '../lib/weather'
 import { wantsCurrency, convertCurrency } from '../lib/currency'
@@ -276,13 +276,22 @@ export function useChat(chatId: string | undefined) {
         const { w, h } = dimsFor(prompt)
         let baseUrl: string
         try {
-          baseUrl = editBase || (await generateImage(styledScene, { w, h }))
+          baseUrl = editBase
+            ? await editImage((prompt + styleSuffix(opts.imageStyle)).slice(0, 900), editBase, { w, h })
+            : await generateImage(styledScene, { w, h })
         } catch (e: any) {
           let errMsgs: StoredMessage[] = []
           setMessages((m) => {
             errMsgs = m.map((x) =>
               x.id === assistantId
-                ? { ...x, imagePending: undefined, content: `⚠️ Couldn't generate the image. ${e?.message ?? ''}`.trim() }
+                ? {
+                    ...x,
+                    imagePending: undefined,
+                    content:
+                      e instanceof ImageEditUnsupportedError
+                        ? `⚠️ ${e.message}`
+                        : `⚠️ Couldn't ${editBase ? 'edit' : 'generate'} the image. ${e?.message ?? ''}`.trim(),
+                  }
                 : x,
             )
             return errMsgs
