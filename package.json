@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "homepage": "https://riporipoteam-ctrl.github.io/ripoai/",
+  "homepage": "https://ripoai-dff5d.web.app/",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",

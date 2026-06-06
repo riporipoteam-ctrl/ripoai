@@ -10,7 +10,7 @@ const config: CapacitorConfig = {
   // no reinstall needed. The native shell (status bar, haptics, splash, bottom
   // sheets, glassier .native styling) still applies, so it stays app-like.
   server: {
-    url: 'https://riporipoteam-ctrl.github.io/ripoai/',
+    url: 'https://ripoai-dff5d.web.app/',
     cleartext: false,
   },
   android: {

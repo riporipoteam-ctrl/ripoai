@@ -2,7 +2,7 @@
 
 A polished, ChatGPT‑style AI web app — chat, live web research, memory, and an in‑browser
 coding workspace with live preview. Built with React + Vite + TypeScript, Firebase Auth +
-Firestore, Tailwind, Framer Motion and an iOS‑26 "Liquid Glass" design. Deploys to GitHub Pages.
+Firestore, Tailwind, Framer Motion and an iOS‑26 "Liquid Glass" design. The canonical production app is Firebase Hosting at `https://ripoai-dff5d.web.app/`; GitHub Pages is a secondary mirror only.
 
 ## Features
 
@@ -51,25 +51,32 @@ To make the deployed site work for everyone without anyone entering a key, add t
 `VITE_GROQ_API_KEY`. The deploy workflow injects it at build time (the key then lives in the
 public bundle — the trade‑off accepted for a keyless‑for‑users static site).
 
-## Deploy to Netlify (recommended — shorter URL)
+## Production deploy (Firebase Hosting — canonical)
 
-A `netlify.toml` is included, so deploying is one click:
+Use **`https://ripoai-dff5d.web.app/`** as the production URL for the website,
+installed PWA, and Android APK runtime. Firebase Hosting is canonical because
+its hosted auth handler can be same-origin with the app, which keeps Google
+sign-in behavior consistent between browser tabs and installed PWAs.
 
-1. Push this repo to GitHub (done).
-2. On **netlify.com** → **Add new site → Import from GitHub** → pick this repo.
-   Build command and publish dir are auto-detected from `netlify.toml`
-   (`npm run build` → `dist`, with `VITE_BASE="/"` so it serves at the root).
-3. **Site settings → Environment variables** → add `VITE_GROQ_API_KEY` and
-   `VITE_OPENROUTER_API_KEY`. Then **Deploys → Trigger deploy**.
-4. **Site settings → Domain management** → rename the site to e.g.
-   **`ripoai`** → you get **`ripoai.netlify.app`** (short, custom). Add your own
-   custom domain there too if you have one.
-5. In **Firebase → Authentication → Authorized domains**, add your
-   `*.netlify.app` domain (and any custom domain) so Google sign‑in works.
+A Firebase Hosting workflow builds with `VITE_BASE="/"` and deploys `dist` to the
+live channel on pushes to `main` (and the legacy deploy branch) or by manually
+running **Actions → Deploy to Firebase Hosting**. Configure these repo secrets
+before deploying:
 
-> Shorter GitHub Pages URL: GitHub can't shorten `…github.io/ripoai/` without a
-> custom domain or renaming the repo to `riporipoteam-ctrl.github.io` (which
-> serves at the root). Netlify's free custom subdomain is the easiest fix.
+- `FIREBASE_SERVICE_ACCOUNT` — service-account JSON with the Firebase Hosting
+  Admin role.
+- `VITE_GROQ_API_KEY` and `VITE_OPENROUTER_API_KEY` — optional site-wide model
+  API keys.
+- `VITE_NVIDIA_BASE` and `VITE_NVIDIA_API_KEY` — optional NVIDIA proxy settings.
+
+### Secondary mirrors
+
+GitHub Pages may still deploy a **mirror** at
+`https://riporipoteam-ctrl.github.io/ripoai/`, but users should install and use
+**`https://ripoai-dff5d.web.app/`**. The mirror is useful as a fallback/static
+preview only and is not the production origin loaded by the APK. Netlify/custom
+domains are optional mirrors too; if you add one, add that domain in Firebase
+Authentication authorized domains before using Google sign-in there.
 
 ## Android APK (build on GitHub — no local Android SDK needed)
 
@@ -89,7 +96,7 @@ produce a signed release build.
 ### Auto-updating APK
 
 The app is configured (Capacitor `server.url`) to load the **live deployed site**
-(`https://riporipoteam-ctrl.github.io/ripoai/`) rather than a bundled copy. That
+(`https://ripoai-dff5d.web.app/`) rather than a bundled copy. That
 means **every push that redeploys the site updates the installed app automatically**
 on next launch — no reinstall, no Play Store. The native shell (status bar, haptics,
 splash, bottom-sheet menus, glassier `.native` styling) still applies, so it looks
@@ -105,8 +112,8 @@ the native shell itself changes.
 
 iPhone/iPad get RipoAI two ways:
 
-**1. Add to Home Screen (free, no Mac, recommended).** Open the deployed RipoAI
-site in **Safari** → tap **Share** → **Add to Home Screen**. RipoAI installs with
+**1. Add to Home Screen (free, no Mac, recommended).** Open the canonical RipoAI
+site (**`https://ripoai-dff5d.web.app/`**) in **Safari** → tap **Share** → **Add to Home Screen**. RipoAI installs with
 its app icon and launches **full‑screen** (no Safari chrome), respecting the
 notch and home indicator — it behaves like a native app. The app even shows a
 one‑time hint explaining this. This is a real PWA install and needs no Apple
@@ -145,15 +152,15 @@ included. A deploy workflow is provided:
 2. Create a **service‑account key** (role: *Firebase Hosting Admin*) and add it
    as the repo secret **`FIREBASE_SERVICE_ACCOUNT`** (paste the full JSON).
    Tip: `firebase init hosting:github` wires this up automatically.
-3. Push to the deploy branch (or run **Actions → Deploy to Firebase Hosting**).
+3. Push to `main` (or run **Actions → Deploy to Firebase Hosting**).
 4. Open **`https://ripoai-dff5d.web.app`** in Safari/Chrome → **Add to Home
    Screen**. Google sign‑in now works in the installed app.
 
-The app's `authDomain` is already set to `ripoai-dff5d.web.app` for this. On
-GitHub Pages the code still does the right thing (redirect‑based sign‑in), but
-the **`.web.app` install is the reliable one for Google in a PWA**. Email/
-password works everywhere regardless. In the **native APK/iOS app**, use
-email/password (native Google would need the Capacitor Firebase Auth plugin).
+The app's `authDomain` is set to `ripoai-dff5d.web.app` for this. GitHub Pages
+can remain online as a secondary mirror, but the **`.web.app` URL is the one
+users should install/use** and the one the APK loads. Email/password works
+everywhere regardless. In the **native APK/iOS app**, use email/password
+(native Google would need the Capacitor Firebase Auth plugin).
 
 ## RipoAI 4o Pro (NVIDIA — needs a proxy)
 
@@ -168,17 +175,23 @@ strong Groq model, so it still works.
 ## One‑time setup (required for production)
 
 1. **Firebase → Authentication → Sign‑in method**: enable **Email/Password** and **Google**.
-2. **Firebase → Authentication → Settings → Authorized domains**: add
-   `riporipoteam-ctrl.github.io`.
-3. **Firebase → Firestore Database**: create a database, then publish the rules from
-   [`firestore.rules`](./firestore.rules).
-4. **GitHub → Settings → Pages → Build and deployment → Source**: select **GitHub Actions**.
-   Pushing to the deploy branch then publishes to `https://riporipoteam-ctrl.github.io/ripoai/`.
-5. **GitHub → Settings → Secrets and variables → Actions**: add `VITE_GROQ_API_KEY` (see above).
+2. **Firebase → Authentication → Settings → Authorized domains**: make sure
+   `ripoai-dff5d.web.app` is listed. This origin has been verified with the
+   Firebase Identity Toolkit `accounts:createAuthUri` endpoint. Keep
+   `riporipoteam-ctrl.github.io` only if you want the GitHub Pages mirror to
+   support Firebase Auth too.
+3. **Firebase console → Hosting**: enable Hosting for project `ripoai-dff5d`.
+4. **GitHub → Settings → Secrets and variables → Actions**: add
+   `FIREBASE_SERVICE_ACCOUNT`, `VITE_GROQ_API_KEY`, and any optional model
+   provider secrets.
+5. **GitHub → Settings → Pages → Build and deployment → Source**: select
+   **GitHub Actions** only if you want the secondary mirror at
+   `https://riporipoteam-ctrl.github.io/ripoai/`. Users should still install/use
+   `https://ripoai-dff5d.web.app/`.
 
 ## Notes on scope
 
-This is a **static** app (GitHub Pages). Features that require an always‑on server are
+This is a **static** app (Firebase Hosting canonical, GitHub Pages mirror). Features that require an always‑on server are
 intentionally **not** included rather than faked: a real OS browser agent that drives Chrome,
 arbitrary terminal/command execution, native APK builds, and a persistent Expo preview. The
 Projects sandbox is the genuine in‑browser equivalent for "live code + preview".
