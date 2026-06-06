@@ -1,0 +1,63 @@
+name: Build iOS App (Expo)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/ripoai-web-app-U0rvk']
+    paths:
+      - '.github/workflows/ios-expo.yml'
+      - 'expo/**'
+
+permissions:
+  contents: read
+
+jobs:
+  expo-check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: expo
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: expo/package.json
+
+      - name: Install Expo dependencies
+        run: npm install --no-audit
+
+      - name: Validate Expo config
+        run: npx expo config --type public
+
+  eas-ios-build:
+    runs-on: ubuntu-latest
+    needs: expo-check
+    defaults:
+      run:
+        working-directory: expo
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: expo/package.json
+
+      - name: Install Expo dependencies
+        run: npm install --no-audit
+
+      - name: Queue iOS build on EAS
+        if: ${{ env.EXPO_TOKEN != '' }}
+        run: npx eas-cli@latest build --platform ios --profile production --non-interactive
+
+      - name: Explain skipped EAS build
+        if: ${{ env.EXPO_TOKEN == '' }}
+        run: |
+          echo "Expo config is valid, but no EXPO_TOKEN secret is configured."
+          echo "Add EXPO_TOKEN plus Apple credentials in Expo/EAS to publish an installable iOS build."
