@@ -24,6 +24,13 @@ on:
     paths:
       - '.github/workflows/ios.yml'
       - 'capacitor.config.ts'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'public/**'
+      - 'src/**'
+      - 'tailwind.config.js'
+      - 'vite.config.ts'
 
 permissions:
   contents: write
