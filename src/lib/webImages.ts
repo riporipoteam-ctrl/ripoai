@@ -57,22 +57,27 @@ export function wantsWebImageSearch(text: string): boolean {
 
   const hasImageWord =
     /\b(images?|pictures?|pics?|photos?|visuals?|wallpapers?|logos?|reference images?)\b/.test(t)
-  const searchVerb = /\b(search|find|look up|lookup|google|browse|get|show|display|preview|pull up|source)\b/.test(t)
+  const searchVerb = /\b(search|find|look up|lookup|google|browse|get|show|display|preview|pull up|source|send|give|provide|fetch)\b/.test(t)
   const sourceHint = /\b(web|online|internet|source|sources|link|links|real|actual|from search|where .* from)\b/.test(t)
   const lookLike = /\bwhat does\b.+\blook like\b/.test(t)
+  const explicitImageSearch =
+    /\b(search|find|look up|lookup|google|browse|fetch)\b.+\b(images?|pictures?|pics?|photos?|visuals?|wallpapers?|logos?)\b/.test(t) ||
+    /\b(images?|pictures?|pics?|photos?|visuals?|wallpapers?|logos?)\b.+\b(search|find|look up|lookup|google|browse|fetch)\b/.test(t)
+  const sendOnlineImages =
+    /\b(send|give|provide|show|get)\b.+\b(images?|pictures?|pics?|photos?|visuals?|wallpapers?|logos?)\b.+\b(web|online|internet|source|sources|links?|search)\b/.test(t)
   const generationIntent =
     /\b(generate|create|make|draw|design|render|paint|illustrate)\b/.test(t) &&
     /\b(image|picture|photo|logo|poster|wallpaper|avatar|banner|thumbnail|illustration)\b/.test(t)
 
   if (generationIntent && !sourceHint && !/\b(search|find|web)\b/.test(t)) return false
-  return (hasImageWord && (searchVerb || sourceHint)) || lookLike
+  return explicitImageSearch || sendOnlineImages || (hasImageWord && (searchVerb || sourceHint)) || lookLike
 }
 
 export function webImageQuery(text: string): string {
   let q = (text || '').replace(/\s+/g, ' ').trim()
   q = q
     .replace(/\b(can you|could you|please|for me)\b/gi, ' ')
-    .replace(/\b(search|find|look up|lookup|google|browse|get|show|display|preview|pull up|source)\b/gi, ' ')
+    .replace(/\b(search|find|look up|lookup|google|browse|get|show|display|preview|pull up|source|send|give|provide|fetch)\b/gi, ' ')
     .replace(/\b(images?|pictures?|pics?|photos?|visuals?|wallpapers?|reference images?)\b/gi, ' ')
     .replace(/\b(from|on|the)?\s*(web|online|internet|source|sources|links?)\b/gi, ' ')
     .replace(/\bwhat does\b/gi, ' ')

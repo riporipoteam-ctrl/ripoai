@@ -240,6 +240,12 @@ export function useChat(chatId: string | undefined) {
         return
       }
 
+      // Online image requests should be handled by the app's image-search
+      // pipeline, even if stale Image or Agent mode was left enabled.
+      if (!opts.systemOverride && wantsWebImageSearch(lastUser?.content ?? '')) {
+        opts = { ...opts, image: false, agent: false }
+      }
+
       // Image generation / editing mode.
       if (opts.image) {
         const prompt = (lastUser?.content ?? '').trim()
@@ -310,7 +316,7 @@ export function useChat(chatId: string | undefined) {
       // Web image search: when the user asks for real images from the web,
       // return a preview gallery with source links instead of treating it as
       // image generation.
-      if (!opts.image && !opts.systemOverride && !opts.agent && wantsWebImageSearch(lastUser?.content ?? '')) {
+      if (!opts.systemOverride && wantsWebImageSearch(lastUser?.content ?? '')) {
         const queryText = webImageQuery(lastUser?.content ?? '')
         const assistantId = uid4()
         setMessages((m) => [

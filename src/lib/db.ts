@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../firebase'
 import type { ModelTier } from './models'
+import type { WebImageResult } from './webImages'
 
 export interface Attachment {
   kind: 'image' | 'file'
@@ -45,6 +46,8 @@ export interface StoredMessage {
   weather?: any
   /** Set when this message includes a generated slide deck. */
   deck?: any
+  /** Set when this message includes web image search results. */
+  webImages?: { query: string; images: WebImageResult[] }
   /** Suggested tappable follow-up prompts (assistant messages). */
   followups?: string[]
   /** Set when a skill was just installed (shows an install animation card). */
