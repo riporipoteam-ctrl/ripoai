@@ -296,7 +296,7 @@ export function useChat(chatId: string | undefined) {
         let finalMsgs: StoredMessage[] = []
         setMessages((m) => {
           finalMsgs = m.map((x) =>
-            x.id === assistantId ? { ...x, content: '', imagePending: undefined, image: { prompt, url: finalUrl } } : x,
+            x.id === assistantId ? { ...x, content: '', imagePending: undefined, image: { prompt, url: finalUrl, w, h } } : x,
           )
           return finalMsgs
         })

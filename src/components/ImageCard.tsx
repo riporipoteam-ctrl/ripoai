@@ -6,7 +6,7 @@ function withSeed(url: string, seed: number): string {
   return url.replace(/([?&])seed=\d+/, `$1seed=${seed}`)
 }
 
-export default function ImageCard({ prompt, url }: { prompt: string; url: string }) {
+export default function ImageCard({ prompt, url, w, h }: { prompt: string; url: string; w?: number; h?: number }) {
   const [src, setSrc] = useState(url)
   // Data-URL images (NVIDIA FLUX) are already generated and load instantly;
   // reseeding only applies to the old URL-based provider.
@@ -14,6 +14,8 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
   const [loaded, setLoaded] = useState(isData)
   const [attempt, setAttempt] = useState(0)
   const [failed, setFailed] = useState(false)
+  const hasDimensions = Boolean(w && h)
+  const fitClass = hasDimensions ? 'object-contain' : 'object-cover'
 
   function retry() {
     if (isData) return
@@ -49,7 +51,7 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
         )}
       </div>
 
-      <div className="relative aspect-square w-full">
+      <div className="relative w-full bg-black/5" style={{ aspectRatio: hasDimensions ? `${w} / ${h}` : '1 / 1' }}>
         {/* Shimmer / dot-grid placeholder while generating */}
         {!loaded && !failed && (
           <div className="img-skeleton absolute inset-0">
@@ -78,7 +80,7 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
               initial={{ opacity: 0, scale: 1.04 }}
               animate={{ opacity: loaded ? 1 : 0, scale: loaded ? 1 : 1.04 }}
               transition={{ duration: 0.5, ease: 'easeOut' }}
-              className="absolute inset-0 h-full w-full object-cover"
+              className={`absolute inset-0 h-full w-full ${fitClass}`}
             />
           </AnimatePresence>
         )}
