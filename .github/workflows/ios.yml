@@ -20,10 +20,14 @@ on:
   workflow_dispatch:
   push:
     tags: ['*-ios']
-    branches: ['claude/ripoai-web-app-U0rvk']
+    branches: ['claude/ripoai-web-app-U0rvk', 'main']
     paths:
       - '.github/workflows/ios.yml'
       - 'capacitor.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'src/lib/native.ts'
+      - 'ios/**'
 
 permissions:
   contents: write

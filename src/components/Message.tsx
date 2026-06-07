@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
+import { fadeUp } from '../lib/motion'
 import { Copy, Check, RefreshCw, Pencil, FileText, Volume2, Square, Bookmark, ArrowUpRight, Wand2 } from 'lucide-react'
 import { Markdown } from './Markdown'
 import Reasoning from './Reasoning'
@@ -69,8 +70,9 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
   if (isUser) {
     return (
       <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
+        variants={fadeUp}
+        initial="initial"
+        animate="animate"
         className="flex flex-col items-end gap-2"
       >
         {!!message.attachments?.length && (
@@ -128,7 +130,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
         ) : (
           message.content && (
             <div className="group relative max-w-[80%]">
-              <div className="whitespace-pre-wrap rounded-3xl rounded-tr-lg border border-[rgb(var(--accent)/0.18)] bg-[rgb(var(--accent)/0.1)] px-4 py-2.5 text-ink">
+              <div className="user-bubble whitespace-pre-wrap rounded-3xl rounded-tr-lg border border-[rgb(var(--accent)/0.2)] bg-[rgb(var(--accent)/0.12)] px-4 py-2.5 text-ink backdrop-blur-sm">
                 {message.content}
               </div>
               {onEdit && (
@@ -152,12 +154,13 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`flex gap-3 ${message.bookmarked ? 'rounded-2xl border-l-2 border-accent bg-accent/5 py-2 pl-3 pr-2' : ''}`}
+      variants={fadeUp}
+      initial="initial"
+      animate="animate"
+      className={`group flex gap-3 ${message.bookmarked ? 'rounded-2xl border-l-2 border-accent bg-accent/5 py-2 pl-3 pr-2' : ''}`}
     >
-      <div className="mt-0.5 shrink-0">
-        <Logo size={32} />
+      <div className="assistant-avatar mt-0.5 shrink-0 transition duration-200 group-hover:scale-105">
+        <Logo size={28} />
       </div>
       <div className="min-w-0 flex-1">
         {modelName && <div className="mb-1 text-xs font-semibold text-muted">{modelName}</div>}
@@ -211,7 +214,16 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
             </div>
           </motion.div>
         )}
-        {message.image && <ImageCard prompt={message.image.prompt} url={message.image.url} />}
+        {message.image && (
+          <ImageCard
+            prompt={message.image.prompt}
+            url={message.image.url}
+            w={message.image.w}
+            h={message.image.h}
+            provider={message.image.provider}
+            onRegenerate={isLastAssistant ? onRegenerate : undefined}
+          />
+        )}
         {message.map && <MapCard data={message.map} />}
         {message.weather && <WeatherCard data={message.weather} />}
         {message.deck && <SlidesCard deck={message.deck} />}
@@ -228,17 +240,17 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
               setInstalledSkill(skillFromBlock.name)
             }}
             disabled={!!installedSkill}
-            className="pressable mt-3 inline-flex items-center gap-2 rounded-2xl accent-gradient-bg px-4 py-2 text-sm font-semibold text-white disabled:opacity-70"
+            className="btn-sheen pressable mt-3 inline-flex items-center gap-2 rounded-2xl accent-gradient-bg px-4 py-2 text-sm font-semibold text-white disabled:opacity-70"
           >
             {installedSkill ? <Check size={16} /> : <Wand2 size={16} />}
             {installedSkill ? `Installed “${installedSkill}” — use /${skillFromBlock.slug}` : `Install skill “${skillFromBlock.name}”`}
           </button>
         )}
         {!liveStreaming && message.content && (
-          <div className="mt-2 flex items-center gap-1">
+          <div className="mt-3 flex flex-wrap items-center gap-1.5">
             <button
               onClick={copy}
-              className="pressable flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted hover:bg-white/10 hover:text-ink"
+              className="action-chip pressable flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs text-muted hover:text-ink"
             >
               {copied ? <Check size={13} /> : <Copy size={13} />}
               {copied ? 'Copied' : 'Copy'}
@@ -254,7 +266,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
                     speak(message.content, () => setSpeaking(false))
                   }
                 }}
-                className="pressable flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted hover:bg-white/10 hover:text-ink"
+                className="action-chip pressable flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs text-muted hover:text-ink"
               >
                 {speaking ? <Square size={13} /> : <Volume2 size={13} />}
                 {speaking ? 'Stop' : 'Read'}
@@ -263,7 +275,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
             {isLastAssistant && onRegenerate && (
               <button
                 onClick={onRegenerate}
-                className="pressable flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted hover:bg-white/10 hover:text-ink"
+                className="action-chip pressable flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs text-muted hover:text-ink"
               >
                 <RefreshCw size={13} />
                 Regenerate
@@ -272,7 +284,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
             {onToggleBookmark && (
               <button
                 onClick={onToggleBookmark}
-                className={`pressable flex items-center gap-1 rounded-lg px-2 py-1 text-xs hover:bg-white/10 ${
+                className={`action-chip pressable flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-xs ${
                   message.bookmarked ? 'text-accent' : 'text-muted hover:text-ink'
                 }`}
                 title={message.bookmarked ? 'Saved' : 'Save'}
@@ -290,10 +302,10 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
               <button
                 key={i}
                 onClick={() => onFollowup(f)}
-                className="pressable group flex items-center justify-between gap-2 rounded-xl border border-[rgb(var(--ink)/0.08)] bg-[rgb(var(--surface-raised)/0.6)] px-3 py-2 text-left text-sm text-ink/90 hover:border-accent/40 hover:bg-accent/5"
+                className="pressable group/follow flex items-center justify-between gap-2 rounded-2xl border border-[rgb(var(--ink)/0.08)] bg-[rgb(var(--surface-raised)/0.66)] px-3 py-2 text-left text-sm text-ink/90 backdrop-blur-sm hover:border-accent/40 hover:bg-accent/5"
               >
                 <span className="min-w-0 truncate">{f}</span>
-                <ArrowUpRight size={15} className="shrink-0 text-muted group-hover:text-accent" />
+                <ArrowUpRight size={15} className="shrink-0 text-muted transition group-hover/follow:text-accent" />
               </button>
             ))}
           </div>

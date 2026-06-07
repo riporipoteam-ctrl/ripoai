@@ -8,10 +8,14 @@ on:
   workflow_dispatch:
   push:
     tags: ['*-android']
-    branches: ['claude/ripoai-web-app-U0rvk']
+    branches: ['claude/ripoai-web-app-U0rvk', 'main']
     paths:
       - '.github/workflows/android.yml'
       - 'capacitor.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'src/lib/native.ts'
+      - 'android/**'
 
 permissions:
   contents: write
@@ -74,5 +78,5 @@ jobs:
           name: RipoAI Android (latest)
           files: RipoAI.apk
           body: |
-            Latest RipoAI Android APK (debug build).
+            Latest RipoAI Android APK (debug build). The shell loads the live Firebase-hosted app, so web updates appear on next launch; reinstall only for native-shell changes.
             Install: download RipoAI.apk on your phone, allow "install from unknown sources", and open it.

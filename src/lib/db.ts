@@ -36,7 +36,7 @@ export interface StoredMessage {
   /** Tool/search steps surfaced during generation. */
   steps?: { type: string; detail?: string }[]
   /** Set when this is an image-generation result. */
-  image?: { prompt: string; url: string }
+  image?: { prompt: string; url: string; w?: number; h?: number; provider?: string }
   /** True while an image is being generated (shows the animated placeholder). */
   imagePending?: { prompt: string }
   /** Set when this message includes a places/map result. */

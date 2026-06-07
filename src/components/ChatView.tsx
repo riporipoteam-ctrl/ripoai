@@ -10,6 +10,7 @@ import Message from './Message'
 import Logo from './Logo'
 import type { ModelTier } from '../lib/models'
 import type { Attachment } from '../lib/db'
+import { fadeUp, listStagger, scalePop } from '../lib/motion'
 import { banActive, todaysMessageCount, bumpMessageCount } from '../lib/admin'
 
 const ALL_SUGGESTIONS = [
@@ -150,42 +151,58 @@ export default function ChatView() {
       )}
       <div ref={scrollRef} onScroll={onScroll} className="flex-1 overflow-y-auto">
         {empty ? (
-          <div className="flex h-full flex-col items-center justify-center px-4 py-6">
+          <div className="relative flex h-full flex-col items-center justify-center overflow-hidden px-4 py-6">
+            <div className="pointer-events-none absolute left-1/2 top-[18%] h-64 w-64 -translate-x-1/2 rounded-full bg-accent/10 blur-3xl" />
             <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 18 }}
-              className="animate-float"
+              variants={scalePop}
+              initial="initial"
+              animate="animate"
+              className="surface-glow relative animate-float rounded-[1.65rem]"
             >
-              <Logo size={72} variant="icon" glow />
+              <span className="hero-orbit" aria-hidden />
+              <Logo size={76} variant="icon" glow />
+            </motion.div>
+            <motion.div
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              className="glass mt-5 inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-bold uppercase tracking-[0.22em] text-muted"
+            >
+              <Sparkles size={13} className="text-accent" />
+              RipoAI Studio
             </motion.div>
             <motion.h1
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="-mt-2 text-center text-3xl font-bold sm:text-4xl"
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              className="mt-3 text-center text-3xl font-extrabold tracking-tight sm:text-5xl"
             >
               <span className="brand-gradient">{timeGreet}, {greeting}.</span>
             </motion.h1>
             <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="mt-2 text-center text-base text-muted sm:text-lg"
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              className="mt-3 max-w-xl text-center text-base leading-relaxed text-muted sm:text-lg"
             >
               {subtitle}
             </motion.p>
-            <div className="mt-7 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
-              {suggestions.map((s, i) => (
+            <motion.div
+              variants={listStagger}
+              initial="initial"
+              animate="animate"
+              className="mt-7 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2"
+            >
+              {suggestions.map((s) => (
                 <motion.button
                   key={s.title}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05 * i }}
-                  whileHover={{ y: -3 }}
+                  variants={fadeUp}
+                  whileHover={{ y: -4, scale: 1.015 }}
+                  whileTap={{ scale: 0.985 }}
                   onClick={() => handleSend(`${s.title} ${s.sub}`, [])}
-                  className="glass pressable flex items-start gap-3 rounded-2xl p-4 text-left transition hover:brightness-110"
+                  className="glass suggestion-card pressable group flex items-start gap-3 rounded-3xl p-4 text-left transition hover:brightness-110"
                 >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                  <span className="accent-gradient-bg flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-white shadow-lg shadow-accent/20 transition group-hover:rotate-3 group-hover:scale-105">
                     <s.icon size={18} />
                   </span>
                   <span className="min-w-0">
@@ -194,7 +211,7 @@ export default function ChatView() {
                   </span>
                 </motion.button>
               ))}
-            </div>
+            </motion.div>
           </div>
         ) : (
           <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6">
@@ -227,7 +244,7 @@ export default function ChatView() {
         )}
       </div>
 
-      <div className="relative border-t border-white/15 bg-[rgb(var(--glass-bg)/0.38)] px-3 pt-2.5 pb-[max(env(safe-area-inset-bottom),0.7rem)] backdrop-blur-2xl backdrop-saturate-150 sm:px-4 sm:pb-4">
+      <div className="composer-shell relative border-t border-white/15 bg-[rgb(var(--glass-bg)/0.42)] px-3 pt-2.5 pb-[max(env(safe-area-inset-bottom),0.7rem)] backdrop-blur-2xl backdrop-saturate-150 sm:px-4 sm:pb-4">
         <AnimatePresence>
           {!empty && !atBottom && (
             <motion.button

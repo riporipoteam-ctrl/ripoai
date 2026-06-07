@@ -88,13 +88,23 @@ produce a signed release build.
 
 ### Auto-updating APK
 
-The app is configured (Capacitor `server.url`) to load the **live deployed site**
-(`https://riporipoteam-ctrl.github.io/ripoai/`) rather than a bundled copy. That
-means **every push that redeploys the site updates the installed app automatically**
-on next launch — no reinstall, no Play Store. The native shell (status bar, haptics,
-splash, bottom-sheet menus, glassier `.native` styling) still applies, so it looks
-like an app rather than the website. You only need to rebuild/reinstall the APK when
-the native shell itself changes.
+The app is configured (Capacitor `server.url`) to load the **live Firebase-hosted app**
+(`https://ripoai-dff5d.web.app/`) rather than a bundled copy. That means **every push
+that redeploys Firebase Hosting updates the installed APK automatically on next
+launch** — no reinstall and no Play Store for web UI / AI / styling updates. The
+native shell (status bar, haptics, splash, bottom-sheet menus, glassier `.native`
+styling) still applies, so it looks like an app rather than the website.
+
+Release checklist:
+
+- **Web-only update:** merge/push to the deploy branch, let **Deploy to Firebase
+  Hosting** finish, then installed APK users get the update on their next launch.
+- **Native APK update:** rebuild/reinstall the APK only when `capacitor.config.ts`,
+  native plugins, permissions, app icon/splash, Android/iOS platform files, or other
+  native-shell files change.
+- **True silent binary updates:** require Play Store delivery, a signed updater
+  service, or another signed distribution system. Capacitor `server.url` updates the
+  web runtime, not the APK binary itself.
 
 > ⚠️ Inside the Android WebView, **Google sign‑in (popup) does not work** — use
 > **email/password** in the app. (Native Google auth would need the
@@ -106,7 +116,7 @@ the native shell itself changes.
 iPhone/iPad get RipoAI two ways:
 
 **1. Add to Home Screen (free, no Mac, recommended).** Open the deployed RipoAI
-site in **Safari** → tap **Share** → **Add to Home Screen**. RipoAI installs with
+site (`https://ripoai-dff5d.web.app/`) in **Safari** → tap **Share** → **Add to Home Screen**. RipoAI installs with
 its app icon and launches **full‑screen** (no Safari chrome), respecting the
 notch and home indicator — it behaves like a native app. The app even shows a
 one‑time hint explaining this. This is a real PWA install and needs no Apple
@@ -137,7 +147,7 @@ installed PWAs **partition storage per‑domain**, so the credential returned by
 Google can never be read back by the app. iOS is strictest about this.
 
 **The fix is to serve the app from a domain where the auth handler is
-same‑origin — Firebase Hosting (`https://ripoai-dff5d.web.app`).** There the
+same‑origin — Firebase Hosting (`https://ripoai-dff5d.web.app/`).** There the
 handler is part of the same site, so Google sign‑in works everywhere, PWA
 included. A deploy workflow is provided:
 

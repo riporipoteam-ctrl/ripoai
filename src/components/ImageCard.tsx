@@ -1,22 +1,42 @@
 import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion'
 import { Download, RefreshCw, ImageOff, Sparkles } from 'lucide-react'
+import { fadeUp, imageReveal } from '../lib/motion'
 
 function withSeed(url: string, seed: number): string {
   return url.replace(/([?&])seed=\d+/, `$1seed=${seed}`)
 }
 
-export default function ImageCard({ prompt, url }: { prompt: string; url: string }) {
+export default function ImageCard({
+  prompt,
+  url,
+  w,
+  h,
+  provider,
+  onRegenerate,
+}: {
+  prompt: string
+  url: string
+  w?: number
+  h?: number
+  provider?: string
+  onRegenerate?: () => void
+}) {
   const [src, setSrc] = useState(url)
   // Data-URL images (NVIDIA FLUX) are already generated and load instantly;
-  // reseeding only applies to the old URL-based provider.
+  // local seed retry only applies to URL-based providers.
   const isData = url.startsWith('data:')
+  const reduceMotion = useReducedMotion()
   const [loaded, setLoaded] = useState(isData)
   const [attempt, setAttempt] = useState(0)
   const [failed, setFailed] = useState(false)
+  const ratio = w && h ? `${w} / ${h}` : '1 / 1'
 
   function retry() {
-    if (isData) return
+    if (isData) {
+      onRegenerate?.()
+      return
+    }
     setLoaded(false)
     setFailed(false)
     const next = attempt + 1
@@ -25,7 +45,7 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
   }
 
   function onError() {
-    if (attempt < 3) {
+    if (!isData && attempt < 3) {
       // Auto-retry with a fresh seed — cold generations sometimes drop.
       const next = attempt + 1
       setAttempt(next)
@@ -36,10 +56,18 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
   }
 
   return (
-    <div className="w-full max-w-sm overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-lg">
-      <div className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold">
-        <Sparkles size={15} className="text-accent" />
+    <motion.div
+      variants={fadeUp}
+      initial="initial"
+      animate="animate"
+      className="image-card group w-full max-w-md overflow-hidden rounded-3xl border border-white/10 shadow-lg ring-1 ring-white/5"
+    >
+      <div className="flex items-center gap-2 px-4 py-3 text-sm font-semibold">
+        <span className="accent-gradient-bg flex h-7 w-7 items-center justify-center rounded-xl shadow-sm shadow-accent/20">
+          <Sparkles size={15} />
+        </span>
         {failed ? 'Couldn’t create image' : loaded ? 'Image' : 'Creating image'}
+        {provider && loaded && <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-accent">{provider}</span>}
         {!loaded && !failed && (
           <span className="ml-auto flex gap-1">
             <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent" />
@@ -49,7 +77,7 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
         )}
       </div>
 
-      <div className="relative aspect-square w-full">
+      <div className="relative mx-2 overflow-hidden rounded-[1.35rem] bg-black/5 ring-1 ring-white/10" style={{ aspectRatio: ratio }}>
         {/* Shimmer / dot-grid placeholder while generating */}
         {!loaded && !failed && (
           <div className="img-skeleton absolute inset-0">
@@ -75,25 +103,26 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
               alt={prompt}
               onLoad={() => setLoaded(true)}
               onError={onError}
-              initial={{ opacity: 0, scale: 1.04 }}
-              animate={{ opacity: loaded ? 1 : 0, scale: loaded ? 1 : 1.04 }}
-              transition={{ duration: 0.5, ease: 'easeOut' }}
-              className="absolute inset-0 h-full w-full object-cover"
+              variants={imageReveal}
+              initial="initial"
+              animate={loaded ? 'animate' : 'initial'}
+              transition={{ duration: reduceMotion ? 0 : 0.5, ease: 'easeOut' }}
+              className="absolute inset-0 h-full w-full object-contain"
             />
           </AnimatePresence>
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-2 px-3 py-2">
+      <div className="flex items-center justify-between gap-2 px-3 py-3">
         <span className="truncate text-xs text-muted" title={prompt}>
           {prompt}
         </span>
         {loaded && (
           <div className="flex shrink-0 items-center gap-1">
-            {!isData && (
+            {(!isData || onRegenerate) && (
               <button
                 onClick={retry}
-                className="pressable rounded-lg p-1.5 text-muted hover:bg-white/10 hover:text-ink"
+                className="action-chip pressable rounded-xl p-1.5 text-muted hover:text-ink"
                 title="Regenerate"
               >
                 <RefreshCw size={15} />
@@ -104,7 +133,7 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
               target="_blank"
               rel="noreferrer"
               download="ripoai-image.jpg"
-              className="pressable rounded-lg p-1.5 text-muted hover:bg-white/10 hover:text-ink"
+              className="action-chip pressable rounded-xl p-1.5 text-muted hover:text-ink"
               title="Open / download"
             >
               <Download size={15} />
@@ -112,6 +141,6 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }

@@ -10,6 +10,7 @@ import type { Attachment } from '../lib/db'
 import type { ModelTier } from '../lib/models'
 import { haptic } from '../lib/native'
 import { matchSkills } from '../lib/skills'
+import { fadeUp, sheet } from '../lib/motion'
 import { useStore } from '../store'
 import { Wand2 } from 'lucide-react'
 
@@ -153,9 +154,15 @@ export default function Composer({
     <div className="relative mx-auto w-full max-w-3xl">
       {err && <p className="mb-2 px-2 text-xs text-red-400">{err}</p>}
       {!!attachments.length && (
-        <div className="mb-2 flex flex-wrap gap-2 px-1">
+        <motion.div variants={fadeUp} initial="initial" animate="animate" className="mb-2 flex flex-wrap gap-2 px-1">
           {attachments.map((a, i) => (
-            <div key={i} className="glass relative flex items-center gap-2 rounded-2xl p-1.5 pr-7">
+            <motion.div
+              key={i}
+              variants={fadeUp}
+              initial="initial"
+              animate="animate"
+              className="glass surface-glow relative flex items-center gap-2 rounded-2xl p-1.5 pr-7"
+            >
               {a.kind === 'image' && a.url ? (
                 <img src={a.url} alt={a.name} className="h-12 w-12 rounded-xl object-cover" />
               ) : (
@@ -170,15 +177,16 @@ export default function Composer({
               >
                 <X size={12} />
               </button>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
 
       {imageMode && onImageStyle && (
-        <div className="no-scrollbar mb-2 flex gap-1.5 overflow-x-auto px-1">
+        <motion.div variants={fadeUp} initial="initial" animate="animate" className="no-scrollbar mb-2 flex gap-1.5 overflow-x-auto px-1">
           {IMAGE_STYLES.map((s) => (
-            <button
+            <motion.button
+              whileTap={{ scale: 0.96 }}
               key={s.id}
               onClick={() => onImageStyle(s.id)}
               className={`pressable shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
@@ -188,18 +196,19 @@ export default function Composer({
               }`}
             >
               {s.label}
-            </button>
+            </motion.button>
           ))}
-        </div>
+        </motion.div>
       )}
 
       {/* Slash skill picker */}
       <AnimatePresence>
         {slashSkills.length > 0 && (
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
+            variants={fadeUp}
+            initial="initial"
+            animate="animate"
+            exit="exit"
             className="glass-strong mb-2 max-h-64 overflow-y-auto rounded-2xl p-1.5 shadow-xl"
           >
             <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-muted/70">Skills</div>
@@ -224,7 +233,7 @@ export default function Composer({
         )}
       </AnimatePresence>
 
-      <div className="relative z-20 rounded-[26px] border border-white/15 bg-[rgb(var(--glass-bg)/0.5)] p-2 shadow-sm backdrop-blur-xl">
+      <div className="composer-panel relative z-20 rounded-[26px] border border-white/15 bg-[rgb(var(--glass-bg)/0.55)] p-2 shadow-sm backdrop-blur-xl transition duration-200">
         <textarea
           ref={taRef}
           value={text}
@@ -241,7 +250,7 @@ export default function Composer({
           onPaste={handlePaste}
           rows={1}
           placeholder={imageMode ? 'Describe an image to generate…' : placeholder}
-          className="no-scrollbar max-h-[220px] w-full resize-none bg-transparent px-3 py-2 text-[0.975rem] outline-none placeholder:text-muted"
+          className="no-scrollbar max-h-[220px] w-full resize-none bg-transparent px-3 py-2 text-[0.975rem] outline-none placeholder:text-muted/75"
         />
 
         <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 px-1">
@@ -268,10 +277,10 @@ export default function Composer({
                       onClick={() => setPlusOpen(false)}
                     />
                     <motion.div
-                      initial={{ y: '100%' }}
-                      animate={{ y: 0 }}
-                      exit={{ y: '100%' }}
-                      transition={{ type: 'spring', stiffness: 360, damping: 34 }}
+                      variants={sheet}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
                       className="glass-strong relative w-full max-w-lg rounded-t-[28px] p-3 pb-[max(env(safe-area-inset-bottom),1rem)] shadow-2xl sm:mb-0 sm:rounded-[28px]"
                     >
                       <div className="mx-auto mb-2 h-1.5 w-10 rounded-full bg-[rgb(var(--muted)/0.4)] sm:hidden" />
