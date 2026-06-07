@@ -1,5 +1,7 @@
-name: Deploy RipoAI to GitHub Pages
+name: Deploy RipoAI GitHub Pages Mirror
 
+# Secondary mirror only. Canonical production deploys to Firebase Hosting at
+# https://ripoai-dff5d.web.app/ and the APK loads that same origin.
 on:
   push:
     branches: ['claude/ripoai-web-app-U0rvk', 'main']
@@ -11,7 +13,7 @@ permissions:
   id-token: write
 
 concurrency:
-  group: pages
+  group: pages-mirror
   cancel-in-progress: true
 
 jobs:
@@ -41,7 +43,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     environment:
-      name: github-pages
+      name: github-pages-mirror
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment

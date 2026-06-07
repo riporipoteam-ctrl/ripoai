@@ -15,13 +15,14 @@ name: Deploy to Firebase Hosting
 #      Easiest: run `firebase init hosting:github` locally, or copy a key from
 #      Google Cloud console → IAM → Service Accounts.
 #   3. Make sure VITE_GROQ_API_KEY / VITE_OPENROUTER_API_KEY secrets exist.
-# Then install the app from https://ripoai-dff5d.web.app (Share → Add to Home
-# Screen) and Google sign-in will work.
+# Firebase Hosting is the canonical production origin and the Android APK
+# runtime URL. Install/use https://ripoai-dff5d.web.app/ (Share → Add to Home
+# Screen) so website, PWA, and APK behavior match.
 
 on:
   workflow_dispatch:
   push:
-    branches: ['claude/ripoai-web-app-U0rvk']
+    branches: ['main', 'claude/ripoai-web-app-U0rvk']
 
 permissions:
   contents: read

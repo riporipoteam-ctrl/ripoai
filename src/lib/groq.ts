@@ -1,5 +1,5 @@
 // Direct browser -> Groq client. Groq returns `access-control-allow-origin: *`
-// so the static GitHub Pages app can call it without a proxy.
+// so the static Firebase Hosting app can call it without a proxy.
 //
 // The key is NOT hardcoded in source - GitHub push protection refuses to let an
 // API key be committed. Instead it is resolved at runtime from, in order:
@@ -253,7 +253,7 @@ export async function streamChat(opts: StreamOptions): Promise<StreamResult> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   if (apiKey) headers.Authorization = `Bearer ${apiKey}`
   if (isOR) {
-    headers['HTTP-Referer'] = 'https://riporipoteam-ctrl.github.io/ripoai/'
+    headers['HTTP-Referer'] = 'https://ripoai-dff5d.web.app/'
     headers['X-Title'] = 'RipoAI'
   }
 

@@ -1,8 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// Base path: GitHub Pages serves under /ripoai/, Netlify/custom domains serve
-// at root. Override with VITE_BASE (Netlify sets VITE_BASE="/").
+// Base path: canonical Firebase Hosting serves at root; the GitHub Pages
+// secondary mirror serves under /ripoai/. Override with VITE_BASE="/" for
+// root-hosted builds such as Firebase Hosting.
 export default defineConfig(({ command }) => ({
   base: process.env.VITE_BASE || (command === 'build' ? '/ripoai/' : '/'),
   plugins: [react()],
