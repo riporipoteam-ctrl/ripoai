@@ -41,6 +41,7 @@ jobs:
       - name: Build production website
         env:
           VITE_BASE: '/ripoai/'
+          VITE_RIPOAI_PROXY_URL: ${{ vars.VITE_RIPOAI_PROXY_URL || secrets.VITE_RIPOAI_PROXY_URL || 'https://ripoai.netlify.app/.netlify/functions/ripoai-chat' }}
         run: npm run build
 
       - name: Copy build to branch root
