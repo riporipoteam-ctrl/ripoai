@@ -14,7 +14,14 @@
 const CHAT = 'https://integrate.api.nvidia.com/v1/chat/completions'
 const GENAI = 'https://ai.api.nvidia.com/v1/genai'
 const STATUS = 'https://api.nvcf.nvidia.com/v2/nvcf/exec/status'
-const IMAGE_MODEL = 'black-forest-labs/flux.1-dev'
+const OPENAI_IMAGE_BASES = ['https://ai.api.nvidia.com/v1', 'https://integrate.api.nvidia.com/v1']
+const PRIMARY_IMAGE_MODEL = 'black-forest-labs/flux.2-klein-4b'
+const FALLBACK_IMAGE_MODEL = 'black-forest-labs/flux.1-dev'
+const EDIT_IMAGE_MODEL = 'black-forest-labs/flux.2-klein-4b'
+const KONTEXT_EDIT_MODEL = 'black-forest-labs/flux.1-kontext-dev'
+const QWEN_IMAGE_MODEL = 'qwen/qwen-image-2512'
+const QWEN_EDIT_MODEL = 'qwen/qwen-image-edit-2511'
+const IMAGE_MODEL = PRIMARY_IMAGE_MODEL
 const CORS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -58,12 +65,15 @@ function hardenImagePrompt(prompt) {
   const guard =
     'well-lit, high contrast, complete visible subject, no black canvas, no blank frame, no empty dark background'
   if (isLogoOrTextPrompt(safe)) {
-    return `${safe}, original logo concept, do not copy existing trademarks or official brand marks, clean vector design, bright white or brand-color background, centered composition, readable lettering, ${guard}`.slice(
+    return `${safe}, original logo concept, do not copy existing trademarks or official brand marks, premium identity design, clean vector design, bright white or brand-color background, centered composition, crisp readable lettering, vector-clean edges, ${guard}`.slice(
       0,
       1200,
     )
   }
-  return `${safe}, ${guard}`.slice(0, 1200)
+  return `${safe}, ultra realistic, natural shadows, detailed textures, believable materials, professional composition, high dynamic range, no plastic skin, no AI artifacts, ${guard}`.slice(
+    0,
+    1200,
+  )
 }
 
 function repairBlankPrompt(prompt) {
@@ -101,7 +111,7 @@ function fallbackLogoImage(prompt, width, height, seed) {
   const subtitle = isAuto ? 'AUTO SERVICE' : 'ORIGINAL LOGO'
   const mark = isAuto
     ? `<g transform="translate(272 276)">
-        <path d="M58 188h404c18 0 32 14 32 32v46h-52c-8-32-37-56-72-56s-64 24-72 56H220c-8-32-37-56-72-56s-64 24-72 56H24v-44c0-19 14-34 32-34h2Zm48-42 74-88c13-15 31-24 51-24h154c19 0 37 9 49 24l72 88H106@m108-36-31 36h110V82h-39c-16 0-30 7-40 28Zm112 36h112l-30-36c-10-21-24-28-41-28h-41v64Z" fill="#f8fafc"/>
+        <path d="M58 188h404c18 0 32 14 32 32v46h-52c-8-32-37-56-72-56s-64 24-72 56H220c-8-32-37-56-72-56s-64 24-72 56H24v-44c0-19 14-34 32-34h2Zm48-42 74-88c13-15 31-24 51-24h154c19 0 37 9 49 24l72 88H106Zm108-36-31 36h110V82h-39c-16 0-30 7-40 28Zm112 36h112l-30-36c-10-21-24-28-41-28h-41v64Z" fill="#f8fafc"/>
         <circle cx="148" cy="266" r="43" fill="#111827"/>
         <circle cx="148" cy="266" r="19" fill="#f8fafc"/>
         <circle cx="370" cy="266" r="43" fill="#111827"/>
@@ -186,6 +196,67 @@ async function callGenai(model, payload, auth) {
   return { res, text, data }
 }
 
+async function callOpenAIImage(path, payload, auth) {
+  let last = null
+  for (const base of OPENAI_IMAGE_BASES) {
+    const res = await fetch(`${base}${path}`, {
+      method: 'POST',
+      headers: { ...auth, Accept: 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const text = await res.text()
+    let data = null
+    try {
+      data = text ? JSON.parse(text) : null
+    } catch {
+      data = null
+    }
+    last = { res, text, data }
+    if (res.status !== 404 && res.status !== 405) return last
+  }
+  return last
+}
+
+function payloadForModel(model, payload) {
+  if (model === PRIMARY_IMAGE_MODEL || model === EDIT_IMAGE_MODEL) {
+    return {
+      prompt: payload.prompt,
+      image: payload.image,
+      width: payload.width,
+      height: payload.height,
+      seed: payload.seed,
+      steps: Math.min(4, Math.max(1, Number(payload.steps) || 4)),
+    }
+  }
+  if (model === FALLBACK_IMAGE_MODEL) {
+    return {
+      prompt: payload.prompt,
+      mode: payload.mode || 'base',
+      image: payload.image,
+      preprocess_image: payload.preprocess_image,
+      width: payload.width,
+      height: payload.height,
+      steps: Number(payload.steps) || (isLogoOrTextPrompt(payload.prompt) ? 50 : 40),
+      cfg_scale: Number(payload.cfg_scale) || 4.5,
+      samples: 1,
+      seed: payload.seed,
+    }
+  }
+  return payload
+}
+
+async function generateWithModel(model, payload, auth) {
+  if (model === QWEN_IMAGE_MODEL) {
+    return callOpenAIImage('/images/generations', {
+      model,
+      prompt: payload.prompt,
+      n: 1,
+      response_format: 'b64_json',
+    }, auth)
+  }
+  return callGenai(model, payloadForModel(model, payload), auth)
+}
+
 async function generateImage(request, auth) {
   let input = {}
   try {
@@ -200,7 +271,7 @@ async function generateImage(request, auth) {
       ? Number(input.seed)
       : Math.floor(Math.random() * 1_000_000)
   const prompt = hardenImagePrompt(input.prompt)
-  const payload = {
+  const basePayload = {
     prompt,
     mode: input.mode || 'base',
     width,
@@ -212,10 +283,10 @@ async function generateImage(request, auth) {
   }
 
   const attempts = [
-    { ...payload, seed },
-    { ...payload, prompt: repairBlankPrompt(input.prompt), seed: seed + 1 },
+    { ...basePayload, seed },
+    { ...basePayload, prompt: repairBlankPrompt(input.prompt), seed: seed + 1 },
     {
-      ...payload,
+      ...basePayload,
       prompt: `${repairBlankPrompt(input.prompt)}, exact readable sign text "${extractRequestedText(input.prompt)}", polished commercial logo, white background`.slice(
         0,
         1200,
@@ -223,31 +294,47 @@ async function generateImage(request, auth) {
       seed: seed + 2,
     },
   ]
+  const models = isLogoOrTextPrompt(input.prompt)
+    ? [QWEN_IMAGE_MODEL, PRIMARY_IMAGE_MODEL, FALLBACK_IMAGE_MODEL]
+    : [PRIMARY_IMAGE_MODEL, FALLBACK_IMAGE_MODEL]
 
   let base64 = ''
   let repaired = false
   let finalSeed = seed
-  for (let i = 0; i < attempts.length; i++) {
-    const upstream = await callGenai(IMAGE_MODEL, attempts[i], auth)
-    if (!upstream.res.ok) {
-      return json(
-        { error: `NVIDIA image generation failed (${upstream.res.status}).`, detail: upstream.text.slice(0, 500) },
-        upstream.res.status,
-      )
+  let usedModel = PRIMARY_IMAGE_MODEL
+  let lastError = null
+  for (const model of models) {
+    for (let i = 0; i < attempts.length; i++) {
+      const upstream = await generateWithModel(model, attempts[i], auth)
+      if (!upstream?.res.ok) {
+        lastError = upstream
+        if ([400, 401, 403, 404, 405, 422].includes(upstream?.res.status || 0)) break
+        continue
+      }
+      base64 = extractImageBase64(upstream.data)
+      repaired = i > 0 || model !== models[0]
+      finalSeed = attempts[i].seed
+      usedModel = model
+      if (!isLikelyBlankImage(base64, width, height)) break
     }
-    base64 = extractImageBase64(upstream.data)
-    repaired = i > 0
-    finalSeed = attempts[i].seed
     if (!isLikelyBlankImage(base64, width, height)) break
   }
 
   if (isLikelyBlankImage(base64, width, height) && isLogoOrTextPrompt(input.prompt)) {
     return fallbackLogoImage(input.prompt, width, height, finalSeed + 1)
   }
-  if (!base64) return json({ error: 'NVIDIA returned no image.' }, 502)
+  if (!base64) {
+    return json(
+      {
+        error: 'NVIDIA returned no image.',
+        detail: lastError?.text?.slice(0, 500) || '',
+      },
+      lastError?.res?.status && lastError.res.status >= 400 ? lastError.res.status : 502,
+    )
+  }
   return json({
     provider: 'nvidia',
-    model: IMAGE_MODEL,
+    model: usedModel,
     width,
     height,
     seed: finalSeed,
@@ -255,6 +342,103 @@ async function generateImage(request, auth) {
     image: `data:image/jpeg;base64,${base64}`,
     base64,
   })
+}
+
+async function editImage(request, auth) {
+  let input = {}
+  try {
+    input = await request.json()
+  } catch {
+    return json({ error: 'Invalid JSON body.' }, 400)
+  }
+  if (!input.image) return json({ error: 'Missing image for edit.' }, 400)
+  const width = normalizeDimension(input.width, 1024)
+  const height = normalizeDimension(input.height, 1024)
+  const seed =
+    Number.isFinite(Number(input.seed)) && Number(input.seed) >= 0
+      ? Number(input.seed)
+      : Math.floor(Math.random() * 1_000_000)
+  const prompt = hardenImagePrompt(input.prompt || 'Improve this image with realistic detail and clean composition')
+  const images = Array.isArray(input.image) ? input.image : input.image
+  const candidates = [
+    { model: QWEN_EDIT_MODEL, openai: true },
+    { model: EDIT_IMAGE_MODEL, openai: false },
+    { model: KONTEXT_EDIT_MODEL, openai: false },
+    { model: FALLBACK_IMAGE_MODEL, openai: false, mode: 'canny', preprocess: true },
+    { model: FALLBACK_IMAGE_MODEL, openai: false, mode: 'depth', preprocess: true },
+  ]
+  let lastError = null
+  for (const candidate of candidates) {
+    const upstream = candidate.openai
+      ? await callOpenAIImage('/images/edits', {
+          model: candidate.model,
+          prompt,
+          image: images,
+          n: 1,
+          response_format: 'b64_json',
+        }, auth)
+      : await callGenai(candidate.model, payloadForModel(candidate.model, {
+          prompt,
+          image: images,
+          mode: candidate.mode,
+          preprocess_image: candidate.preprocess,
+          width,
+          height,
+          seed,
+          steps: candidate.model === EDIT_IMAGE_MODEL ? 4 : candidate.model === FALLBACK_IMAGE_MODEL ? 50 : 30,
+        }), auth)
+    if (!upstream?.res.ok) {
+      lastError = upstream
+      continue
+    }
+    const base64 = extractImageBase64(upstream.data)
+    if (!isLikelyBlankImage(base64, width, height)) {
+      return json({
+        provider: 'nvidia',
+        model: candidate.model,
+        width,
+        height,
+        seed,
+        edited: true,
+        image: `data:image/jpeg;base64,${base64}`,
+        base64,
+      })
+    }
+    lastError = upstream
+  }
+  const fallbackPrompt =
+    `${prompt}, recreate the requested edit as a polished high-quality image, preserve the main subject and composition from the uploaded reference as much as possible`.slice(
+      0,
+      1200,
+    )
+  const fallback = await callGenai(
+    IMAGE_MODEL,
+    payloadForModel(IMAGE_MODEL, { prompt: fallbackPrompt, width, height, seed: seed + 1, steps: 4 }),
+    auth,
+  )
+  if (fallback.res.ok) {
+    const base64 = extractImageBase64(fallback.data)
+    if (!isLikelyBlankImage(base64, width, height)) {
+      return json({
+        provider: 'nvidia',
+        model: IMAGE_MODEL,
+        width,
+        height,
+        seed: seed + 1,
+        edited: true,
+        editFallback: true,
+        image: `data:image/jpeg;base64,${base64}`,
+        base64,
+      })
+    }
+  }
+  return json(
+    {
+      error: 'NVIDIA image edit returned no usable image.',
+      detail: lastError?.text?.slice(0, 500) || '',
+    },
+    lastError?.res?.status && lastError.res.status >= 400 ? lastError.res.status : 502,
+  )
 }
 
 export default {
@@ -272,11 +456,14 @@ export default {
     if (path === '/image/generate') {
       return generateImage(new Request(request.url, { method: 'POST', headers: request.headers, body }), auth)
     }
+    if (path === '/image/edit') {
+      return editImage(new Request(request.url, { method: 'POST', headers: request.headers, body }), auth)
+    }
 
     // Image / video generation (NVCF genai endpoints).
     if (path.includes('/genai/')) {
       const model = path.split('/genai/')[1]
-      if (model === IMAGE_MODEL) {
+      if (model === IMAGE_MODEL || model === FALLBACK_IMAGE_MODEL) {
         return generateImage(new Request(request.url, { method: 'POST', headers: request.headers, body }), auth)
       }
       let res = await fetch(`${GENAI}/${model}`, {
