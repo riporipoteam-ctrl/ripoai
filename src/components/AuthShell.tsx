@@ -48,7 +48,7 @@ export default function AuthShell({
             ))}
           </ul>
           <div className="float-element relative z-10 text-sm text-white/60">
-            Designed with iOS-26 Liquid Glass aesthetics.
+            Clean, fast and focused on your work.
           </div>
         </div>
 

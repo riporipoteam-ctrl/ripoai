@@ -17,7 +17,7 @@ export interface PlacesResult {
 
 // Heuristic: is the user asking to find places / locations?
 export function wantsPlaces(text: string): boolean {
-  return /\b(near me|nearby|near by|nearest|closest|around me|where (is|are|can i)|find (me )?(a |the )?(nearest|closest|nearby)?|directions to|how do i get to|on a map|shopping mall|malls?|restaurants?|cafes?|coffee shops?|hotels?|bars?|gas station|petrol|pharmac(y|ies)|hospitals?|parks?|gyms?|stores? near|shops? near|atm|supermarket)\b/i.test(
+  return /\b(near me|nearby|near by|near my location|near current location|using my location|close to me|by me|in my area|around here|nearest|closest|around me|where (is|are|can i)|find (me )?(a |the )?(nearest|closest|nearby)?|directions to|how do i get to|on a map|shopping mall|malls?|restaurants?|cafes?|coffee shops?|hotels?|bars?|gas station|petrol|pharmac(y|ies)|hospitals?|parks?|gyms?|stores? near|shops? near|atm|supermarket)\b/i.test(
     text,
   )
 }
@@ -75,9 +75,20 @@ export function getUserLocation(timeout = 8000): Promise<[number, number] | null
         clearTimeout(t)
         resolve(null)
       },
-      { enableHighAccuracy: false, timeout },
+      { enableHighAccuracy: true, timeout, maximumAge: 300000 },
     )
   })
+}
+
+export async function getLocationPermissionState(): Promise<PermissionState | 'unsupported' | 'unknown'> {
+  try {
+    if (!navigator.geolocation) return 'unsupported'
+    if (!navigator.permissions?.query) return 'unknown'
+    const status = await navigator.permissions.query({ name: 'geolocation' as PermissionName })
+    return status.state
+  } catch {
+    return 'unknown'
+  }
 }
 
 export interface UserPlace {
@@ -90,11 +101,19 @@ export interface UserPlace {
 
 let cachedPlace: UserPlace | null = null
 
+export function getCachedUserPlace(): UserPlace | null {
+  return cachedPlace
+}
+
+export function clearUserPlaceCache() {
+  cachedPlace = null
+}
+
 // The user's real location (device GPS + reverse geocode), cached for the
 // session. Used to give the AI accurate "where am I / near me" context instead
 // of it hallucinating a city.
-export async function getUserPlace(): Promise<UserPlace | null> {
-  if (cachedPlace) return cachedPlace
+export async function getUserPlace(opts: { forceRefresh?: boolean } = {}): Promise<UserPlace | null> {
+  if (cachedPlace && !opts.forceRefresh) return cachedPlace
   const loc = await getUserLocation()
   if (!loc) return null
   let city: string | undefined
@@ -120,7 +139,7 @@ export async function getUserPlace(): Promise<UserPlace | null> {
 export function wantsLocationContext(text: string): boolean {
   return (
     wantsPlaces(text) ||
-    /\b(where am i|my location|my city|which city|what city|near me|nearby|around me|closest|nearest|here|my area|directions)\b/i.test(
+    /\b(where am i|my location|your location|use my location|using my location|current location|my city|which city|what city|near me|nearby|near my location|around here|around me|closest|nearest|here|my area|directions|local to me)\b/i.test(
       text,
     ) ||
     /(gdje sam|gdje se|u kojem gradu|koji grad|moja lokacij|gde sam|gde se|blizu mene|u mojoj blizini|pored mene|gdje je|gdje su|najbli|lokacij|grad u kojem)/i.test(
