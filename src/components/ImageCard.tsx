@@ -108,7 +108,7 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
         </span>
         {failed ? 'Could not create image' : loaded ? 'Image' : regenerating ? 'Refining image' : 'Creating image'}
         <span className="ml-auto rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted">
-          NVIDIA
+          NVIDIA FLUX.2
         </span>
         {!loaded && !failed && (
           <span className="flex gap-1">
