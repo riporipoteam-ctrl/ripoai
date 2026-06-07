@@ -11,6 +11,8 @@ export const IMAGE_STYLES: { id: string; label: string; suffix: string }[] = [
 
 import { getNvidiaProxyRoot } from './groq'
 
+const NVIDIA_IMAGE_MODEL = 'black-forest-labs/flux.1-dev'
+
 export function styleSuffix(id?: string): string {
   return IMAGE_STYLES.find((s) => s.id === id)?.suffix ?? ''
 }
@@ -71,7 +73,7 @@ function saferPrompt(prompt: string): string {
 async function imageLooksBlank(url: string): Promise<boolean> {
   return new Promise((resolve) => {
     const img = new Image()
-    img.crossOrigin = 'anonymous'
+    if (!url.startsWith('data:')) img.crossOrigin = 'anonymous'
     const timer = window.setTimeout(() => resolve(false), 8000)
     img.onload = () => {
       window.clearTimeout(timer)
@@ -112,15 +114,12 @@ async function imageLooksBlank(url: string): Promise<boolean> {
   })
 }
 
-// Generate an image with NVIDIA FLUX.1-dev (via the proxy worker). Returns a
-// base64 data URL. This replaces the old keyless Pollinations endpoint, which
-// went paid (HTTP 402).
 async function generateNvidiaImage(
   prompt: string,
   opts: { w?: number; h?: number; seed?: number; signal?: AbortSignal } = {},
 ): Promise<string> {
   const root = getNvidiaProxyRoot()
-  const res = await fetch(`${root}/genai/black-forest-labs/flux.1-dev`, {
+  const res = await fetch(`${root}/genai/${NVIDIA_IMAGE_MODEL}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     signal: opts.signal,
@@ -129,7 +128,7 @@ async function generateNvidiaImage(
       mode: 'base',
       width: opts.w ?? 1024,
       height: opts.h ?? 1024,
-      steps: 40,
+      steps: isLogoOrTextPrompt(prompt) ? 50 : 40,
       cfg_scale: 4.5,
       samples: 1,
       seed: opts.seed ?? Math.floor(Math.random() * 1_000_000),
@@ -140,7 +139,6 @@ async function generateNvidiaImage(
     throw new Error(`Image generation failed (${res.status}). ${t.slice(0, 160)}`)
   }
   const data = await res.json()
-  // NVIDIA/Stability-style responses vary; accept the common shapes.
   const b64: string | undefined =
     data?.artifacts?.[0]?.base64 ||
     data?.data?.[0]?.b64_json ||
@@ -151,23 +149,31 @@ async function generateNvidiaImage(
   return b64.startsWith('data:') ? b64 : `data:image/jpeg;base64,${b64}`
 }
 
-// Free, keyless image generation via Pollinations (open CORS — usable directly
-// as an <img> src). Returns a stable URL for a given prompt + seed.
 export async function generateImage(
   prompt: string,
   opts: { w?: number; h?: number; seed?: number; signal?: AbortSignal } = {},
 ): Promise<string> {
   const safe = saferPrompt(prompt)
+  let lastError: unknown
+  const seed = opts.seed ?? Math.floor(Math.random() * 1_000_000)
+  for (let i = 0; i < 3; i++) {
+    try {
+      const generated = await generateNvidiaImage(safe, { ...opts, seed: seed + i })
+      if (await imageLooksBlank(generated)) throw new Error('Generated image was blank.')
+      return generated
+    } catch (e) {
+      lastError = e
+      if (opts.signal?.aborted) throw e
+    }
+  }
   if (isLogoOrTextPrompt(prompt)) {
-    return imageUrl(safe, { w: opts.w, h: opts.h, seed: opts.seed, model: 'flux' })
+    throw new Error(
+      lastError instanceof Error
+        ? lastError.message
+        : 'The NVIDIA image model could not produce a usable logo image.',
+    )
   }
-  try {
-    const generated = await generateNvidiaImage(safe, opts)
-    if (await imageLooksBlank(generated)) throw new Error('Generated image was blank.')
-    return generated
-  } catch {
-    return imageUrl(safe, { w: opts.w, h: opts.h, seed: opts.seed, model: 'flux' })
-  }
+  return imageUrl(safe, { w: opts.w, h: opts.h, seed, model: 'flux' })
 }
 
 export async function generateImageAsset(
