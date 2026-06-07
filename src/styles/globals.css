@@ -115,73 +115,62 @@ body {
   overflow: hidden;
 }
 
-/* Animated ambient background — the "liquid glass" backdrop.
-   Three independently-drifting colour orbs in the brand palette over a soft
-   base wash for real depth instead of a flat tint. */
 .aurora {
   position: fixed;
   inset: 0;
   z-index: 0;
   overflow: hidden;
   background:
-    radial-gradient(120% 90% at 50% -10%, rgb(var(--page-grad-2) / 0.9), transparent 60%),
+    linear-gradient(135deg, rgb(var(--page-grad-1) / 0.52), transparent 36%),
+    linear-gradient(225deg, rgb(var(--page-grad-3) / 0.56), transparent 42%),
+    linear-gradient(180deg, rgb(var(--page-grad-2) / 0.82), transparent 68%),
     rgb(var(--surface));
+  background-size: 150% 150%, 160% 160%, 100% 100%, auto;
+  animation: surface-shift 22s ease-in-out infinite;
 }
 .aurora::before,
 .aurora::after {
   content: '';
   position: absolute;
-  width: 62vmax;
-  height: 62vmax;
-  border-radius: 50%;
-  filter: blur(90px);
-  opacity: 0.75;
+  inset: 0;
+  filter: blur(26px);
+  opacity: 0.55;
   will-change: transform;
+  pointer-events: none;
 }
 .aurora::before {
-  top: -16vmax;
-  left: -12vmax;
-  background: radial-gradient(circle at 50% 50%, rgb(var(--orb-1) / var(--orb-alpha)), transparent 62%);
-  animation: drift1 28s ease-in-out infinite;
+  background:
+    linear-gradient(90deg, transparent, rgb(var(--orb-1) / calc(var(--orb-alpha) * 0.8)), transparent),
+    linear-gradient(0deg, rgb(var(--orb-3) / calc(var(--orb-alpha) * 0.5)), transparent 48%);
+  animation: sheet-drift-a 28s ease-in-out infinite;
 }
 .aurora::after {
-  bottom: -18vmax;
-  right: -14vmax;
-  background: radial-gradient(circle at 50% 50%, rgb(var(--orb-2) / var(--orb-alpha)), transparent 62%);
-  animation: drift2 36s ease-in-out infinite;
+  background:
+    linear-gradient(120deg, transparent 18%, rgb(var(--orb-2) / calc(var(--orb-alpha) * 0.7)), transparent 68%);
+  animation: sheet-drift-b 34s ease-in-out infinite;
 }
 .aurora > .aurora-orb {
-  position: absolute;
-  top: 30%;
-  left: 55%;
-  width: 46vmax;
-  height: 46vmax;
-  border-radius: 50%;
-  filter: blur(100px);
-  opacity: 0.5;
-  background: radial-gradient(circle at 50% 50%, rgb(var(--orb-3) / var(--orb-alpha)), transparent 60%);
-  animation: drift3 32s ease-in-out infinite;
-  will-change: transform;
+  display: none;
 }
 .dark .aurora::before { opacity: 0.55; }
 .dark .aurora::after { opacity: 0.5; }
-.dark .aurora > .aurora-orb { opacity: 0.4; }
 
-@keyframes drift1 {
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(14vmax, 10vmax) scale(1.18); }
+@keyframes surface-shift {
+  0%, 100% { background-position: 0% 0%, 100% 0%, 50% 0%, 0 0; }
+  50% { background-position: 100% 42%, 0% 50%, 50% 0%, 0 0; }
 }
-@keyframes drift2 {
-  0%, 100% { transform: translate(0, 0) scale(1.05); }
-  50% { transform: translate(-12vmax, -8vmax) scale(1); }
+@keyframes sheet-drift-a {
+  0%, 100% { transform: translate3d(-4%, -2%, 0) rotate(0deg); }
+  50% { transform: translate3d(5%, 4%, 0) rotate(2deg); }
 }
-@keyframes drift3 {
-  0%, 100% { transform: translate(-30%, -20%) scale(1); }
-  33% { transform: translate(10%, -30%) scale(1.15); }
-  66% { transform: translate(-40%, 10%) scale(0.92); }
+@keyframes sheet-drift-b {
+  0%, 100% { transform: translate3d(4%, 3%, 0) rotate(0deg); }
+  50% { transform: translate3d(-5%, -3%, 0) rotate(-2deg); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .aurora::before, .aurora::after, .aurora > .aurora-orb { animation: none; }
+  .aurora,
+  .aurora::before,
+  .aurora::after { animation: none; }
 }
 
 /* Reusable form field — visible in both themes (the old white/5 fill vanished

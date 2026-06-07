@@ -149,12 +149,6 @@ export default function Composer({
     if (taRef.current) taRef.current.style.height = 'auto'
   }
 
-  const activeModes = [
-    webSearch ? 'Web' : null,
-    agent ? 'Agent' : null,
-    imageMode ? 'Image' : null,
-  ].filter(Boolean)
-
   return (
     <div className="relative mx-auto w-full max-w-3xl">
       {err && <p className="mb-2 px-2 text-xs text-red-400">{err}</p>}
@@ -243,21 +237,10 @@ export default function Composer({
         )}
       </AnimatePresence>
 
-      <div className="composer-status mb-2 flex items-center justify-between gap-2 px-1.5 text-[11px] font-semibold text-muted">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-accent shadow-[0_0_12px_rgb(var(--accent)/0.6)]" />
-          Touch composer
-        </span>
-        <span className="truncate">
-          {activeModes.length ? `${activeModes.join(' + ')} enabled` : 'Photo, files, voice, web, agent'}
-        </span>
-      </div>
-
       <motion.div
         layout
-        className="composer-shell relative z-20 overflow-hidden rounded-[28px] border border-white/15 bg-[rgb(var(--glass-bg)/0.5)] p-2 shadow-sm backdrop-blur-xl"
+        className="composer-shell relative z-20 rounded-[28px] border border-white/[0.12] bg-[rgb(var(--glass-bg)/0.28)] p-2 shadow-sm backdrop-blur-2xl"
       >
-        <div className="composer-glow" aria-hidden />
         <textarea
           ref={taRef}
           value={text}
@@ -274,15 +257,15 @@ export default function Composer({
           onPaste={handlePaste}
           rows={1}
           placeholder={imageMode ? 'Describe an image to generate...' : placeholder}
-          className="no-scrollbar relative z-10 max-h-[220px] w-full resize-none bg-transparent px-3 py-2 text-[16px] leading-6 outline-none placeholder:text-muted sm:text-[0.975rem]"
+          className="no-scrollbar max-h-[220px] w-full resize-none bg-transparent px-3 py-2 text-[0.975rem] outline-none placeholder:text-muted"
         />
 
-        <div className="relative z-10 flex flex-wrap items-center gap-x-1.5 gap-y-2 px-1">
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 px-1">
           {/* Plus menu */}
           <div className="relative shrink-0">
             <button
               onClick={() => setPlusOpen((o) => !o)}
-              className={`pressable flex h-10 w-10 items-center justify-center rounded-full transition sm:h-9 sm:w-9 ${plusOpen ? 'bg-accent text-white' : 'hover:bg-white/10'}`}
+              className={`pressable flex h-9 w-9 items-center justify-center rounded-full transition ${plusOpen ? 'bg-accent text-white' : 'hover:bg-white/10'}`}
               title="Add"
             >
               {busy ? <Loader2 size={18} className="animate-spin" /> : <Plus size={20} className={plusOpen ? 'rotate-45 transition-transform' : 'transition-transform'} />}
@@ -441,7 +424,7 @@ export default function Composer({
                   hapticPattern([10])
                   voice.listening ? voice.stop() : voice.start()
                 }}
-                className={`pressable flex h-10 w-10 items-center justify-center rounded-full transition sm:h-9 sm:w-9 ${
+                className={`pressable flex h-9 w-9 items-center justify-center rounded-full transition ${
                   voice.listening ? 'bg-red-500 text-white' : 'text-muted hover:bg-white/10 hover:text-ink'
                 }`}
                 title="Voice input"
@@ -452,7 +435,7 @@ export default function Composer({
             {streaming ? (
               <button
                 onClick={onStop}
-                className="pressable flex h-10 w-10 items-center justify-center rounded-full bg-ink text-surface sm:h-9 sm:w-9"
+                className="pressable flex h-9 w-9 items-center justify-center rounded-full bg-ink text-surface"
                 title="Stop"
               >
                 <Square size={15} fill="currentColor" />
@@ -461,7 +444,7 @@ export default function Composer({
               <button
                 onClick={submit}
                 disabled={!text.trim() && attachments.length === 0}
-                className="btn-sheen pressable accent-gradient-bg flex h-10 w-10 items-center justify-center rounded-full text-white disabled:opacity-40 sm:h-9 sm:w-9"
+                className="pressable accent-gradient-bg flex h-9 w-9 items-center justify-center rounded-full text-white disabled:opacity-40"
                 title="Send"
               >
                 <ArrowUp size={19} />
@@ -470,10 +453,6 @@ export default function Composer({
           </div>
         </div>
       </motion.div>
-      <p className="mt-2 text-center text-[11px] text-muted">
-        RipoAI can make mistakes. Verify important information.
-      </p>
-
       <input
         ref={imgInput}
         type="file"

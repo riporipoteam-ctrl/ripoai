@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, Palette, Globe, Lightbulb, Plane, PanelLeftOpen, PenSquare, Sparkles, Code2, FileText, MapPin, Smartphone, ShieldCheck, Zap } from 'lucide-react'
+import { ChevronDown, Globe, Plane, PanelLeftOpen, PenSquare, Sparkles, Code2, FileText, MapPin, Images, Search, Zap } from 'lucide-react'
 import { useChat } from '../hooks/useChat'
 import { useStore } from '../store'
 import Composer from './Composer'
@@ -14,22 +14,15 @@ import { banActive, todaysMessageCount, bumpMessageCount } from '../lib/admin'
 import { wantsImageGeneration } from '../lib/imagegen'
 import { wantsWebImageSearch } from '../lib/webImages'
 
-
-const EXPERIENCE_CHIPS = [
-  { label: 'Native mobile feel', icon: Smartphone },
-  { label: 'Fast gestures', icon: Zap },
-  { label: 'Safe-area ready', icon: ShieldCheck },
-]
-
 const ALL_SUGGESTIONS = [
-  { title: 'Build a 3D website', sub: 'with scroll animations', icon: Palette },
-  { title: 'Generate an image', sub: 'of anything you imagine', icon: Sparkles },
-  { title: "What's trending today", sub: 'live from the web', icon: Globe },
-  { title: 'Explain it simply', sub: 'any hard concept, in plain words', icon: Lightbulb },
-  { title: 'Plan a trip', sub: 'tailored to your budget', icon: Plane },
-  { title: 'Write & fix code', sub: 'in any language', icon: Code2 },
-  { title: 'Summarize a document', sub: 'upload a PDF and ask', icon: FileText },
-  { title: 'Find places near me', sub: 'restaurants, shops, more', icon: MapPin },
+  { title: 'Images', sub: 'find web photos with sources', icon: Images, prompt: 'Find web images with sources for ' },
+  { title: 'Create', sub: 'generate polished visuals', icon: Sparkles, prompt: 'Generate an image of ' },
+  { title: 'Search', sub: 'research the live web', icon: Search, prompt: 'Search the web for ' },
+  { title: 'Build', sub: 'apps, sites, and code', icon: Code2, prompt: 'Build a 3D website with scroll animations for ' },
+  { title: 'Places', sub: 'maps and nearby spots', icon: MapPin, prompt: 'Find places near me for ' },
+  { title: 'Trips', sub: 'routes and budgets', icon: Plane, prompt: 'Plan a trip to ' },
+  { title: 'Files', sub: 'summaries and answers', icon: FileText, prompt: 'Summarize this document and pull out the key points.' },
+  { title: 'Fast', sub: 'short direct answer', icon: Zap, prompt: 'Give me a fast answer for ' },
 ]
 
 function BanBanner({ ban }: { ban: { until: number; reason: string } }) {
@@ -59,17 +52,6 @@ function BanBanner({ ban }: { ban: { until: number; reason: string } }) {
     </div>
   )
 }
-
-const SUBTITLES = [
-  'What are you planning to do today?',
-  'What should we build together?',
-  'What can I help you with?',
-  'Ready when you are — what’s first?',
-  "What's on your mind?",
-  'Ask me anything, or let’s create something.',
-  'Where should we start today?',
-  'Got a question, an idea, or a project?',
-]
 
 export default function ChatView() {
   const { chatId } = useParams()
@@ -124,26 +106,21 @@ export default function ChatView() {
     send(text, attachments, { ...opts, image: autoWebImages ? false : imageMode || autoImage })
   }
 
-  const greeting = settings.displayName || user?.displayName?.split(' ')[0] || 'there'
-  const hour = new Date().getHours()
-  const timeGreet = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
   const empty = messages.length === 0
-  // Pick a fresh subtitle + suggestion set each time the empty screen appears.
-  const subtitle = useMemo(() => SUBTITLES[Math.floor(Math.random() * SUBTITLES.length)], [chatId])
   const suggestions = useMemo(
     () => [...ALL_SUGGESTIONS].sort(() => Math.random() - 0.5).slice(0, 4),
     [chatId],
   )
 
   return (
-    <div className="chat-shell flex h-full flex-col">
+    <div className="flex h-full flex-col">
       {/* Top app bar — gives the screen real structure instead of two lonely
           floating icons. Shown when the sidebar is collapsed (i.e. on mobile). */}
       {!sidebarOpen && (
-        <header className="top-app-bar sticky top-0 z-20 flex items-center justify-between gap-2 border-b border-white/10 bg-[rgb(var(--glass-bg)/0.32)] px-2.5 py-2 backdrop-blur-2xl backdrop-saturate-150">
+        <header className="mobile-topbar top-app-bar sticky top-0 z-20 flex items-center justify-between gap-2 px-2.5 py-2">
           <button
             onClick={toggleSidebar}
-            className="pressable rounded-xl p-2 text-ink hover:bg-[rgb(var(--ink)/0.06)]"
+            className="pressable glass-control rounded-xl p-2 text-ink"
             title="Open sidebar"
           >
             <PanelLeftOpen size={20} />
@@ -154,7 +131,7 @@ export default function ChatView() {
           </div>
           <button
             onClick={() => navigate('/')}
-            className="pressable rounded-xl p-2 text-ink hover:bg-[rgb(var(--ink)/0.06)]"
+            className="pressable glass-control rounded-xl p-2 text-ink"
             title="New chat"
           >
             <PenSquare size={20} />
@@ -163,79 +140,51 @@ export default function ChatView() {
       )}
       <div ref={scrollRef} onScroll={onScroll} className="chat-scroll flex-1 overflow-y-auto">
         {empty ? (
-          <div className="empty-state flex min-h-full flex-col items-center justify-center px-3 py-5 sm:px-4 sm:py-8">
-            <motion.section
-              initial={{ opacity: 0, y: 18, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ type: 'spring', stiffness: 190, damping: 20 }}
-              className="hero-card glass relative w-full max-w-3xl overflow-hidden rounded-[34px] px-4 py-6 text-center sm:px-8 sm:py-8"
+          <div className="empty-state relative flex h-full flex-col items-center justify-center px-4 py-6">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.92, y: 8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: 'spring', stiffness: 200, damping: 18 }}
+              className="home-mark animate-float"
             >
-              <div className="hero-orbit" aria-hidden />
-              <motion.div
-                initial={{ opacity: 0, scale: 0.86, rotate: -8 }}
-                animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                transition={{ type: 'spring', stiffness: 220, damping: 16 }}
-                className="animate-float"
-              >
-                <Logo size={82} variant="icon" glow />
-              </motion.div>
-              <motion.h1
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.05 }}
-                className="-mt-2 text-balance text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl"
-              >
-                <span className="brand-gradient">{timeGreet}, {greeting}.</span>
-              </motion.h1>
-              <motion.p
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-                className="mx-auto mt-3 max-w-xl text-balance text-base text-muted sm:text-lg"
-              >
-                {subtitle} RipoAI is tuned for touch, voice, images, research, and native app installs.
-              </motion.p>
-              <div className="mt-5 flex flex-wrap justify-center gap-2">
-                {EXPERIENCE_CHIPS.map((chip, i) => (
-                  <motion.span
-                    key={chip.label}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.12 + i * 0.04 }}
-                    className="hero-chip inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-muted"
-                  >
-                    <chip.icon size={14} className="text-accent" />
-                    {chip.label}
-                  </motion.span>
-                ))}
-              </div>
-            </motion.section>
-
-            <div className="empty-suggestions mt-4 grid w-full max-w-3xl grid-cols-1 gap-3 sm:mt-5 sm:grid-cols-2">
+              <Logo size={82} variant="icon" glow />
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.08 }}
+              className="home-command-bar mt-5 flex w-full max-w-xl items-center justify-center gap-2"
+              aria-label="RipoAI quick actions"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-[rgb(var(--accent))]" />
+              <span className="text-sm font-semibold text-muted">RipoAI</span>
+              <span className="h-1.5 w-1.5 rounded-full bg-[rgb(var(--accent))]" />
+            </motion.div>
+            <div className="empty-suggestions mt-6 grid w-full max-w-2xl grid-cols-2 gap-2.5 sm:gap-3">
               {suggestions.map((s, i) => (
                 <motion.button
                   key={s.title}
-                  initial={{ opacity: 0, y: 14 }}
+                  initial={{ opacity: 0, y: 14, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 + 0.05 * i, type: 'spring', stiffness: 220, damping: 22 }}
-                  whileHover={{ y: -5, scale: 1.015 }}
-                  whileTap={{ scale: 0.97 }}
-                  onClick={() => handleSend(`${s.title} ${s.sub}`, [])}
-                  className="suggestion-card glass pressable group flex items-start gap-3 rounded-[24px] p-4 text-left transition hover:brightness-110"
+                  transition={{ delay: 0.05 * i }}
+                  whileHover={{ y: -4, scale: 1.01 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleSend(s.prompt, [])}
+                  className="suggestion-card launch-card glass pressable flex min-h-[92px] items-start gap-3 rounded-[22px] p-3.5 text-left transition hover:brightness-110 sm:min-h-[104px] sm:p-4"
                 >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent/15 text-accent transition group-hover:scale-110">
-                    <s.icon size={19} />
+                  <span className="launch-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent/15 text-accent">
+                    <s.icon size={18} />
                   </span>
                   <span className="min-w-0">
-                    <div className="font-bold tracking-tight">{s.title}</div>
-                    <div className="text-sm text-muted">{s.sub}</div>
+                    <div className="text-[15px] font-bold">{s.title}</div>
+                    <div className="mt-0.5 text-xs leading-snug text-muted sm:text-sm">{s.sub}</div>
                   </span>
                 </motion.button>
               ))}
             </div>
           </div>
         ) : (
-          <div className="chat-thread mx-auto w-full max-w-3xl space-y-6 px-3 py-5 sm:px-4 sm:py-6">
+          <div className="chat-thread mx-auto w-full max-w-3xl space-y-6 px-4 py-6">
             <AnimatePresence initial={false}>
               {messages.map((m, i) => {
                 const isLastAssistant =
@@ -267,7 +216,7 @@ export default function ChatView() {
         )}
       </div>
 
-      <div className="composer-dock relative border-t border-white/15 bg-[rgb(var(--glass-bg)/0.38)] px-2.5 pt-2.5 pb-[max(env(safe-area-inset-bottom),0.75rem)] backdrop-blur-2xl backdrop-saturate-150 sm:px-4 sm:pb-4">
+      <div className="composer-dock pointer-events-none relative px-3 pt-2 pb-[max(env(safe-area-inset-bottom),0.7rem)] sm:px-4 sm:pb-4">
         <AnimatePresence>
           {!empty && !atBottom && (
             <motion.button
@@ -278,7 +227,7 @@ export default function ChatView() {
                 setAtBottom(true)
                 bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
               }}
-              className="glass-strong absolute -top-6 left-1/2 z-10 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full text-ink shadow-lg"
+              className="glass-strong pointer-events-auto absolute -top-6 left-1/2 z-10 flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full text-ink shadow-lg"
               title="Scroll to bottom"
             >
               <ChevronDown size={18} />
@@ -288,22 +237,24 @@ export default function ChatView() {
         {banned ? (
           <BanBanner ban={ban!} />
         ) : (
-          <Composer
-            model={model}
-            onModelChange={setModel}
-            webSearch={webSearch}
-            agent={agent}
-            imageMode={imageMode}
-            onToggleWeb={() => { setWebSearch((v) => !v); setImageMode(false) }}
-            onToggleAgent={() => { setAgent((v) => !v); setImageMode(false) }}
-            onToggleImage={() => { setImageMode((v) => !v); setWebSearch(false); setAgent(false) }}
-            imageStyle={imageStyle}
-            onImageStyle={setImageStyle}
-            onSend={handleSend}
-            onStop={stop}
-            streaming={streaming}
-            onVoiceCall={() => setVoiceCall(true)}
-          />
+          <div className="pointer-events-auto">
+            <Composer
+              model={model}
+              onModelChange={setModel}
+              webSearch={webSearch}
+              agent={agent}
+              imageMode={imageMode}
+              onToggleWeb={() => { setWebSearch((v) => !v); setImageMode(false) }}
+              onToggleAgent={() => { setAgent((v) => !v); setImageMode(false) }}
+              onToggleImage={() => { setImageMode((v) => !v); setWebSearch(false); setAgent(false) }}
+              imageStyle={imageStyle}
+              onImageStyle={setImageStyle}
+              onSend={handleSend}
+              onStop={stop}
+              streaming={streaming}
+              onVoiceCall={() => setVoiceCall(true)}
+            />
+          </div>
         )}
       </div>
       <VoiceCall open={voiceCall} onClose={() => setVoiceCall(false)} model={model} />
