@@ -15,26 +15,19 @@ import Logo from './components/Logo'
 
 function FullScreenLoader() {
   return (
-    <div className="relative z-10 flex h-full items-center justify-center p-5">
-      <div className="loader-card glass flex w-full max-w-xs flex-col items-center gap-5 rounded-[32px] px-7 py-8 text-center">
+    <div className="relative z-10 flex h-full items-center justify-center">
+      <div className="flex flex-col items-center gap-5">
         <div className="relative">
-          <span className="loader-ring absolute inset-0 -m-5 rounded-full" />
-          <span className="absolute inset-0 -m-3 animate-ping rounded-full bg-[rgb(var(--accent)/0.14)]" />
+          {/* pulsing ring behind the mark */}
+          <span className="absolute inset-0 -m-3 animate-ping rounded-full bg-[rgb(var(--accent)/0.18)]" />
           <div className="animate-float">
-            <Logo size={64} glow />
+            <Logo size={60} glow />
           </div>
         </div>
-        <div>
-          <div className="text-2xl font-extrabold tracking-tight brand-gradient">RipoAI</div>
-          <div className="mt-1 text-sm font-medium text-muted">Getting your workspace ready</div>
-        </div>
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-[rgb(var(--ink)/0.08)]">
+        <div className="text-2xl font-extrabold tracking-tight brand-gradient">RipoAI</div>
+        {/* loading bar shimmer */}
+        <div className="h-1 w-32 overflow-hidden rounded-full bg-[rgb(var(--ink)/0.08)]">
           <div className="h-full w-1/2 rounded-full bg-[rgb(var(--accent))] [animation:loadbar_1.1s_ease-in-out_infinite]" />
-        </div>
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-muted">
-          <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent" />
-          <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent [animation-delay:0.2s]" />
-          <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent [animation-delay:0.4s]" />
         </div>
       </div>
     </div>

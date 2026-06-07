@@ -109,8 +109,6 @@ export interface UserSettings {
   verbosity: 'concise' | 'balanced' | 'detailed'
   tone: 'professional' | 'friendly' | 'playful' | 'direct'
   emoji: 'none' | 'some' | 'lots'
-  /** Ask for browser/device location when local context is needed. */
-  locationEnabled: boolean
   memoryEnabled: boolean
   onboarded: boolean
 }
@@ -127,7 +125,6 @@ export const DEFAULT_SETTINGS: UserSettings = {
   verbosity: 'balanced',
   tone: 'friendly',
   emoji: 'some',
-  locationEnabled: true,
   memoryEnabled: true,
   onboarded: false,
 }

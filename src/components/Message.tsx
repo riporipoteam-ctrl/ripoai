@@ -81,7 +81,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
         className="message-row user-message-row flex flex-col items-end gap-2"
       >
         {!!message.attachments?.length && (
-          <div className="flex max-w-[92%] flex-wrap justify-end gap-2 sm:max-w-[80%]">
+          <div className="flex max-w-[80%] flex-wrap justify-end gap-2">
             {message.attachments.map((a, i) =>
               a.kind === 'image' && a.url ? (
                 <img
@@ -103,7 +103,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
           </div>
         )}
         {editing ? (
-          <div className="w-full max-w-[92%] sm:max-w-[80%]">
+          <div className="w-full max-w-[80%]">
             <textarea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
@@ -134,8 +134,8 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
           </div>
         ) : (
           message.content && (
-            <div className="group relative max-w-[92%] sm:max-w-[80%]">
-              <div className="user-bubble whitespace-pre-wrap rounded-[24px] rounded-tr-lg border border-[rgb(var(--accent)/0.18)] bg-[rgb(var(--accent)/0.1)] px-4 py-3 text-[15px] leading-relaxed text-ink sm:text-base">
+            <div className="group relative max-w-[80%]">
+              <div className="user-bubble whitespace-pre-wrap rounded-3xl rounded-tr-lg border border-[rgb(var(--accent)/0.18)] bg-[rgb(var(--accent)/0.1)] px-4 py-2.5 text-ink">
                 {message.content}
               </div>
               {onEdit && (
@@ -163,13 +163,13 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 8, scale: 0.98 }}
       transition={{ type: 'spring', stiffness: 240, damping: 24 }}
-      className={`message-row assistant-message-row flex gap-2.5 sm:gap-3 ${message.bookmarked ? 'rounded-2xl border-l-2 border-accent bg-accent/5 py-2 pl-3 pr-2' : ''}`}
+      className={`message-row assistant-message-row flex gap-3 ${message.bookmarked ? 'rounded-2xl border-l-2 border-accent bg-accent/5 py-2 pl-3 pr-2' : ''}`}
     >
       <div className="assistant-avatar mt-0.5 shrink-0">
         <Logo size={32} />
       </div>
-      <div className="min-w-0 flex-1 overflow-hidden">
-        {modelName && <div className="mb-1 inline-flex rounded-full bg-[rgb(var(--ink)/0.05)] px-2 py-0.5 text-[11px] font-bold text-muted">{modelName}</div>}
+      <div className="min-w-0 flex-1">
+        {modelName && <div className="mb-1 text-xs font-semibold text-muted">{modelName}</div>}
         {!!message.steps?.length && <AgentTrace steps={message.steps} live={emptyStreaming} />}
         {emptyStreaming && !message.steps?.length && <ThinkingIndicator />}
         {message.reasoning && <Reasoning text={message.reasoning} live={liveStreaming && !message.content} thinkMs={message.thinkMs} />}
@@ -226,7 +226,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
         {message.weather && <WeatherCard data={message.weather} />}
         {message.deck && <SlidesCard deck={message.deck} />}
         {message.content && (
-          <div data-answer className={`answer-card ${liveStreaming ? 'stream-caret' : ''}`}>
+          <div data-answer className={liveStreaming ? 'stream-caret' : ''}>
             <Markdown>{message.content}</Markdown>
           </div>
         )}
@@ -245,7 +245,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
           </button>
         )}
         {!liveStreaming && message.content && (
-          <div className="message-actions mt-2 flex flex-wrap items-center gap-1">
+          <div className="mt-2 flex items-center gap-1">
             <button
               onClick={copy}
               className="pressable flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted hover:bg-white/10 hover:text-ink"
@@ -295,7 +295,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
         )}
         {/* Suggested follow-ups */}
         {isLastAssistant && !liveStreaming && !!message.followups?.length && onFollowup && (
-          <div className="mt-3 flex flex-col gap-1.5 sm:max-w-xl">
+          <div className="mt-3 flex flex-col gap-1.5">
             {message.followups.map((f, i) => (
               <button
                 key={i}
