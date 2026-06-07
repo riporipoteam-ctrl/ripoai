@@ -1,7 +1,7 @@
 // Direct browser -> Groq client. Groq returns `access-control-allow-origin: *`
 // so the static GitHub Pages app can call it without a proxy.
 //
-// The key is NOT hardcoded in source — GitHub push protection refuses to let an
+// The key is NOT hardcoded in source - GitHub push protection refuses to let an
 // API key be committed. Instead it is resolved at runtime from, in order:
 //   1. a key the user saved in Settings (localStorage), or
 //   2. the build-time env var VITE_GROQ_API_KEY (set as a GitHub Actions secret
@@ -12,6 +12,25 @@ const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 const KEY_STORAGE = 'ripoai-groq-key'
 const OR_KEY_STORAGE = 'ripoai-openrouter-key'
+
+export function getRipoaiProxyUrl(): string {
+  const configured = ((import.meta.env.VITE_RIPOAI_PROXY_URL as string) || '').trim()
+  if (configured) return configured.replace(/\/$/, '')
+
+  try {
+    const host = window.location.hostname
+    if (host.endsWith('.netlify.app') || host.endsWith('.netlify.live')) {
+      return '/.netlify/functions/ripoai-chat'
+    }
+  } catch {
+    /* ignore */
+  }
+  return ''
+}
+
+export function hasModelProxy(): boolean {
+  return getRipoaiProxyUrl().length > 0
+}
 
 export function getApiKey(): string {
   try {
@@ -33,7 +52,7 @@ export function setApiKey(key: string) {
 }
 
 export function hasApiKey(): boolean {
-  return getApiKey().length > 0
+  return getApiKey().length > 0 || hasModelProxy()
 }
 
 export function getOpenRouterKey(): string {
@@ -56,13 +75,13 @@ export function setOpenRouterKey(key: string) {
 }
 
 // NVIDIA NIM. NVIDIA's API does NOT send CORS headers, so the browser can't call
-// it directly — point VITE_NVIDIA_BASE at a tiny proxy (see worker/nvidia-proxy)
+// it directly - point VITE_NVIDIA_BASE at a tiny proxy (see worker/nvidia-proxy)
 // that forwards to https://integrate.api.nvidia.com and adds CORS. The proxy can
 // also hold the key, in which case no client key is needed.
 const NV_KEY_STORAGE = 'ripoai-nvidia-key'
 const NVIDIA_DIRECT = 'https://integrate.api.nvidia.com/v1/chat/completions'
 // Default proxy (Cloudflare Worker) that fronts NVIDIA with CORS + holds the key
-// server-side. Hardcoding it is safe — it's just an endpoint, the key lives in
+// server-side. Hardcoding it is safe - it's just an endpoint, the key lives in
 // the worker, not here. Override with VITE_NVIDIA_BASE if you redeploy it.
 const NVIDIA_PROXY_DEFAULT = 'https://ripoai-nvidia.ripo-ripoteam.workers.dev'
 
@@ -73,7 +92,7 @@ export function getNvidiaBase(): string {
   // back to the known-good worker. This prevents the app from POSTing to a
   // relative URL (which a static host answers with 405).
   if (!/^https?:\/\//i.test(base)) base = NVIDIA_PROXY_DEFAULT
-  // Talking straight to NVIDIA (CORS will block browsers — only for proxies/tests).
+  // Talking straight to NVIDIA (CORS will block browsers - only for proxies/tests).
   if (base.includes('integrate.api.nvidia.com')) return NVIDIA_DIRECT
   if (base.endsWith('/chat/completions')) return base
   // A proxy/worker: POST to it directly; it forwards to NVIDIA's endpoint.
@@ -199,15 +218,18 @@ class ThinkSplitter {
 export async function streamChat(opts: StreamOptions): Promise<StreamResult> {
   const isOR = opts.provider === 'openrouter'
   const isNV = opts.provider === 'nvidia'
+  const provider = isNV ? 'nvidia' : isOR ? 'openrouter' : 'groq'
   const url = isNV ? getNvidiaBase() : isOR ? OPENROUTER_URL : GROQ_URL
   const apiKey = isNV ? getNvidiaKey() : isOR ? getOpenRouterKey() : getApiKey()
+  const proxyUrl = !isNV ? getRipoaiProxyUrl() : ''
+  const useProxy = !!proxyUrl && !apiKey
   // NVIDIA may be fronted by a proxy that holds the key, so a client key is
   // optional there; Groq/OpenRouter require one.
-  if (!apiKey && !isNV) {
+  if (!apiKey && !isNV && !useProxy) {
     throw new Error(
       isOR
-        ? 'No OpenRouter API key set (Settings → General → OpenRouter key).'
-        : 'No API key set. Add your Groq API key in Settings → General.',
+        ? 'No OpenRouter API key set (Settings -> General -> OpenRouter key).'
+        : 'No API key set. Add your Groq API key in Settings -> General.',
     )
   }
 
@@ -236,7 +258,14 @@ export async function streamChat(opts: StreamOptions): Promise<StreamResult> {
   }
 
   const doFetch = (b: Record<string, unknown>) =>
-    fetch(url, { method: 'POST', headers, body: JSON.stringify(b), signal: opts.signal })
+    useProxy
+      ? fetch(proxyUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider, body: b }),
+          signal: opts.signal,
+        })
+      : fetch(url, { method: 'POST', headers, body: JSON.stringify(b), signal: opts.signal })
 
   let res = await doFetch(body)
 
@@ -334,20 +363,31 @@ export async function complete(
   messages: ChatMessage[],
   opts: { temperature?: number; maxTokens?: number } = {},
 ): Promise<string> {
-  const res = await fetch(GROQ_URL, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${getApiKey()}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model,
-      messages,
-      temperature: opts.temperature ?? 0.3,
-      max_completion_tokens: opts.maxTokens ?? 512,
-      stream: false,
-    }),
-  })
+  const body = {
+    model,
+    messages,
+    temperature: opts.temperature ?? 0.3,
+    max_completion_tokens: opts.maxTokens ?? 512,
+    stream: false,
+  }
+  const apiKey = getApiKey()
+  const proxyUrl = getRipoaiProxyUrl()
+  if (!apiKey && !proxyUrl) throw new Error('No API key set.')
+
+  const res = await (proxyUrl && !apiKey
+    ? fetch(proxyUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: 'groq', body }),
+      })
+    : fetch(GROQ_URL, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      }))
   if (!res.ok) throw new Error(`Groq error ${res.status}`)
   const json = await res.json()
   let text: string = json.choices?.[0]?.message?.content ?? ''
