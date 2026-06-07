@@ -4,16 +4,16 @@ name: Build iOS app
 # macOS runners (which have Xcode). Run it from the Actions tab (Run workflow)
 # or by pushing a tag like v1-ios.
 #
-# ⚠️ Honest caveat about signing:
+# Honest caveat about signing:
 #   Apple does NOT allow installing unsigned apps on a physical iPhone/iPad.
 #   To run on a real device you need an Apple Developer account ($99/yr) and
 #   code signing. This workflow therefore produces an UNSIGNED build for the
 #   iOS Simulator (a .app you can run in Xcode's Simulator on a Mac) plus the
-#   ready-to-open Xcode project as an artifact — open it in Xcode, set your
+#   ready-to-open Xcode project as an artifact - open it in Xcode, set your
 #   signing team, and Run to install on your own device.
 #
 #   The zero-cost, no-Mac path to "RipoAI on your iPhone" is the PWA:
-#   open the deployed site in Safari → Share → "Add to Home Screen". It then
+#   open the deployed site in Safari -> Share -> "Add to Home Screen". It then
 #   launches full-screen with the app icon, like a native app.
 
 on:
@@ -52,9 +52,13 @@ jobs:
       - name: Install Capacitor iOS platform
         run: npm install @capacitor/ios@^6.2.1 --no-save
 
-      - name: Build web app (root base)
+      - name: Build web app (root base, with model providers)
         env:
           VITE_BASE: '/'
+          VITE_GROQ_API_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
+          VITE_OPENROUTER_API_KEY: ${{ secrets.VITE_OPENROUTER_API_KEY }}
+          VITE_NVIDIA_BASE: ${{ secrets.VITE_NVIDIA_BASE }}
+          VITE_NVIDIA_API_KEY: ${{ secrets.VITE_NVIDIA_API_KEY }}
         run: npm run build
 
       - name: Add & sync iOS platform
@@ -111,7 +115,7 @@ jobs:
             RipoAI iOS build (unsigned).
 
             **On your iPhone, no Mac needed (easiest):** open the RipoAI site in
-            Safari → Share → **Add to Home Screen**. It launches full-screen with
+            Safari -> Share -> **Add to Home Screen**. It launches full-screen with
             the app icon, like a native app.
 
             **Run in the iOS Simulator (needs a Mac with Xcode):** download
@@ -122,5 +126,5 @@ jobs:
             unzip, open `App/App.xcworkspace` in Xcode, select your Signing Team
             under Signing & Capabilities, plug in your iPhone, and press Run.
 
-            > Apple does not allow installing unsigned apps on a physical device —
+            > Apple does not allow installing unsigned apps on a physical device -
             > device install requires an Apple Developer account and code signing.
