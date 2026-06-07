@@ -102,13 +102,12 @@
   transform: scale(0.96);
 }
 
-.top-app-bar,
-.composer-dock {
+.top-app-bar {
   box-shadow: 0 1px 0 rgb(255 255 255 / 0.08), 0 16px 42px -30px rgb(0 0 0 / 0.6);
 }
 
 .composer-dock {
-  box-shadow: 0 -18px 48px -34px rgb(0 0 0 / 0.65), inset 0 1px 0 rgb(255 255 255 / 0.08);
+  background: transparent;
 }
 
 .composer-shell {
@@ -314,10 +313,6 @@ html.native .pressable:active {
   transform: scale(0.93);
 }
 
-html.native .composer-dock {
-  border-top-color: rgb(255 255 255 / 0.2);
-}
-
 html.native .composer-shell:focus-within {
   transform: translateY(-1px);
 }
@@ -372,4 +367,160 @@ html.native .image-card {
   .web-image-tile {
     transition: none;
   }
+}
+
+/* Big mobile-first chat refresh: richer native shell, hero panel, and touch targets. */
+.chat-shell {
+  isolation: isolate;
+}
+
+.chat-scroll {
+  scroll-padding: 1rem;
+}
+
+.hero-card {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.24),
+    inset 0 -1px 2px rgb(0 0 0 / 0.08),
+    0 34px 120px -62px rgb(0 0 0 / 0.88);
+}
+
+.hero-card::after {
+  content: '';
+  position: absolute;
+  inset: auto -20% -45% -20%;
+  height: 55%;
+  background: radial-gradient(ellipse at center, rgb(var(--accent) / 0.18), transparent 65%);
+  pointer-events: none;
+}
+
+.hero-orbit {
+  position: absolute;
+  inset: 1.25rem;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  background:
+    radial-gradient(circle at 18% 22%, rgb(var(--accent) / 0.16), transparent 18%),
+    radial-gradient(circle at 82% 70%, rgb(var(--accent) / 0.11), transparent 20%);
+  filter: blur(0.2px);
+  opacity: 0.8;
+  animation: hero-breathe 6.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.hero-chip {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18);
+}
+
+.composer-glow {
+  position: absolute;
+  inset: -30% -10% auto -10%;
+  height: 5rem;
+  background: radial-gradient(ellipse at center, rgb(var(--accent) / 0.12), transparent 68%);
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+.answer-card {
+  position: relative;
+  border-radius: 1.35rem;
+}
+
+.message-actions {
+  opacity: 0.82;
+  transition: opacity 0.18s ease;
+}
+
+.assistant-message-row:hover .message-actions,
+.user-message-row:hover .message-actions {
+  opacity: 1;
+}
+
+@keyframes hero-breathe {
+  0%, 100% { transform: scale(0.98) rotate(0deg); opacity: 0.62; }
+  50% { transform: scale(1.02) rotate(1deg); opacity: 0.94; }
+}
+
+@media (max-width: 640px) {
+  .top-app-bar {
+    min-height: 3.35rem;
+    padding-top: max(env(safe-area-inset-top), 0.5rem);
+  }
+
+  .empty-state {
+    justify-content: flex-start;
+    padding-top: 1rem;
+  }
+
+  .hero-card {
+    border-radius: 1.75rem;
+  }
+
+  .empty-suggestions {
+    padding-bottom: 0.25rem;
+  }
+
+  .suggestion-card {
+    min-height: 4.75rem;
+  }
+
+  .composer-shell {
+    border-radius: 1.55rem;
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.18),
+      0 20px 62px -36px rgb(0 0 0 / 0.82);
+  }
+
+  .message-row {
+    scroll-margin: 5rem;
+  }
+
+  .answer-card {
+    border-radius: 1.15rem;
+    padding-right: 0.125rem;
+  }
+}
+
+html.native .top-app-bar {
+  background:
+    linear-gradient(180deg, rgb(var(--glass-bg) / 0.5), rgb(var(--glass-bg) / 0.34)),
+    rgb(var(--surface) / 0.35);
+}
+
+html.native .hero-card,
+html.native .composer-shell {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.3),
+    inset 0 -1px 2px rgb(0 0 0 / 0.08),
+    0 30px 95px -48px rgb(0 0 0 / 0.86);
+}
+
+html.native .hero-orbit {
+  animation-duration: 5.2s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-orbit {
+    animation: none;
+  }
+}
+
+.loader-card {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.24),
+    0 34px 100px -54px rgb(0 0 0 / 0.85);
+}
+
+.loader-ring {
+  background: conic-gradient(from 0deg, transparent, rgb(var(--accent) / 0.36), transparent 42%);
+  filter: blur(10px);
+  animation: loader-spin 1.8s linear infinite;
+}
+
+@keyframes loader-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loader-ring { animation: none; }
 }

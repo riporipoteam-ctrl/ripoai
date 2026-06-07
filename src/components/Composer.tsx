@@ -239,8 +239,9 @@ export default function Composer({
 
       <motion.div
         layout
-        className="composer-shell relative z-20 rounded-[26px] border border-white/15 bg-[rgb(var(--glass-bg)/0.5)] p-2 shadow-sm backdrop-blur-xl"
+        className="composer-shell relative z-20 overflow-hidden rounded-[28px] border border-white/15 bg-[rgb(var(--glass-bg)/0.28)] p-2 shadow-sm backdrop-blur-2xl"
       >
+        <div className="composer-glow" aria-hidden />
         <textarea
           ref={taRef}
           value={text}
@@ -257,15 +258,15 @@ export default function Composer({
           onPaste={handlePaste}
           rows={1}
           placeholder={imageMode ? 'Describe an image to generate...' : placeholder}
-          className="no-scrollbar max-h-[220px] w-full resize-none bg-transparent px-3 py-2 text-[0.975rem] outline-none placeholder:text-muted"
+          className="no-scrollbar relative z-10 max-h-[220px] w-full resize-none bg-transparent px-3 py-2 text-[16px] leading-6 outline-none placeholder:text-muted sm:text-[0.975rem]"
         />
 
-        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 px-1">
+        <div className="relative z-10 flex flex-wrap items-center gap-x-1.5 gap-y-2 px-1">
           {/* Plus menu */}
           <div className="relative shrink-0">
             <button
               onClick={() => setPlusOpen((o) => !o)}
-              className={`pressable flex h-9 w-9 items-center justify-center rounded-full transition ${plusOpen ? 'bg-accent text-white' : 'hover:bg-white/10'}`}
+              className={`pressable flex h-10 w-10 items-center justify-center rounded-full transition sm:h-9 sm:w-9 ${plusOpen ? 'bg-accent text-white' : 'hover:bg-white/10'}`}
               title="Add"
             >
               {busy ? <Loader2 size={18} className="animate-spin" /> : <Plus size={20} className={plusOpen ? 'rotate-45 transition-transform' : 'transition-transform'} />}
@@ -424,7 +425,7 @@ export default function Composer({
                   hapticPattern([10])
                   voice.listening ? voice.stop() : voice.start()
                 }}
-                className={`pressable flex h-9 w-9 items-center justify-center rounded-full transition ${
+                className={`pressable flex h-10 w-10 items-center justify-center rounded-full transition sm:h-9 sm:w-9 ${
                   voice.listening ? 'bg-red-500 text-white' : 'text-muted hover:bg-white/10 hover:text-ink'
                 }`}
                 title="Voice input"
@@ -435,7 +436,7 @@ export default function Composer({
             {streaming ? (
               <button
                 onClick={onStop}
-                className="pressable flex h-9 w-9 items-center justify-center rounded-full bg-ink text-surface"
+                className="pressable flex h-10 w-10 items-center justify-center rounded-full bg-ink text-surface sm:h-9 sm:w-9"
                 title="Stop"
               >
                 <Square size={15} fill="currentColor" />
@@ -444,7 +445,7 @@ export default function Composer({
               <button
                 onClick={submit}
                 disabled={!text.trim() && attachments.length === 0}
-                className="pressable accent-gradient-bg flex h-9 w-9 items-center justify-center rounded-full text-white disabled:opacity-40"
+                className="btn-sheen pressable accent-gradient-bg flex h-10 w-10 items-center justify-center rounded-full text-white disabled:opacity-40 sm:h-9 sm:w-9"
                 title="Send"
               >
                 <ArrowUp size={19} />

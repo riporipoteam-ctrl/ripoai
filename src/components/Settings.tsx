@@ -23,13 +23,15 @@ import { clearAllChats, clearMemories, deleteMemory } from '../lib/db'
 import { listVoices, getVoicePrefs, setVoicePrefs, speak, stopSpeaking, isSpeechSupported } from '../hooks/useSpeech'
 import { isGmailConnected, connectGmail, disconnectGmail } from '../lib/gmail'
 import { isCalendarConnected, connectCalendar, disconnectCalendar } from '../lib/calendar'
-import { Calendar as CalIcon, Cloud, Map as MapIcon, Bitcoin, Globe, Wand2 } from 'lucide-react'
+import { Calendar as CalIcon, Cloud, Map as MapIcon, Bitcoin, Globe, Wand2, LocateFixed, ShieldCheck } from 'lucide-react'
 import { loadSkills, deleteSkill, installSkillFromUrl, type Skill } from '../lib/skills'
+import { clearUserPlaceCache, getCachedUserPlace, getLocationPermissionState, getUserPlace } from '../lib/places'
 
 const ACCENTS = ['#10a37f', '#4ea8ff', '#36e0c0', '#7c5cff', '#ff6b6b', '#ffa94d', '#f06595']
 const TABS = [
   { id: 'general', label: 'General', icon: Palette },
   { id: 'personal', label: 'Personalization', icon: UserIcon },
+  { id: 'location', label: 'Location', icon: LocateFixed },
   { id: 'voice', label: 'Voice', icon: Volume2 },
   { id: 'memory', label: 'Memory', icon: Brain },
   { id: 'skills', label: 'Skills', icon: Wand2 },
@@ -62,6 +64,9 @@ export default function Settings() {
   const [skillUrl, setSkillUrl] = useState('')
   const [skillBusy, setSkillBusy] = useState(false)
   const [skillErr, setSkillErr] = useState('')
+  const [locationStatus, setLocationStatus] = useState('Not checked')
+  const [locationLabel, setLocationLabel] = useState('')
+  const [locationBusy, setLocationBusy] = useState(false)
   const avatarInput = useRef<HTMLInputElement>(null)
   async function handleAvatar(file?: File) {
     if (!file) return
@@ -90,6 +95,39 @@ export default function Settings() {
   useEffect(() => {
     if (settingsOpen && user) setSkills(loadSkills(user.uid))
   }, [settingsOpen, tab, user])
+
+  useEffect(() => {
+    if (!settingsOpen) return
+    const cached = getCachedUserPlace()
+    setLocationLabel(cached?.label ?? '')
+    getLocationPermissionState().then((state) => {
+      setLocationStatus(state === 'prompt' ? 'Will ask when needed' : state)
+    })
+  }, [settingsOpen])
+
+  async function requestLocationNow() {
+    setLocationBusy(true)
+    setLocationStatus('Asking…')
+    try {
+      const place = await getUserPlace({ forceRefresh: true })
+      if (place) {
+        setLocationLabel(place.label)
+        setLocationStatus('granted')
+      } else {
+        const state = await getLocationPermissionState()
+        setLocationStatus(state === 'denied' ? 'denied' : 'Unavailable')
+      }
+    } finally {
+      setLocationBusy(false)
+    }
+  }
+
+  function forgetLocation() {
+    clearUserPlaceCache()
+    setLocationLabel('')
+    setLocationStatus('Cleared')
+  }
+
   async function installSkill() {
     if (!user || !skillUrl.trim()) return
     setSkillBusy(true)
@@ -337,6 +375,69 @@ export default function Settings() {
                 />
               </Field>
               <p className="text-xs text-muted">Custom instructions are applied to every new message.</p>
+            </>
+          )}
+
+          {tab === 'location' && (
+            <>
+              <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent/15 text-accent">
+                    <LocateFixed size={20} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="font-bold">Nearby search & weather</div>
+                    <p className="mt-1 text-sm text-muted">
+                      When you ask for places near you, local weather, directions, or “where am I?”, RipoAI will request your browser location first instead of guessing.
+                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted">
+                      <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+                        Permission: {locationStatus}
+                      </span>
+                      {locationLabel && (
+                        <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+                          Last location: {locationLabel}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Field label="Location access">
+                <Row
+                  title="Ask before local searches"
+                  desc="Prompts for GPS only when the message needs your location."
+                  action={
+                    <Toggle
+                      on={settings.locationEnabled !== false}
+                      onClick={() => updateSettings({ locationEnabled: settings.locationEnabled === false })}
+                    />
+                  }
+                />
+              </Field>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <button
+                  onClick={requestLocationNow}
+                  disabled={locationBusy || settings.locationEnabled === false}
+                  className="pressable flex items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-3 text-sm font-bold hover:bg-white/5 disabled:opacity-50"
+                >
+                  <LocateFixed size={17} />
+                  {locationBusy ? 'Asking…' : 'Share location now'}
+                </button>
+                <button
+                  onClick={forgetLocation}
+                  className="pressable flex items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-3 text-sm font-bold hover:bg-white/5"
+                >
+                  <ShieldCheck size={17} />
+                  Forget cached location
+                </button>
+              </div>
+
+              <p className="text-xs text-muted">
+                Your exact GPS stays in this browser session. RipoAI sends only the nearby context needed to answer your request.
+              </p>
             </>
           )}
 

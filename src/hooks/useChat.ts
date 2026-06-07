@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { streamChat, complete, type ChatMessage, type ContentPart } from '../lib/groq'
 import { editImage, generateImage, styleSuffix, dimsFor } from '../lib/imagegen'
-import { wantsPlaces, searchPlaces, getUserLocation, getUserPlace, wantsLocationContext } from '../lib/places'
+import { wantsPlaces, searchPlaces, getUserPlace, wantsLocationContext } from '../lib/places'
 import { wantsWeather, getWeather } from '../lib/weather'
 import { wantsCurrency, convertCurrency } from '../lib/currency'
 import { wantsDefine, getDefinition, wantsWiki, getWiki, wantsUnits, convertUnits } from '../lib/tools'
@@ -437,10 +437,16 @@ export function useChat(chatId: string | undefined) {
       // Location awareness: give the AI the user's REAL location (device GPS +
       // reverse geocode) for "where am I / near me / find X" questions, in any
       // language — so it stops hallucinating a city.
-      if (!opts.image && !opts.systemOverride && wantsLocationContext(lastText)) {
+      const locationNeeded = !opts.image && !opts.systemOverride && wantsLocationContext(lastText)
+      const locationAllowed = settings.locationEnabled !== false
+      if (locationNeeded && locationAllowed) {
         const place = await getUserPlace()
         if (place)
           system += `\n\nThe user's current location (from their device GPS) is: ${place.label} (latitude ${place.lat.toFixed(4)}, longitude ${place.lng.toFixed(4)}). Use this as their actual location. Do NOT guess a different city.`
+        else
+          system += `\n\nThe user asked for location-aware help, but browser location permission was not granted or is unavailable. Ask them to allow location access or type their city/area before giving local recommendations. Do not guess their city.`
+      } else if (locationNeeded && !locationAllowed) {
+        system += `\n\nThe user asked for location-aware help, but location access is turned off in Settings. Ask them to enable Settings → Location or type their city/area. Do not guess their city.`
       }
 
       // Always-on tools: currency, units, dictionary, wikipedia.
@@ -467,10 +473,10 @@ export function useChat(chatId: string | undefined) {
       if (!opts.image && !opts.systemOverride && !opts.agent && wantsWeather(lastText)) {
         // For "my location / near me / here" (or when no city is named), use the
         // device's real GPS (cached + reverse-geocoded) so it never says it can't.
-        const wantsHere = /\bnear me|nearby|here|my (location|area|city|place|position)|current location|where i am|around me\b/i.test(lastText)
+        const wantsHere = /\bnear me|nearby|here|my (location|area|city|place|position)|your location|use my location|using my location|current location|where i am|around me|around here|near my location\b/i.test(lastText)
         const hasNamedPlace = /\b(in|at|for)\s+[A-Z][a-z]/.test(lastText)
         let near: [number, number] | undefined
-        if (wantsHere || !hasNamedPlace) {
+        if ((wantsHere || !hasNamedPlace) && locationAllowed) {
           const place = await getUserPlace()
           if (place) near = [place.lat, place.lng]
         }
@@ -485,8 +491,8 @@ export function useChat(chatId: string | undefined) {
       let placesData: { center: [number, number]; places: any[]; label: string } | null = null
       if (!opts.image && !opts.systemOverride && !opts.agent && wantsPlaces(lastText)) {
         setMessages((m) => m) // no-op to keep order
-        // Bias all place searches to the user's real location (cached).
-        const place = await getUserPlace()
+        // Bias all place searches to the user's real location when permission is available.
+        const place = locationAllowed ? await getUserPlace() : null
         const near: [number, number] | null = place ? [place.lat, place.lng] : null
         const res = await searchPlaces(lastText, near || undefined)
         if (res && res.places.length) {

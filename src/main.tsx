@@ -8,7 +8,7 @@ import './styles/glass.css'
 import 'katex/dist/katex.min.css'
 
 // Bump on each deploy so the build hash changes and the version stamp updates.
-export const APP_VERSION = 'v7.10.9'
+export const APP_VERSION = 'v7.10.11'
 console.log('RipoAI', APP_VERSION)
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
