@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { streamChat, complete, type ChatMessage, type ContentPart } from '../lib/groq'
-import { generateImage, styleSuffix, dimsFor } from '../lib/imagegen'
+import { editImage, generateImage, styleSuffix, dimsFor } from '../lib/imagegen'
 import { wantsPlaces, searchPlaces, getUserLocation, getUserPlace, wantsLocationContext } from '../lib/places'
 import { wantsWeather, getWeather } from '../lib/weather'
 import { wantsCurrency, convertCurrency } from '../lib/currency'
@@ -283,7 +283,9 @@ export function useChat(chatId: string | undefined) {
         const { w, h } = dimsFor(prompt)
         let baseUrl: string
         try {
-          baseUrl = editBase || (await generateImage(styledScene, { w, h }))
+          baseUrl = editBase
+            ? await editImage(styledScene, editBase, { w, h })
+            : await generateImage(styledScene, { w, h })
         } catch (e: any) {
           let errMsgs: StoredMessage[] = []
           setMessages((m) => {
