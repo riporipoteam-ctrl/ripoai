@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, Palette, Globe, Lightbulb, Plane, PanelLeftOpen, PenSquare, Sparkles, Code2, FileText, MapPin } from 'lucide-react'
+import { ChevronDown, Palette, Globe, Lightbulb, Plane, PanelLeftOpen, PenSquare, Sparkles, Code2, FileText, MapPin, Smartphone, ShieldCheck, Zap } from 'lucide-react'
 import { useChat } from '../hooks/useChat'
 import { useStore } from '../store'
 import Composer from './Composer'
@@ -13,6 +13,13 @@ import type { Attachment } from '../lib/db'
 import { banActive, todaysMessageCount, bumpMessageCount } from '../lib/admin'
 import { wantsImageGeneration } from '../lib/imagegen'
 import { wantsWebImageSearch } from '../lib/webImages'
+
+
+const EXPERIENCE_CHIPS = [
+  { label: 'Native mobile feel', icon: Smartphone },
+  { label: 'Fast gestures', icon: Zap },
+  { label: 'Safe-area ready', icon: ShieldCheck },
+]
 
 const ALL_SUGGESTIONS = [
   { title: 'Build a 3D website', sub: 'with scroll animations', icon: Palette },
@@ -129,7 +136,7 @@ export default function ChatView() {
   )
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="chat-shell flex h-full flex-col">
       {/* Top app bar — gives the screen real structure instead of two lonely
           floating icons. Shown when the sidebar is collapsed (i.e. on mobile). */}
       {!sidebarOpen && (
@@ -156,47 +163,71 @@ export default function ChatView() {
       )}
       <div ref={scrollRef} onScroll={onScroll} className="chat-scroll flex-1 overflow-y-auto">
         {empty ? (
-          <div className="empty-state flex h-full flex-col items-center justify-center px-4 py-6">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 18 }}
-              className="animate-float"
+          <div className="empty-state flex min-h-full flex-col items-center justify-center px-3 py-5 sm:px-4 sm:py-8">
+            <motion.section
+              initial={{ opacity: 0, y: 18, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              transition={{ type: 'spring', stiffness: 190, damping: 20 }}
+              className="hero-card glass relative w-full max-w-3xl overflow-hidden rounded-[34px] px-4 py-6 text-center sm:px-8 sm:py-8"
             >
-              <Logo size={72} variant="icon" glow />
-            </motion.div>
-            <motion.h1
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="-mt-2 text-center text-3xl font-bold sm:text-4xl"
-            >
-              <span className="brand-gradient">{timeGreet}, {greeting}.</span>
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="mt-2 text-center text-base text-muted sm:text-lg"
-            >
-              {subtitle}
-            </motion.p>
-            <div className="empty-suggestions mt-7 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="hero-orbit" aria-hidden />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.86, rotate: -8 }}
+                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                transition={{ type: 'spring', stiffness: 220, damping: 16 }}
+                className="animate-float"
+              >
+                <Logo size={82} variant="icon" glow />
+              </motion.div>
+              <motion.h1
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05 }}
+                className="-mt-2 text-balance text-3xl font-extrabold leading-tight tracking-tight sm:text-5xl"
+              >
+                <span className="brand-gradient">{timeGreet}, {greeting}.</span>
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="mx-auto mt-3 max-w-xl text-balance text-base text-muted sm:text-lg"
+              >
+                {subtitle} RipoAI is tuned for touch, voice, images, research, and native app installs.
+              </motion.p>
+              <div className="mt-5 flex flex-wrap justify-center gap-2">
+                {EXPERIENCE_CHIPS.map((chip, i) => (
+                  <motion.span
+                    key={chip.label}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.12 + i * 0.04 }}
+                    className="hero-chip inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-muted"
+                  >
+                    <chip.icon size={14} className="text-accent" />
+                    {chip.label}
+                  </motion.span>
+                ))}
+              </div>
+            </motion.section>
+
+            <div className="empty-suggestions mt-4 grid w-full max-w-3xl grid-cols-1 gap-3 sm:mt-5 sm:grid-cols-2">
               {suggestions.map((s, i) => (
                 <motion.button
                   key={s.title}
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 14 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05 * i }}
-                  whileHover={{ y: -4, scale: 1.01 }}
-                  whileTap={{ scale: 0.98 }}
+                  transition={{ delay: 0.15 + 0.05 * i, type: 'spring', stiffness: 220, damping: 22 }}
+                  whileHover={{ y: -5, scale: 1.015 }}
+                  whileTap={{ scale: 0.97 }}
                   onClick={() => handleSend(`${s.title} ${s.sub}`, [])}
-                  className="suggestion-card glass pressable flex items-start gap-3 rounded-2xl p-4 text-left transition hover:brightness-110"
+                  className="suggestion-card glass pressable group flex items-start gap-3 rounded-[24px] p-4 text-left transition hover:brightness-110"
                 >
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent">
-                    <s.icon size={18} />
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent/15 text-accent transition group-hover:scale-110">
+                    <s.icon size={19} />
                   </span>
                   <span className="min-w-0">
-                    <div className="font-semibold">{s.title}</div>
+                    <div className="font-bold tracking-tight">{s.title}</div>
                     <div className="text-sm text-muted">{s.sub}</div>
                   </span>
                 </motion.button>
@@ -204,7 +235,7 @@ export default function ChatView() {
             </div>
           </div>
         ) : (
-          <div className="chat-thread mx-auto w-full max-w-3xl space-y-6 px-4 py-6">
+          <div className="chat-thread mx-auto w-full max-w-3xl space-y-6 px-3 py-5 sm:px-4 sm:py-6">
             <AnimatePresence initial={false}>
               {messages.map((m, i) => {
                 const isLastAssistant =
@@ -236,7 +267,7 @@ export default function ChatView() {
         )}
       </div>
 
-      <div className="composer-dock relative border-t border-white/15 bg-[rgb(var(--glass-bg)/0.38)] px-3 pt-2.5 pb-[max(env(safe-area-inset-bottom),0.7rem)] backdrop-blur-2xl backdrop-saturate-150 sm:px-4 sm:pb-4">
+      <div className="composer-dock relative border-t border-white/15 bg-[rgb(var(--glass-bg)/0.38)] px-2.5 pt-2.5 pb-[max(env(safe-area-inset-bottom),0.75rem)] backdrop-blur-2xl backdrop-saturate-150 sm:px-4 sm:pb-4">
         <AnimatePresence>
           {!empty && !atBottom && (
             <motion.button
