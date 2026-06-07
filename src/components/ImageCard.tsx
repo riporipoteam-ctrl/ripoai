@@ -60,6 +60,7 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
 
   function onError() {
     if (attempt < 3) {
+      // Auto-retry with a fresh seed — cold generations sometimes drop.
       const next = attempt + 1
       setAttempt(next)
       setTimeout(() => setSrc(withSeed(url, Math.floor(Math.random() * 1_000_000) + next)), 600)
@@ -69,9 +70,13 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
   }
 
   async function onLoad(e: SyntheticEvent<HTMLImageElement>) {
+    if (isData) {
+      setLoaded(true)
+      return
+    }
     const blank = await imageElementLooksBlank(e.currentTarget)
     if (blank) {
-      if (!isData && attempt < 4) {
+      if (attempt < 4) {
         setLoaded(false)
         setFailed(false)
         const next = attempt + 1
@@ -96,7 +101,7 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
         <span className="image-card-icon flex h-7 w-7 items-center justify-center rounded-full bg-accent/15 text-accent">
           <Sparkles size={15} />
         </span>
-        {failed ? 'Couldn\'t create image' : loaded ? 'Image' : 'Creating image'}
+        {failed ? 'Couldn’t create image' : loaded ? 'Image' : 'Creating image'}
         {!loaded && !failed && (
           <span className="ml-auto flex gap-1">
             <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent" />
@@ -107,6 +112,7 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
       </div>
 
       <div className="image-stage relative w-full overflow-hidden" style={{ aspectRatio }}>
+        {/* Shimmer / dot-grid placeholder while generating */}
         {!loaded && !failed && (
           <div className="img-skeleton absolute inset-0">
             <div className="img-shimmer absolute inset-0" />
