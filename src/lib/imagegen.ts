@@ -1,7 +1,12 @@
 // Quick image style presets appended to the prompt.
 export const IMAGE_STYLES: { id: string; label: string; suffix: string }[] = [
   { id: 'auto', label: 'Auto', suffix: '' },
-  { id: 'photo', label: 'Photo', suffix: ', ultra-realistic photograph, 50mm, natural lighting, sharp focus, high detail' },
+  {
+    id: 'photo',
+    label: 'Photo',
+    suffix:
+      ', ultra-realistic professional photograph, natural lens compression, real materials, detailed lighting, sharp focus, high dynamic range',
+  },
   { id: 'anime', label: 'Anime', suffix: ', anime style, vibrant colors, clean line art, studio anime key visual' },
   { id: '3d', label: '3D', suffix: ', 3D render, octane render, soft studio lighting, cinematic, highly detailed' },
   { id: 'art', label: 'Art', suffix: ', digital painting, artstation trending, dramatic lighting, masterpiece' },
@@ -64,6 +69,7 @@ function brandSafePrompt(prompt: string): string {
     .replace(/\badidas\b/gi, 'an original athletic brand')
     .replace(/\bapple\b/gi, 'an original technology brand')
     .replace(/\btesla\b/gi, 'an original electric vehicle brand')
+    .replace(/\bpeugeot\b/gi, 'a modern European compact car')
 }
 
 function saferPrompt(prompt: string): string {
@@ -71,17 +77,19 @@ function saferPrompt(prompt: string): string {
   const guard =
     'well-lit, high contrast, complete visible subject, no black canvas, no blank frame, no empty dark background'
   if (isLogoOrTextPrompt(base)) {
-    return `${base}, original logo concept, do not copy existing trademarks or official brand marks, bright professional vector design, clean white or brand-color background, readable lettering, centered composition, ${guard}`.slice(
+    return `${base}, original logo concept, do not copy existing trademarks or official brand marks, premium identity design, clean white or tasteful brand-color background, crisp readable lettering, centered composition, vector-clean edges, ${guard}`.slice(
       0,
       1200,
     )
   }
-  return `${base}, ${guard}`.slice(0, 1200)
+  return `${base}, ultra realistic, natural shadows, detailed textures, believable materials, professional composition, no plastic skin, no AI artifacts, ${guard}`.slice(
+    0,
+    1200,
+  )
 }
 
-// Generate an image with NVIDIA FLUX.1-dev (via the proxy worker). Returns a
-// base64 data URL. This replaces the old keyless Pollinations endpoint, which
-// went paid (HTTP 402).
+// Generate an image with NVIDIA visual GenAI through the proxy worker. The
+// worker prefers FLUX.2 and falls back server-side when needed.
 async function generateNvidiaImage(
   prompt: string,
   opts: { w?: number; h?: number; seed?: number; signal?: AbortSignal } = {},
@@ -95,8 +103,8 @@ async function generateNvidiaImage(
       prompt: prompt.slice(0, 9000),
       width: opts.w ?? 1024,
       height: opts.h ?? 1024,
-      steps: isLogoOrTextPrompt(prompt) ? 50 : 40,
-      cfg_scale: 4.5,
+      steps: 4,
+      cfg_scale: isLogoOrTextPrompt(prompt) ? 4.8 : 4.2,
       seed: opts.seed ?? Math.floor(Math.random() * 1_000_000),
     }),
   })
@@ -116,8 +124,8 @@ async function generateNvidiaImage(
   return b64.startsWith('data:') ? b64 : `data:image/jpeg;base64,${b64}`
 }
 
-// Free, keyless image generation via Pollinations (open CORS — usable directly
-// as an <img> src). Returns a stable URL for a given prompt + seed.
+// Generate with NVIDIA first. Non-logo prompts keep a Pollinations URL fallback
+// so casual image requests still return something if NVIDIA is temporarily down.
 export async function generateImage(
   prompt: string,
   opts: { w?: number; h?: number; seed?: number; signal?: AbortSignal } = {},
@@ -142,6 +150,41 @@ export async function generateImage(
     )
   }
   return imageUrl(safe, { w: opts.w, h: opts.h, seed, model: 'flux' })
+}
+
+export async function editImage(
+  prompt: string,
+  image: string,
+  opts: { w?: number; h?: number; seed?: number; signal?: AbortSignal } = {},
+): Promise<string> {
+  const root = getNvidiaProxyRoot()
+  const safe = saferPrompt(prompt)
+  const res = await fetch(`${root}/image/edit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    signal: opts.signal,
+    body: JSON.stringify({
+      prompt: safe.slice(0, 9000),
+      image,
+      width: opts.w ?? 1024,
+      height: opts.h ?? 1024,
+      steps: 4,
+      seed: opts.seed ?? Math.floor(Math.random() * 1_000_000),
+    }),
+  })
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(`Image editing failed (${res.status}). ${t.slice(0, 160)}`)
+  }
+  const data = await res.json()
+  const b64: string | undefined =
+    data?.image ||
+    data?.artifacts?.[0]?.base64 ||
+    data?.data?.[0]?.b64_json ||
+    data?.b64_json ||
+    (Array.isArray(data?.images) ? data.images[0] : undefined)
+  if (!b64) throw new Error('Image editing returned no image.')
+  return b64.startsWith('data:') ? b64 : `data:image/jpeg;base64,${b64}`
 }
 
 export async function generateImageAsset(
