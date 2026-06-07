@@ -373,3 +373,150 @@ html.native .image-card {
     transition: none;
   }
 }
+
+/* Big mobile-first chat refresh: richer native shell, hero panel, and touch targets. */
+.chat-shell {
+  isolation: isolate;
+}
+
+.chat-scroll {
+  scroll-padding: 1rem;
+}
+
+.hero-card {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.24),
+    inset 0 -1px 2px rgb(0 0 0 / 0.08),
+    0 34px 120px -62px rgb(0 0 0 / 0.88);
+}
+
+.hero-card::after {
+  content: '';
+  position: absolute;
+  inset: auto -20% -45% -20%;
+  height: 55%;
+  background: radial-gradient(ellipse at center, rgb(var(--accent) / 0.18), transparent 65%);
+  pointer-events: none;
+}
+
+.hero-orbit {
+  position: absolute;
+  inset: 1.25rem;
+  border-radius: 999px;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  background:
+    radial-gradient(circle at 18% 22%, rgb(var(--accent) / 0.16), transparent 18%),
+    radial-gradient(circle at 82% 70%, rgb(var(--accent) / 0.11), transparent 20%);
+  filter: blur(0.2px);
+  opacity: 0.8;
+  animation: hero-breathe 6.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.hero-chip {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18);
+}
+
+.composer-status {
+  text-shadow: 0 1px 18px rgb(var(--surface) / 0.6);
+}
+
+.composer-glow {
+  position: absolute;
+  inset: -30% -10% auto -10%;
+  height: 5rem;
+  background: radial-gradient(ellipse at center, rgb(var(--accent) / 0.12), transparent 68%);
+  opacity: 0.75;
+  pointer-events: none;
+}
+
+.answer-card {
+  position: relative;
+  border-radius: 1.35rem;
+}
+
+.message-actions {
+  opacity: 0.82;
+  transition: opacity 0.18s ease;
+}
+
+.assistant-message-row:hover .message-actions,
+.user-message-row:hover .message-actions {
+  opacity: 1;
+}
+
+@keyframes hero-breathe {
+  0%, 100% { transform: scale(0.98) rotate(0deg); opacity: 0.62; }
+  50% { transform: scale(1.02) rotate(1deg); opacity: 0.94; }
+}
+
+@media (max-width: 640px) {
+  .top-app-bar {
+    min-height: 3.35rem;
+    padding-top: max(env(safe-area-inset-top), 0.5rem);
+  }
+
+  .empty-state {
+    justify-content: flex-start;
+    padding-top: 1rem;
+  }
+
+  .hero-card {
+    border-radius: 1.75rem;
+  }
+
+  .empty-suggestions {
+    padding-bottom: 0.25rem;
+  }
+
+  .suggestion-card {
+    min-height: 4.75rem;
+  }
+
+  .composer-dock {
+    background:
+      linear-gradient(180deg, rgb(var(--glass-bg) / 0.2), rgb(var(--glass-bg) / 0.54)),
+      rgb(var(--surface) / 0.62);
+  }
+
+  .composer-shell {
+    border-radius: 1.55rem;
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.18),
+      0 20px 62px -36px rgb(0 0 0 / 0.82);
+  }
+
+  .message-row {
+    scroll-margin: 5rem;
+  }
+
+  .answer-card {
+    border-radius: 1.15rem;
+    padding-right: 0.125rem;
+  }
+}
+
+html.native .top-app-bar,
+html.native .composer-dock {
+  background:
+    linear-gradient(180deg, rgb(var(--glass-bg) / 0.5), rgb(var(--glass-bg) / 0.34)),
+    rgb(var(--surface) / 0.35);
+}
+
+html.native .hero-card,
+html.native .composer-shell {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.3),
+    inset 0 -1px 2px rgb(0 0 0 / 0.08),
+    0 30px 95px -48px rgb(0 0 0 / 0.86);
+}
+
+html.native .hero-orbit {
+  animation-duration: 5.2s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-orbit {
+    animation: none;
+  }
+}

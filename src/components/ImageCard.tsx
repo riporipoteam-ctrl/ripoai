@@ -100,13 +100,13 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
       initial={{ opacity: 0, y: 10, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: 'spring', stiffness: 240, damping: 22 }}
-      className="image-card glass w-full max-w-xl overflow-hidden rounded-[28px] border border-white/15 shadow-lg"
+      className="image-card glass w-full max-w-xl overflow-hidden rounded-[30px] border border-white/15 shadow-lg"
     >
-      <div className="relative z-10 flex items-center gap-2 px-4 py-2.5 text-sm font-semibold">
+      <div className="relative z-10 flex items-center gap-2 px-4 py-3 text-sm font-bold">
         <span className="image-card-icon flex h-7 w-7 items-center justify-center rounded-full bg-accent/15 text-accent">
           <Sparkles size={15} />
         </span>
-        {failed ? 'Could not create image' : loaded ? 'Image' : regenerating ? 'Refining image' : 'Creating image'}
+        {failed ? 'Could not create image' : loaded ? 'Image ready' : regenerating ? 'Refining image' : 'Creating image'}
         <span className="ml-auto rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted">
           NVIDIA FLUX.2
         </span>
@@ -155,15 +155,15 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-2 px-3 py-2">
-        <span className="truncate text-xs text-muted" title={prompt}>
+      <div className="flex items-center justify-between gap-2 px-3 py-2.5">
+        <span className="truncate text-xs font-medium text-muted" title={prompt}>
           {prompt}
         </span>
         {loaded && (
           <div className="flex shrink-0 items-center gap-1">
             <button
               onClick={retry}
-              className="pressable rounded-lg p-1.5 text-muted hover:bg-white/10 hover:text-ink"
+              className="pressable rounded-xl p-2 text-muted hover:bg-white/10 hover:text-ink"
               title="Regenerate"
             >
               <RefreshCw size={15} />
@@ -173,7 +173,7 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
               target="_blank"
               rel="noreferrer"
               download="ripoai-image.jpg"
-              className="pressable rounded-lg p-1.5 text-muted hover:bg-white/10 hover:text-ink"
+              className="pressable rounded-xl p-2 text-muted hover:bg-white/10 hover:text-ink"
               title="Open / download"
             >
               <Download size={15} />
