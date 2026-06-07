@@ -7,36 +7,18 @@ function withSeed(url: string, seed: number): string {
   return url.replace(/([?&])seed=\d+/, `$1seed=${seed}`)
 }
 
-export default function ImageCard({
-  prompt,
-  url,
-  w,
-  h,
-  provider,
-  onRegenerate,
-}: {
-  prompt: string
-  url: string
-  w?: number
-  h?: number
-  provider?: string
-  onRegenerate?: () => void
-}) {
+export default function ImageCard({ prompt, url }: { prompt: string; url: string }) {
   const [src, setSrc] = useState(url)
   // Data-URL images (NVIDIA FLUX) are already generated and load instantly;
-  // local seed retry only applies to URL-based providers.
+  // reseeding only applies to the old URL-based provider.
   const isData = url.startsWith('data:')
   const reduceMotion = useReducedMotion()
   const [loaded, setLoaded] = useState(isData)
   const [attempt, setAttempt] = useState(0)
   const [failed, setFailed] = useState(false)
-  const ratio = w && h ? `${w} / ${h}` : '1 / 1'
 
   function retry() {
-    if (isData) {
-      onRegenerate?.()
-      return
-    }
+    if (isData) return
     setLoaded(false)
     setFailed(false)
     const next = attempt + 1
@@ -45,7 +27,7 @@ export default function ImageCard({
   }
 
   function onError() {
-    if (!isData && attempt < 3) {
+    if (attempt < 3) {
       // Auto-retry with a fresh seed — cold generations sometimes drop.
       const next = attempt + 1
       setAttempt(next)
@@ -67,7 +49,6 @@ export default function ImageCard({
           <Sparkles size={15} />
         </span>
         {failed ? 'Couldn’t create image' : loaded ? 'Image' : 'Creating image'}
-        {provider && loaded && <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-accent">{provider}</span>}
         {!loaded && !failed && (
           <span className="ml-auto flex gap-1">
             <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent" />
@@ -77,7 +58,7 @@ export default function ImageCard({
         )}
       </div>
 
-      <div className="relative mx-2 overflow-hidden rounded-[1.35rem] bg-black/5 ring-1 ring-white/10" style={{ aspectRatio: ratio }}>
+      <div className="relative mx-2 overflow-hidden rounded-[1.35rem] bg-black/5 ring-1 ring-white/10">
         {/* Shimmer / dot-grid placeholder while generating */}
         {!loaded && !failed && (
           <div className="img-skeleton absolute inset-0">
@@ -119,7 +100,7 @@ export default function ImageCard({
         </span>
         {loaded && (
           <div className="flex shrink-0 items-center gap-1">
-            {(!isData || onRegenerate) && (
+            {!isData && (
               <button
                 onClick={retry}
                 className="action-chip pressable rounded-xl p-1.5 text-muted hover:text-ink"

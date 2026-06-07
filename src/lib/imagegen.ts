@@ -9,11 +9,7 @@ export const IMAGE_STYLES: { id: string; label: string; suffix: string }[] = [
   { id: 'sketch', label: 'Sketch', suffix: ', detailed pencil sketch, hand-drawn, black and white' },
 ]
 
-import { composeTextOnImage } from './compose'
 import { getNvidiaProxyRoot } from './groq'
-
-export type ImageProvider = 'nvidia' | 'pollinations' | 'compose'
-export type GeneratedImage = { url: string; provider: ImageProvider; w: number; h: number }
 
 export function styleSuffix(id?: string): string {
   return IMAGE_STYLES.find((s) => s.id === id)?.suffix ?? ''
@@ -98,58 +94,4 @@ export function preloadImage(url: string, timeoutMs = 45000): Promise<void> {
     img.src = url
     setTimeout(done, timeoutMs)
   })
-}
-
-function shouldFallback(err: unknown): boolean {
-  const msg = err instanceof Error ? err.message : String(err ?? '')
-  return /\b(401|402|405|408|409|422|429|500|502|503|504)\b|network|failed|timeout|cors/i.test(msg)
-}
-
-export async function generateImageWithFallback(
-  prompt: string,
-  opts: { w?: number; h?: number; seed?: number; signal?: AbortSignal } = {},
-): Promise<GeneratedImage> {
-  const w = opts.w ?? 1024
-  const h = opts.h ?? 1024
-  try {
-    return { url: await generateImage(prompt, opts), provider: 'nvidia', w, h }
-  } catch (err) {
-    if (!shouldFallback(err)) throw err
-    const url = imageUrl(prompt, { ...opts, w, h })
-    await preloadImage(url)
-    return { url, provider: 'pollinations', w, h }
-  }
-}
-
-function extractOverlayText(prompt: string): string | null {
-  const quoted = prompt.match(/["“”']([^"“”']{1,120})["“”']/)?.[1]?.trim()
-  if (quoted) return quoted
-  const match = prompt.match(/(?:add|write|put|caption|text|words?)\s+(?:the\s+)?(?:text|words?|caption)?\s*[:\-]?\s*(.{1,140})/i)?.[1]
-  if (!match) return null
-  return match.replace(/\b(on|to|at)\b.*$/i, '').trim() || null
-}
-
-export async function editImage(
-  prompt: string,
-  baseUrl: string,
-  opts: { w?: number; h?: number; signal?: AbortSignal } = {},
-): Promise<GeneratedImage> {
-  const p = prompt.toLowerCase()
-  const overlayText = /\b(add|write|put|caption|text|words?|label|meme)\b/i.test(p)
-    ? extractOverlayText(prompt) || prompt
-    : null
-
-  if (overlayText) {
-    const position = /\b(bottom|lower)\b/i.test(prompt) ? 'bottom' : /\b(center|middle)\b/i.test(prompt) ? 'center' : 'top'
-    const url = await composeTextOnImage(baseUrl, overlayText.slice(0, 140), position)
-    return { url, provider: 'compose', w: opts.w ?? 1024, h: opts.h ?? 1024 }
-  }
-
-  // Browser-safe fallback: create a fresh generated image from the edit request
-  // instead of pretending the uploaded image was actually edited. Real
-  // image-to-image can be added here when the deployed proxy exposes it.
-  return generateImageWithFallback(
-    `Create a new polished image inspired by the user's uploaded reference. Apply this request: ${prompt}`,
-    opts,
-  )
 }

@@ -21,7 +21,7 @@ name: Deploy to Firebase Hosting
 on:
   workflow_dispatch:
   push:
-    branches: ['claude/ripoai-web-app-U0rvk', 'main']
+    branches: ['claude/ripoai-web-app-U0rvk']
 
 permissions:
   contents: read

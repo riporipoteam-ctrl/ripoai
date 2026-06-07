@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { streamChat, complete, type ChatMessage, type ContentPart } from '../lib/groq'
-import { editImage, generateImageWithFallback, styleSuffix, dimsFor } from '../lib/imagegen'
+import { generateImage, styleSuffix, dimsFor } from '../lib/imagegen'
 import { wantsPlaces, searchPlaces, getUserLocation, getUserPlace, wantsLocationContext } from '../lib/places'
 import { wantsWeather, getWeather } from '../lib/weather'
 import { wantsCurrency, convertCurrency } from '../lib/currency'
@@ -274,11 +274,9 @@ export function useChat(chatId: string | undefined) {
 
         const styledScene = (scene + styleSuffix(opts.imageStyle)).slice(0, 900)
         const { w, h } = dimsFor(prompt)
-        let generated: { url: string; provider: string; w: number; h: number }
+        let baseUrl: string
         try {
-          generated = editBase
-            ? await editImage(styledScene || prompt || 'edit this image', editBase, { w, h })
-            : await generateImageWithFallback(styledScene, { w, h })
+          baseUrl = editBase || (await generateImage(styledScene, { w, h }))
         } catch (e: any) {
           let errMsgs: StoredMessage[] = []
           setMessages((m) => {
@@ -293,17 +291,12 @@ export function useChat(chatId: string | undefined) {
           await persist(errMsgs, id, opts.model, opts.projectId)
           return
         }
+        const finalUrl = baseUrl
+
         let finalMsgs: StoredMessage[] = []
         setMessages((m) => {
           finalMsgs = m.map((x) =>
-            x.id === assistantId
-              ? {
-                  ...x,
-                  content: '',
-                  imagePending: undefined,
-                  image: { prompt, url: generated.url, w: generated.w, h: generated.h, provider: generated.provider },
-                }
-              : x,
+            x.id === assistantId ? { ...x, content: '', imagePending: undefined, image: { prompt, url: finalUrl } } : x,
           )
           return finalMsgs
         })

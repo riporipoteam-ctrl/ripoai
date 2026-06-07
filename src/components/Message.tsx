@@ -214,16 +214,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
             </div>
           </motion.div>
         )}
-        {message.image && (
-          <ImageCard
-            prompt={message.image.prompt}
-            url={message.image.url}
-            w={message.image.w}
-            h={message.image.h}
-            provider={message.image.provider}
-            onRegenerate={isLastAssistant ? onRegenerate : undefined}
-          />
-        )}
+        {message.image && <ImageCard prompt={message.image.prompt} url={message.image.url} />}
         {message.map && <MapCard data={message.map} />}
         {message.weather && <WeatherCard data={message.weather} />}
         {message.deck && <SlidesCard deck={message.deck} />}
