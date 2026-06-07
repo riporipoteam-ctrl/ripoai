@@ -1,7 +1,7 @@
 import { useState, type SyntheticEvent } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Download, RefreshCw, ImageOff, Sparkles } from 'lucide-react'
-import { dimsFor } from '../lib/imagegen'
+import { dimsFor, generateImage } from '../lib/imagegen'
 
 function withSeed(url: string, seed: number): string {
   return url.replace(/([?&])seed=\d+/, `$1seed=${seed}`)
@@ -40,48 +40,53 @@ async function imageElementLooksBlank(img: HTMLImageElement): Promise<boolean> {
 
 export default function ImageCard({ prompt, url }: { prompt: string; url: string }) {
   const [src, setSrc] = useState(url)
-  // Data-URL images (NVIDIA FLUX) are already generated and load instantly;
-  // reseeding only applies to the old URL-based provider.
-  const isData = url.startsWith('data:')
+  const isData = src.startsWith('data:')
   const [loaded, setLoaded] = useState(isData)
   const [attempt, setAttempt] = useState(0)
   const [failed, setFailed] = useState(false)
+  const [regenerating, setRegenerating] = useState(false)
   const dims = dimsFor(prompt)
   const aspectRatio = `${dims.w} / ${dims.h}`
 
-  function retry() {
-    if (isData) return
+  async function regenerate(next = attempt + 1) {
     setLoaded(false)
     setFailed(false)
-    const next = attempt + 1
+    setRegenerating(true)
     setAttempt(next)
-    setSrc(withSeed(url, Math.floor(Math.random() * 1_000_000) + next))
+    const seed = Math.floor(Math.random() * 1_000_000) + next
+    try {
+      if (src.startsWith('data:') || url.startsWith('data:')) {
+        setSrc(await generateImage(prompt, { w: dims.w, h: dims.h, seed }))
+      } else {
+        setSrc(withSeed(url, seed))
+      }
+    } catch {
+      setFailed(true)
+    } finally {
+      setRegenerating(false)
+    }
+  }
+
+  function retry() {
+    void regenerate()
   }
 
   function onError() {
     if (attempt < 3) {
-      // Auto-retry with a fresh seed — cold generations sometimes drop.
+      // Auto-retry with a fresh seed; cold generations sometimes drop.
       const next = attempt + 1
-      setAttempt(next)
-      setTimeout(() => setSrc(withSeed(url, Math.floor(Math.random() * 1_000_000) + next)), 600)
+      setTimeout(() => void regenerate(next), 600)
     } else {
       setFailed(true)
     }
   }
 
   async function onLoad(e: SyntheticEvent<HTMLImageElement>) {
-    if (isData) {
-      setLoaded(true)
-      return
-    }
     const blank = await imageElementLooksBlank(e.currentTarget)
     if (blank) {
       if (attempt < 4) {
-        setLoaded(false)
-        setFailed(false)
         const next = attempt + 1
-        setAttempt(next)
-        setTimeout(() => setSrc(withSeed(url, Math.floor(Math.random() * 1_000_000) + next)), 250)
+        setTimeout(() => void regenerate(next), 250)
         return
       }
       setFailed(true)
@@ -95,15 +100,18 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
       initial={{ opacity: 0, y: 10, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ type: 'spring', stiffness: 240, damping: 22 }}
-      className="image-card w-full max-w-xl overflow-hidden rounded-3xl border border-white/10 bg-white/5 shadow-lg"
+      className="image-card glass w-full max-w-xl overflow-hidden rounded-[28px] border border-white/15 shadow-lg"
     >
-      <div className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold">
+      <div className="relative z-10 flex items-center gap-2 px-4 py-2.5 text-sm font-semibold">
         <span className="image-card-icon flex h-7 w-7 items-center justify-center rounded-full bg-accent/15 text-accent">
           <Sparkles size={15} />
         </span>
-        {failed ? 'Couldn’t create image' : loaded ? 'Image' : 'Creating image'}
+        {failed ? 'Could not create image' : loaded ? 'Image' : regenerating ? 'Refining image' : 'Creating image'}
+        <span className="ml-auto rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted">
+          NVIDIA
+        </span>
         {!loaded && !failed && (
-          <span className="ml-auto flex gap-1">
+          <span className="flex gap-1">
             <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent" />
             <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent [animation-delay:0.2s]" />
             <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent [animation-delay:0.4s]" />
@@ -153,15 +161,13 @@ export default function ImageCard({ prompt, url }: { prompt: string; url: string
         </span>
         {loaded && (
           <div className="flex shrink-0 items-center gap-1">
-            {!isData && (
-              <button
-                onClick={retry}
-                className="pressable rounded-lg p-1.5 text-muted hover:bg-white/10 hover:text-ink"
-                title="Regenerate"
-              >
-                <RefreshCw size={15} />
-              </button>
-            )}
+            <button
+              onClick={retry}
+              className="pressable rounded-lg p-1.5 text-muted hover:bg-white/10 hover:text-ink"
+              title="Regenerate"
+            >
+              <RefreshCw size={15} />
+            </button>
             <a
               href={src}
               target="_blank"

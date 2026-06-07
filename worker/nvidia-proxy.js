@@ -1,4 +1,4 @@
-// RipoAI — NVIDIA proxy (Cloudflare Worker). Handles BOTH chat and image/video
+// RipoAI - NVIDIA proxy (Cloudflare Worker). Handles BOTH chat and image/video
 // generation, holds the API key server-side, and adds CORS so the static app
 // can call NVIDIA (which otherwise blocks browser requests).
 //
@@ -7,9 +7,9 @@
 //   POST /v1/chat/completions      -> chat
 //   POST /genai/<org>/<model>      -> image/video (ai.api.nvidia.com/v1/genai/<org>/<model>)
 //
-// DEPLOY: Workers & Pages → Create → "Start with Hello World!" → paste this →
-// Deploy. Then Settings → Variables and Secrets → add SECRET NVIDIA_API_KEY = your
-// nvapi-… key. (Re-paste over the old version if you already had the chat-only one.)
+// DEPLOY: Workers & Pages -> Create -> "Start with Hello World!" -> paste this ->
+// Deploy. Then Settings -> Variables and Secrets -> add SECRET NVIDIA_API_KEY = your
+// nvapi-... key. (Re-paste over the old version if you already had the chat-only one.)
 
 const CHAT = 'https://integrate.api.nvidia.com/v1/chat/completions'
 const GENAI = 'https://ai.api.nvidia.com/v1/genai'
@@ -53,6 +53,7 @@ function hardenImagePrompt(prompt) {
     .replace(/\badidas\b/gi, 'an original athletic brand')
     .replace(/\bapple\b/gi, 'an original technology brand')
     .replace(/\btesla\b/gi, 'an original electric vehicle brand')
+    .replace(/\bpeugeot\b/gi, 'a modern European compact car')
 
   const guard =
     'well-lit, high contrast, complete visible subject, no black canvas, no blank frame, no empty dark background'
@@ -70,6 +71,76 @@ function repairBlankPrompt(prompt) {
     0,
     1200,
   )
+}
+
+function extractRequestedText(prompt) {
+  const source = String(prompt || '').replace(/\s+/g, ' ').trim()
+  const quoted = source.match(/["']([^"']{2,60})["']/)
+  if (quoted?.[1]) return quoted[1].trim()
+  const match = source.match(
+    /\b(?:name of it is|name is|brand name is|called|named|text says|says|with text)\b\s*:?\s*([^,.!?]{2,80}?)(?:\s+\b(?:and|with|plus|add|include|aswell|as well)\b|[,.!?]|$)/i,
+  )
+  return (match?.[1] || '').replace(/^["':\s]+|["':\s]+$/g, '').trim()
+}
+
+function escapeXml(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
+function svgDataUrl(svg) {
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+}
+
+function fallbackLogoImage(prompt, width, height, seed) {
+  const label = extractRequestedText(prompt) || 'Original Brand'
+  const isAuto = /\b(auto|car|mechanic|garage|servis|service|vehicle|peugeot)\b/i.test(prompt || '')
+  const subtitle = isAuto ? 'AUTO SERVICE' : 'ORIGINAL LOGO'
+  const mark = isAuto
+    ? `<g transform="translate(272 276)">
+        <path d="M58 188h404c18 0 32 14 32 32v46h-52c-8-32-37-56-72-56s-64 24-72 56H220c-8-32-37-56-72-56s-64 24-72 56H24v-44c0-19 14-34 32-34h2Zm48-42 74-88c13-15 31-24 51-24h154c19 0 37 9 49 24l72 88H106@m108-36-31 36h110V82h-39c-16 0-30 7-40 28Zm112 36h112l-30-36c-10-21-24-28-41-28h-41v64Z" fill="#f8fafc"/>
+        <circle cx="148" cy="266" r="43" fill="#111827"/>
+        <circle cx="148" cy="266" r="19" fill="#f8fafc"/>
+        <circle cx="370" cy="266" r="43" fill="#111827"/>
+        <circle cx="370" cy="266" r="19" fill="#f8fafc"/>
+      </g>`
+    : `<g transform="translate(333 232)">
+        <path d="M178 0 222 92l101 14-73 71 17 100-89-47-90 47 17-100-72-71 100-14L178 0Z" fill="#f8fafc"/>
+      </g>`
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 1024 1024">
+    <defs>
+      <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+        <stop offset="0" stop-color="#111827"/>
+        <stop offset="0.52" stop-color="#b91c1c"/>
+        <stop offset="1" stop-color="#f97316"/>
+      </linearGradient>
+      <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="26" stdDeviation="26" flood-color="#0f172a" flood-opacity="0.28"/>
+      </filter>
+    </defs>
+    <rect width="1024" height="1024" rx="116" fill="#f8fafc"/>
+    <rect x="76" y="76" width="872" height="872" rx="96" fill="url(#bg)" filter="url(#softShadow)"/>
+    <path d="M116 160c168-76 337-74 507 6 105 50 198 61 281 32v552c-147 71-304 71-471 0-120-51-226-62-317-34V160Z" fill="#ffffff" opacity="0.1"/>
+    ${mark}
+    <text x="512" y="690" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="${label.length > 24 ? 54 : 68}" font-weight="900" fill="#ffffff" letter-spacing="1">${escapeXml(label)}</text>
+    <text x="512" y="752" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="25" font-weight="800" fill="#ffffff" opacity="0.78" letter-spacing="8">${subtitle}</text>
+    <rect x="126" y="126" width="772" height="772" rx="78" fill="none" stroke="#ffffff" stroke-width="3" opacity="0.35"/>
+  </svg>`
+  const image = svgDataUrl(svg)
+  return json({
+    provider: 'ripoai',
+    model: `${IMAGE_MODEL}+text-safe-logo-fallback`,
+    width,
+    height,
+    seed,
+    repaired: true,
+    fallback: true,
+    image,
+    base64: '',
+  })
 }
 
 function extractImageBase64(data) {
@@ -140,39 +211,46 @@ async function generateImage(request, auth) {
     seed,
   }
 
-  let upstream = await callGenai(IMAGE_MODEL, payload, auth)
-  if (!upstream.res.ok) {
-    return json(
-      { error: `NVIDIA image generation failed (${upstream.res.status}).`, detail: upstream.text.slice(0, 500) },
-      upstream.res.status,
-    )
-  }
+  const attempts = [
+    { ...payload, seed },
+    { ...payload, prompt: repairBlankPrompt(input.prompt), seed: seed + 1 },
+    {
+      ...payload,
+      prompt: `${repairBlankPrompt(input.prompt)}, exact readable sign text "${extractRequestedText(input.prompt)}", polished commercial logo, white background`.slice(
+        0,
+        1200,
+      ),
+      seed: seed + 2,
+    },
+  ]
 
-  let base64 = extractImageBase64(upstream.data)
+  let base64 = ''
   let repaired = false
-  if (isLikelyBlankImage(base64, width, height)) {
-    repaired = true
-    upstream = await callGenai(
-      IMAGE_MODEL,
-      { ...payload, prompt: repairBlankPrompt(input.prompt), seed: seed + 1 },
-      auth,
-    )
+  let finalSeed = seed
+  for (let i = 0; i < attempts.length; i++) {
+    const upstream = await callGenai(IMAGE_MODEL, attempts[i], auth)
     if (!upstream.res.ok) {
       return json(
-        { error: `NVIDIA image repair failed (${upstream.res.status}).`, detail: upstream.text.slice(0, 500) },
+        { error: `NVIDIA image generation failed (${upstream.res.status}).`, detail: upstream.text.slice(0, 500) },
         upstream.res.status,
       )
     }
     base64 = extractImageBase64(upstream.data)
+    repaired = i > 0
+    finalSeed = attempts[i].seed
+    if (!isLikelyBlankImage(base64, width, height)) break
   }
 
+  if (isLikelyBlankImage(base64, width, height) && isLogoOrTextPrompt(input.prompt)) {
+    return fallbackLogoImage(input.prompt, width, height, finalSeed + 1)
+  }
   if (!base64) return json({ error: 'NVIDIA returned no image.' }, 502)
   return json({
     provider: 'nvidia',
     model: IMAGE_MODEL,
     width,
     height,
-    seed: repaired ? seed + 1 : seed,
+    seed: finalSeed,
     repaired,
     image: `data:image/jpeg;base64,${base64}`,
     base64,
