@@ -42,10 +42,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build web app (root base, with AI proxy)
+      - name: Build web app (root base, with model providers)
         env:
           VITE_BASE: '/'
-          VITE_RIPOAI_PROXY_URL: ${{ vars.VITE_RIPOAI_PROXY_URL || secrets.VITE_RIPOAI_PROXY_URL || 'https://ripoai.netlify.app/.netlify/functions/ripoai-chat' }}
+          VITE_GROQ_API_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
+          VITE_OPENROUTER_API_KEY: ${{ secrets.VITE_OPENROUTER_API_KEY }}
+          VITE_NVIDIA_BASE: ${{ secrets.VITE_NVIDIA_BASE }}
+          VITE_NVIDIA_API_KEY: ${{ secrets.VITE_NVIDIA_API_KEY }}
+          VITE_RIPOAI_PROXY_URL: ${{ vars.VITE_RIPOAI_PROXY_URL || secrets.VITE_RIPOAI_PROXY_URL }}
         run: npm run build
 
       - name: Add & sync Android platform
