@@ -1,7 +1,7 @@
-// AskAI logo — an iOS-26 "Liquid Glass" mark: a glossy squircle of fluid light
-// with a soft inner spark. `variant="mark"` renders the floating glass blob
-// (for inline use next to the wordmark); `variant="icon"` renders the full
-// rounded app-icon tile. Both adapt to the active accent via CSS vars.
+// AskAI logo — an iOS-26 "Liquid Glass" orb. A vibrant, glossy gradient squircle
+// with a fluid light-blob highlight and a soft inner "spark" droplet. The brand
+// gradient is fixed (indigo → violet → cyan) so the mark stays colorful and
+// distinctive in every theme, with real depth (gloss, rim-light, inner shadow).
 export default function Logo({
   size = 32,
   glow = false,
@@ -11,9 +11,9 @@ export default function Logo({
   glow?: boolean
   variant?: 'mark' | 'icon'
 }) {
-  // A fluid, asymmetric "A"-spark path — the AskAI signature glyph.
-  const spark =
-    'M32 9 C35 22, 42 29, 55 32 C42 35, 35 42, 32 55 C29 42, 22 35, 9 32 C22 29, 29 22, 32 9 Z'
+  // Stable per-instance ids so multiple logos on one page don't clash.
+  const uid = Math.random().toString(36).slice(2, 8)
+  const g = (n: string) => `${n}-${uid}`
 
   return (
     <svg
@@ -22,67 +22,58 @@ export default function Logo({
       viewBox="0 0 64 64"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      style={glow ? { filter: 'drop-shadow(0 10px 26px rgb(var(--accent) / 0.5))' } : undefined}
+      style={glow ? { filter: 'drop-shadow(0 12px 28px rgba(124,92,255,0.55))' } : undefined}
     >
       <defs>
-        <linearGradient id="askai-grad" x1="6" y1="4" x2="58" y2="62" gradientUnits="userSpaceOnUse">
-          <stop stopColor="rgb(var(--accent))" />
-          <stop offset="1" stopColor="rgb(var(--accent) / 0.66)" />
+        {/* Vibrant brand gradient — fixed, theme-independent */}
+        <linearGradient id={g('grad')} x1="8" y1="4" x2="56" y2="60" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#6366f1" />
+          <stop offset="0.5" stopColor="#a855f7" />
+          <stop offset="1" stopColor="#22d3ee" />
         </linearGradient>
-        {/* Liquid-glass top highlight */}
-        <radialGradient id="askai-gloss" cx="0.32" cy="0.24" r="0.9">
-          <stop stopColor="#ffffff" stopOpacity="0.85" />
-          <stop offset="0.34" stopColor="#ffffff" stopOpacity="0.16" />
+        {/* Glossy top highlight */}
+        <radialGradient id={g('gloss')} cx="0.34" cy="0.22" r="0.85">
+          <stop stopColor="#ffffff" stopOpacity="0.9" />
+          <stop offset="0.4" stopColor="#ffffff" stopOpacity="0.18" />
           <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
         </radialGradient>
-        <linearGradient id="askai-sheen" x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#ffffff" stopOpacity="0.5" />
+        {/* Inner droplet gradient */}
+        <linearGradient id={g('drop')} x1="22" y1="18" x2="42" y2="46" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#ffffff" />
+          <stop offset="1" stopColor="#e8e2ff" />
+        </linearGradient>
+        <linearGradient id={g('rim')} x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#ffffff" stopOpacity="0.7" />
           <stop offset="0.5" stopColor="#ffffff" stopOpacity="0" />
         </linearGradient>
       </defs>
 
-      {variant === 'icon' ? (
-        <>
-          {/* Squircle tile */}
-          <rect x="3" y="3" width="58" height="58" rx="17" fill="url(#askai-grad)" />
-          <rect x="3" y="3" width="58" height="58" rx="17" fill="url(#askai-gloss)" />
-          <rect
-            x="3.75"
-            y="3.75"
-            width="56.5"
-            height="56.5"
-            rx="16.25"
-            fill="none"
-            stroke="#ffffff"
-            strokeOpacity="0.35"
-            strokeWidth="1.2"
-          />
-          <g transform="translate(11 11) scale(0.66)">
-            <path d={spark} fill="#fff" />
-          </g>
-        </>
-      ) : (
-        <>
-          {/* Floating liquid-glass blob */}
-          <rect x="4" y="4" width="56" height="56" rx="20" fill="url(#askai-grad)" />
-          <rect x="4" y="4" width="56" height="56" rx="20" fill="url(#askai-gloss)" />
-          <rect x="4" y="4" width="56" height="28" rx="14" fill="url(#askai-sheen)" />
-          <rect
-            x="4.6"
-            y="4.6"
-            width="54.8"
-            height="54.8"
-            rx="19.4"
-            fill="none"
-            stroke="#ffffff"
-            strokeOpacity="0.4"
-            strokeWidth="1.1"
-          />
-          <g transform="translate(11 11) scale(0.66)">
-            <path d={spark} fill="#fff" fillOpacity="0.95" />
-          </g>
-        </>
-      )}
+      {/* Squircle body */}
+      <rect x="3" y="3" width="58" height="58" rx={variant === 'icon' ? 17 : 19} fill={`url(#${g('grad')})`} />
+      {/* Gloss + rim light */}
+      <rect x="3" y="3" width="58" height="58" rx={variant === 'icon' ? 17 : 19} fill={`url(#${g('gloss')})`} />
+      <rect x="3" y="3" width="58" height="29" rx={variant === 'icon' ? 15 : 17} fill={`url(#${g('rim')})`} opacity="0.8" />
+      <rect
+        x="3.8"
+        y="3.8"
+        width="56.4"
+        height="56.4"
+        rx={variant === 'icon' ? 16.2 : 18.2}
+        fill="none"
+        stroke="#ffffff"
+        strokeOpacity="0.45"
+        strokeWidth="1.1"
+      />
+
+      {/* Liquid "A" droplet mark — an abstract fluid form, not a sparkle */}
+      <path
+        d="M32 17 C33 26 38 31 47 33 C39 34 34 38 32.6 45.5 C32.3 47 31.7 47 31.4 45.5 C30 38 25 34 17 33 C26 31 31 26 32 17 Z"
+        fill={`url(#${g('drop')})`}
+        opacity="0.96"
+      />
+      {/* Tiny accent bubble for extra "liquid" feel */}
+      <circle cx="43" cy="22" r="3.4" fill="#ffffff" opacity="0.9" />
+      <circle cx="43" cy="22" r="3.4" fill={`url(#${g('gloss')})`} />
     </svg>
   )
 }

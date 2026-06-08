@@ -25,7 +25,7 @@ import type { Attachment } from '../lib/db'
 import { banActive, todaysMessageCount, bumpMessageCount } from '../lib/admin'
 import { wantsImageGeneration } from '../lib/imagegen'
 import { wantsWebImageSearch } from '../lib/webImages'
-import { mentionedAgents, wantsTeamDispatch } from '../lib/agents'
+import { mentionedAgents } from '../lib/agents'
 import { dispatchTeam } from '../pages/TeamPage'
 
 const ALL_SUGGESTIONS = [
@@ -104,14 +104,17 @@ export default function ChatView() {
     setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 120)
   }
 
-  const opts = { model, webSearch, agent, image: imageMode, imageStyle }
+  // The dedicated Search model always runs live web search.
+  const searchModel = model === 'ripoai-search'
+  const opts = { model, webSearch: webSearch || searchModel, agent, image: imageMode, imageStyle }
 
   function handleSend(text: string, attachments: Attachment[]) {
     if (banned) return
-    // @mention an agent (and ask to dispatch the team) → hand off to the Team room.
+    // @mention any agent → hand off to the Team room (agents answer there, not
+    // in the main chat). The room decides if it's a quick reply or a real build.
     if (user) {
       const mentions = mentionedAgents(user.uid, text)
-      if (mentions.length && wantsTeamDispatch(text)) {
+      if (mentions.length) {
         dispatchTeam(text, mentions[0].id)
         navigate('/team')
         return

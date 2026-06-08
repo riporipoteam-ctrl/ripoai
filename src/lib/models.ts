@@ -11,6 +11,7 @@ export type ModelTier =
   | 'ripoai-3o-pro'
   | 'ripoai-4o-instant'
   | 'ripoai-4o-pro'
+  | 'ripoai-search'
 
 export interface RipoModel {
   id: ModelTier
@@ -146,6 +147,18 @@ export const MODELS: Record<ModelTier, RipoModel> = {
     maxTokens: 6000,
     topP: 1,
     badge: 'MAX',
+  },
+  'ripoai-search': {
+    id: 'ripoai-search',
+    name: 'AskAI Search',
+    tagline: 'Live answers from the web, with sources',
+    groqModel: 'llama-3.3-70b-versatile',
+    vision: false,
+    reasoning: false,
+    temperature: 0.6,
+    maxTokens: 3072,
+    topP: 0.95,
+    badge: 'LIVE',
   },
   auto: {
     id: 'auto',

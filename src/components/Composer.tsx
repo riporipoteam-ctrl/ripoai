@@ -28,6 +28,7 @@ import type { Attachment } from '../lib/db'
 import type { ModelTier } from '../lib/models'
 import { haptic } from '../lib/native'
 import { matchSkills } from '../lib/skills'
+import { loadAgents } from '../lib/agents'
 import { useStore } from '../store'
 
 interface Props {
@@ -78,6 +79,22 @@ export default function Composer({
   const slashSkills = slashQuery !== null && user ? matchSkills(user.uid, slashQuery).slice(0, 6) : []
   function pickSkill(slug: string) {
     setText(`/${slug} `)
+    haptic('select')
+    requestAnimationFrame(() => taRef.current?.focus())
+  }
+
+  // @mention agent picker: typing "@" (then letters) lists matching agents to
+  // insert without typing the full name.
+  const mentionMatch = text.match(/(^|\s)@([a-z0-9_-]*)$/i)
+  const mentionQuery = mentionMatch ? mentionMatch[2] : null
+  const agentMatches =
+    mentionQuery !== null && user
+      ? loadAgents(user.uid)
+          .filter((a) => a.name.toLowerCase().startsWith(mentionQuery.toLowerCase()))
+          .slice(0, 6)
+      : []
+  function pickAgent(name: string) {
+    setText((prev) => prev.replace(/@([a-z0-9_-]*)$/i, `@${name} `))
     haptic('select')
     requestAnimationFrame(() => taRef.current?.focus())
   }
@@ -256,6 +273,40 @@ export default function Composer({
           ))}
         </motion.div>
       )}
+
+      {/* @mention agent picker */}
+      <AnimatePresence>
+        {agentMatches.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            className="glass-strong mb-2 max-h-64 overflow-y-auto rounded-2xl p-1.5 shadow-xl"
+          >
+            <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-muted/70">Agents</div>
+            {agentMatches.map((a) => (
+              <button
+                key={a.id}
+                onClick={() => pickAgent(a.name)}
+                className="pressable flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left hover:bg-white/10"
+              >
+                <span
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-base"
+                  style={{ background: a.color + '2a', boxShadow: `0 0 0 1px ${a.color}55` }}
+                >
+                  {a.emoji}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold">
+                    {a.name} <span className="font-normal text-muted">{a.role}</span>
+                  </span>
+                  {a.personality && <span className="block truncate text-xs text-muted">{a.personality}</span>}
+                </span>
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Slash skill picker */}
       <AnimatePresence>

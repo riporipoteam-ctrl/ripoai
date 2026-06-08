@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
   push:
     tags: ['*-android']
-    branches: ['claude/ripoai-web-app-U0rvk']
+    branches: ['claude/askai-redesign-features-c73ka5', 'claude/ripoai-web-app-U0rvk']
     paths:
       - '.github/workflows/android.yml'
       - 'capacitor.config.ts'
@@ -67,20 +67,20 @@ jobs:
           ./gradlew assembleDebug --no-daemon
 
       - name: Rename APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk RipoAI.apk
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk AskAI.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: RipoAI-apk
-          path: RipoAI.apk
+          name: AskAI-apk
+          path: AskAI.apk
 
       - name: Publish to a Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: android-latest
-          name: RipoAI Android (latest)
-          files: RipoAI.apk
+          name: AskAI Android (latest)
+          files: AskAI.apk
           body: |
-            Latest RipoAI Android APK (debug build).
-            Install: download RipoAI.apk on your phone, allow "install from unknown sources", and open it.
+            Latest AskAI Android APK (debug build).
+            Install: download AskAI.apk on your phone, allow "install from unknown sources", and open it.

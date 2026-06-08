@@ -1,8 +1,8 @@
-name: Deploy RipoAI to GitHub Pages
+name: Deploy AskAI to GitHub Pages
 
 on:
   push:
-    branches: ['claude/ripoai-web-app-U0rvk', 'main']
+    branches: ['claude/askai-redesign-features-c73ka5', 'claude/ripoai-web-app-U0rvk', 'main']
   workflow_dispatch:
 
 permissions:
