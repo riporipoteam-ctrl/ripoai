@@ -104,7 +104,9 @@ export default function ChatView() {
     setAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 120)
   }
 
-  const opts = { model, webSearch, agent, image: imageMode, imageStyle }
+  // The dedicated Search model always runs live web search.
+  const searchModel = model === 'ripoai-search'
+  const opts = { model, webSearch: webSearch || searchModel, agent, image: imageMode, imageStyle }
 
   function handleSend(text: string, attachments: Attachment[]) {
     if (banned) return

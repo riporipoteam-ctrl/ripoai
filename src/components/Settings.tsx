@@ -20,7 +20,8 @@ import Modal from './ui/Modal'
 import Button from './ui/Button'
 import { MODEL_LIST } from '../lib/models'
 import { clearAllChats, clearMemories, deleteMemory } from '../lib/db'
-import { listVoices, getVoicePrefs, setVoicePrefs, speak, stopSpeaking, isSpeechSupported } from '../hooks/useSpeech'
+import { listVoices, getVoicePrefs, setVoicePrefs, isSpeechSupported } from '../hooks/useSpeech'
+import { speakHQ, stopVoice } from '../lib/voice'
 import { isGmailConnected, connectGmail, disconnectGmail } from '../lib/gmail'
 import { isCalendarConnected, connectCalendar, disconnectCalendar } from '../lib/calendar'
 import { Calendar as CalIcon, Cloud, Map as MapIcon, Bitcoin, Globe, Wand2 } from 'lucide-react'
@@ -405,11 +406,11 @@ export default function Settings() {
                   <div className="flex gap-2">
                     <Button
                       variant="glass"
-                      onClick={() => speak("Hi, I'm AskAI. This is how I sound — pick the voice you like best.")}
+                      onClick={() => speakHQ("Hi, I'm AskAI. This is how I sound — pick the voice you like best.")}
                     >
                       <Play size={15} /> Preview
                     </Button>
-                    <Button variant="ghost" onClick={stopSpeaking}>
+                    <Button variant="ghost" onClick={stopVoice}>
                       Stop
                     </Button>
                   </div>

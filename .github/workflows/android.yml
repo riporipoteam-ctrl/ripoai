@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
   push:
     tags: ['*-android']
-    branches: ['claude/ripoai-web-app-U0rvk']
+    branches: ['claude/askai-redesign-features-c73ka5', 'claude/ripoai-web-app-U0rvk']
     paths:
       - '.github/workflows/android.yml'
       - 'capacitor.config.ts'

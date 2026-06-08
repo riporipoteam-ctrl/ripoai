@@ -3,7 +3,7 @@ name: Build iOS App (Expo)
 on:
   workflow_dispatch:
   push:
-    branches: ['claude/ripoai-web-app-U0rvk']
+    branches: ['claude/askai-redesign-features-c73ka5', 'claude/ripoai-web-app-U0rvk']
     paths:
       - '.github/workflows/ios-expo.yml'
       - 'expo/**'

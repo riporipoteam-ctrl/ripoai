@@ -12,6 +12,7 @@
 // nvapi-... key. (Re-paste over the old version if you already had the chat-only one.)
 
 const CHAT = 'https://integrate.api.nvidia.com/v1/chat/completions'
+const TTS = 'https://integrate.api.nvidia.com/v1/audio/speech'
 const GENAI = 'https://ai.api.nvidia.com/v1/genai'
 const STATUS = 'https://api.nvcf.nvidia.com/v2/nvcf/exec/status'
 const OPENAI_IMAGE_BASES = ['https://ai.api.nvidia.com/v1', 'https://integrate.api.nvidia.com/v1']
@@ -441,6 +442,46 @@ async function editImage(request, auth) {
   )
 }
 
+// Text-to-speech. Attempts NVIDIA's OpenAI-compatible /v1/audio/speech route
+// (Magpie voices). Model/voice availability varies per account, so we try a few
+// and return audio bytes on success; the client falls back to on-device TTS if
+// none are enabled. Returns audio/mpeg streamed straight through with CORS.
+async function ttsVoice(request, auth) {
+  let input = {}
+  try {
+    input = await request.json()
+  } catch {
+    return json({ error: 'Invalid JSON body.' }, 400)
+  }
+  const text = String(input.text || input.input || '').replace(/\s+/g, ' ').trim().slice(0, 4000)
+  if (!text) return json({ error: 'Missing text.' }, 400)
+  const voice = input.voice || 'Magpie-Multilingual.EN-US.Aria'
+  const models = [input.model, 'magpie-tts-multilingual', 'magpie-tts-zeroshot'].filter(Boolean)
+  let last = null
+  for (const model of models) {
+    let res
+    try {
+      res = await fetch(TTS, {
+        method: 'POST',
+        headers: { ...auth, Accept: 'audio/mpeg' },
+        body: JSON.stringify({ model, input: text, voice, response_format: 'mp3' }),
+      })
+    } catch (e) {
+      last = { status: 502, detail: String(e).slice(0, 200) }
+      continue
+    }
+    const ct = res.headers.get('Content-Type') || ''
+    if (res.ok && /audio|mpeg|octet-stream/i.test(ct)) {
+      return new Response(res.body, {
+        status: 200,
+        headers: new Headers({ 'Content-Type': /audio/i.test(ct) ? ct : 'audio/mpeg', ...CORS }),
+      })
+    }
+    last = { status: res.status, detail: (await res.text().catch(() => '')).slice(0, 300) }
+  }
+  return json({ error: 'tts-unavailable', ...last }, 502)
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === 'OPTIONS') return new Response(null, { headers: CORS })
@@ -452,6 +493,10 @@ export default {
     const path = new URL(request.url).pathname
     const auth = { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }
     const body = await request.text()
+
+    if (path === '/voice/tts') {
+      return ttsVoice(new Request(request.url, { method: 'POST', headers: request.headers, body }), auth)
+    }
 
     if (path === '/image/generate') {
       return generateImage(new Request(request.url, { method: 'POST', headers: request.headers, body }), auth)

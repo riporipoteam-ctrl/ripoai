@@ -12,7 +12,8 @@ import WeatherCard from './WeatherCard'
 import SlidesCard from './SlidesCard'
 import Logo from './Logo'
 import { MODELS } from '../lib/models'
-import { speak, stopSpeaking, isSpeechSupported } from '../hooks/useSpeech'
+import { isSpeechSupported } from '../hooks/useSpeech'
+import { speakHQ, stopVoice } from '../lib/voice'
 import { parseSkillBlock, saveSkill } from '../lib/skills'
 import { useStore } from '../store'
 import type { StoredMessage } from '../lib/db'
@@ -263,11 +264,11 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
               <button
                 onClick={() => {
                   if (speaking) {
-                    stopSpeaking()
+                    stopVoice()
                     setSpeaking(false)
                   } else {
                     setSpeaking(true)
-                    speak(message.content, () => setSpeaking(false))
+                    speakHQ(message.content, () => setSpeaking(false))
                   }
                 }}
                 className="pressable flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted hover:bg-white/10 hover:text-ink"
