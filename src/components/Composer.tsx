@@ -18,6 +18,7 @@ import {
   Check,
   Camera,
   Wand2,
+  Users,
 } from 'lucide-react'
 import ModelSelector from './ModelSelector'
 import { useVoiceInput, hapticPattern } from '../hooks/useSpeech'
@@ -46,6 +47,7 @@ interface Props {
   placeholder?: string
   showModelSelector?: boolean
   onVoiceCall?: () => void
+  onTeam?: (text: string) => void
 }
 
 export default function Composer({
@@ -65,6 +67,7 @@ export default function Composer({
   placeholder = 'Message AskAI...',
   showModelSelector = true,
   onVoiceCall,
+  onTeam,
 }: Props) {
   const { user } = useStore()
   const [text, setText] = useState('')
@@ -413,6 +416,17 @@ export default function Composer({
                           </span>
                           Generate image
                           {imageMode && <Check size={18} className="ml-auto text-accent" />}
+                        </button>
+                      )}
+                      {onTeam && (
+                        <button
+                          onClick={() => { haptic('select'); onTeam(text); setPlusOpen(false) }}
+                          className="pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium hover:bg-white/10"
+                        >
+                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                            <Users size={18} />
+                          </span>
+                          Agent team
                         </button>
                       )}
 

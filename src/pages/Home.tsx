@@ -13,6 +13,7 @@ import { useStore } from '../store'
 const ProjectsView = lazy(() => import('../components/ProjectsView'))
 const PlusPage = lazy(() => import('./PlusPage'))
 const TasksPage = lazy(() => import('./TasksPage'))
+const TeamPage = lazy(() => import('./TeamPage'))
 
 export default function Home() {
   const { sidebarOpen, toggleSidebar } = useStore()
@@ -76,6 +77,14 @@ export default function Home() {
             element={
               <Suspense fallback={<div className="flex h-full items-center justify-center"><Spinner /></div>}>
                 <TasksPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/team"
+            element={
+              <Suspense fallback={<div className="flex h-full items-center justify-center"><Spinner /></div>}>
+                <TeamPage />
               </Suspense>
             }
           />

@@ -25,6 +25,8 @@ import { isGmailConnected, connectGmail, disconnectGmail } from '../lib/gmail'
 import { isCalendarConnected, connectCalendar, disconnectCalendar } from '../lib/calendar'
 import { Calendar as CalIcon, Cloud, Map as MapIcon, Bitcoin, Globe, Wand2 } from 'lucide-react'
 import { loadSkills, deleteSkill, installSkillFromUrl, type Skill } from '../lib/skills'
+import { loadAgents, upsertAgent, deleteAgent, newAgent, type Agent } from '../lib/agents'
+import { Bot, Plus as PlusIcon } from 'lucide-react'
 
 const ACCENTS = ['#10a37f', '#4ea8ff', '#36e0c0', '#7c5cff', '#ff6b6b', '#ffa94d', '#f06595']
 const TABS = [
@@ -33,6 +35,7 @@ const TABS = [
   { id: 'voice', label: 'Voice', icon: Volume2 },
   { id: 'memory', label: 'Memory', icon: Brain },
   { id: 'skills', label: 'Skills', icon: Wand2 },
+  { id: 'agents', label: 'Agents', icon: Bot },
   { id: 'data', label: 'Data controls', icon: Database },
   { id: 'about', label: 'About', icon: Info },
 ] as const
@@ -62,6 +65,8 @@ export default function Settings() {
   const [skillUrl, setSkillUrl] = useState('')
   const [skillBusy, setSkillBusy] = useState(false)
   const [skillErr, setSkillErr] = useState('')
+  const [agents, setAgents] = useState<Agent[]>([])
+  const [editing, setEditing] = useState<Agent | null>(null)
   const avatarInput = useRef<HTMLInputElement>(null)
   async function handleAvatar(file?: File) {
     if (!file) return
@@ -88,8 +93,23 @@ export default function Settings() {
     updateSettings({ avatar: dataUrl })
   }
   useEffect(() => {
-    if (settingsOpen && user) setSkills(loadSkills(user.uid))
+    if (settingsOpen && user) {
+      setSkills(loadSkills(user.uid))
+      setAgents(loadAgents(user.uid))
+    }
   }, [settingsOpen, tab, user])
+
+  function saveAgent(a: Agent) {
+    if (!user || !a.name.trim()) return
+    upsertAgent(user.uid, { ...a, name: a.name.trim() })
+    setAgents(loadAgents(user.uid))
+    setEditing(null)
+  }
+  function removeAgent(id: string) {
+    if (!user) return
+    deleteAgent(user.uid, id)
+    setAgents(loadAgents(user.uid))
+  }
   async function installSkill() {
     if (!user || !skillUrl.trim()) return
     setSkillBusy(true)
@@ -531,6 +551,104 @@ export default function Settings() {
                     </li>
                   ))}
                 </ul>
+              </div>
+            </>
+          )}
+
+          {tab === 'agents' && (
+            <>
+              <div className="mb-3 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold">Your agents</h3>
+                  <p className="text-xs text-muted">
+                    Give each agent a name and personality. Select or @mention them in chat, or dispatch the whole team.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setEditing(newAgent())}
+                  className="accent-gradient-bg pressable flex shrink-0 items-center gap-1 rounded-xl px-3 py-2 text-xs font-bold text-white"
+                >
+                  <PlusIcon size={14} /> New
+                </button>
+              </div>
+
+              {editing && (
+                <div className="mb-3 space-y-2 rounded-2xl border border-accent/30 bg-accent/5 p-3">
+                  <div className="flex gap-2">
+                    <input
+                      value={editing.emoji}
+                      onChange={(e) => setEditing({ ...editing, emoji: e.target.value.slice(0, 2) })}
+                      className="w-12 rounded-xl border border-white/15 bg-white/5 px-2 py-2 text-center text-lg outline-none"
+                      title="Emoji"
+                    />
+                    <input
+                      value={editing.name}
+                      onChange={(e) => setEditing({ ...editing, name: e.target.value.replace(/\s+/g, '') })}
+                      placeholder="Name (e.g. Bob)"
+                      className="flex-1 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm outline-none"
+                    />
+                    <input
+                      type="color"
+                      value={editing.color}
+                      onChange={(e) => setEditing({ ...editing, color: e.target.value })}
+                      className="h-10 w-10 shrink-0 cursor-pointer rounded-xl border border-white/15 bg-transparent"
+                      title="Color"
+                    />
+                  </div>
+                  <input
+                    value={editing.role}
+                    onChange={(e) => setEditing({ ...editing, role: e.target.value })}
+                    placeholder="Role (e.g. Engineer, Designer, Team Lead)"
+                    className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm outline-none"
+                  />
+                  <textarea
+                    value={editing.personality}
+                    onChange={(e) => setEditing({ ...editing, personality: e.target.value })}
+                    placeholder="Personality & instructions — how should this agent think, talk and work?"
+                    rows={3}
+                    className="w-full resize-none rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm outline-none"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => saveAgent(editing)}
+                      disabled={!editing.name.trim()}
+                      className="accent-gradient-bg pressable flex-1 rounded-xl px-3 py-2 text-sm font-bold text-white disabled:opacity-40"
+                    >
+                      Save agent
+                    </button>
+                    <button
+                      onClick={() => setEditing(null)}
+                      className="pressable rounded-xl border border-white/15 px-3 py-2 text-sm font-semibold"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                {agents.map((a) => (
+                  <div key={a.id} className="flex items-center gap-3 rounded-2xl border border-white/10 p-3">
+                    <span
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg"
+                      style={{ background: a.color + '2a', boxShadow: `0 0 0 1px ${a.color}55` }}
+                    >
+                      {a.emoji}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-semibold">
+                        {a.name} <span className="text-xs font-normal text-muted">{a.role}</span>
+                      </div>
+                      <div className="truncate text-xs text-muted">{a.personality}</div>
+                    </div>
+                    <button onClick={() => setEditing(a)} className="pressable rounded-lg px-2 py-1 text-xs font-semibold text-accent hover:bg-white/10">
+                      Edit
+                    </button>
+                    <button onClick={() => removeAgent(a.id)} className="pressable rounded-lg p-1 text-muted hover:bg-white/10 hover:text-red-400">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
               </div>
             </>
           )}

@@ -20,6 +20,7 @@ import {
   Sparkles,
   Coins,
   ListChecks,
+  Users,
 } from 'lucide-react'
 import { signOut } from 'firebase/auth'
 import BookmarksView from './BookmarksView'
@@ -189,6 +190,15 @@ export default function Sidebar() {
                     <Coins size={12} /> {plus?.coins ?? 0}
                   </span>
                 )}
+              </button>
+              <button
+                onClick={() => {
+                  navigate('/team')
+                  if (isMobile) setSidebar(false)
+                }}
+                className="pressable flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-sm font-medium text-muted transition hover:bg-white/10 hover:text-ink"
+              >
+                <Users size={16} className="text-accent" /> Agent team
               </button>
               <button
                 onClick={() => {
