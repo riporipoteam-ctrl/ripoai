@@ -54,21 +54,12 @@
   pointer-events: none;
 }
 
-/* Wordmark — vibrant AskAI brand gradient (indigo → violet → cyan), animated. */
+/* Wordmark + accent surfaces follow the theme accent (ChatGPT = mono, Claude = warm) */
 .brand-gradient {
-  background: linear-gradient(110deg, #6366f1, #a855f7 45%, #22d3ee);
-  background-size: 200% auto;
+  background: linear-gradient(120deg, rgb(var(--accent)), rgb(var(--accent) / 0.7));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
-  animation: brand-shine 6s ease-in-out infinite;
-}
-@keyframes brand-shine {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .brand-gradient { animation: none; }
 }
 
 .accent-gradient-bg {
