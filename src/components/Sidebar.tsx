@@ -17,11 +17,16 @@ import {
   Download,
   Bookmark,
   ShieldCheck,
+  Sparkles,
+  Coins,
+  ListChecks,
 } from 'lucide-react'
 import { signOut } from 'firebase/auth'
 import BookmarksView from './BookmarksView'
 import AdminPanel from './AdminPanel'
 import { isAdmin } from '../lib/admin'
+import { usePlus } from '../hooks/usePlus'
+import { effectivePlan } from '../lib/plus'
 import { auth } from '../firebase'
 import { useStore } from '../store'
 import Avatar from './ui/Avatar'
@@ -66,6 +71,8 @@ export default function Sidebar() {
   const [menuFor, setMenuFor] = useState<string | null>(null)
   const [renaming, setRenaming] = useState<string | null>(null)
   const [renameVal, setRenameVal] = useState('')
+  const { state: plus } = usePlus()
+  const isPlus = plus ? effectivePlan(plus) === 'plus' : false
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -84,6 +91,11 @@ export default function Sidebar() {
     if (!name) return
     const p = newReactProject(name)
     await saveProject(user.uid, p)
+    try {
+      localStorage.setItem(`askai:did-project:${new Date().toISOString().slice(0, 10)}`, '1')
+    } catch {
+      /* ignore */
+    }
     navigate(`/project/${p.id}`)
   }
 
@@ -158,6 +170,37 @@ export default function Sidebar() {
                 className="pressable flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-sm font-medium text-muted transition hover:bg-white/10 hover:text-ink"
               >
                 <Bookmark size={16} className="text-accent" /> Saved messages
+              </button>
+              <button
+                onClick={() => {
+                  navigate('/plus')
+                  if (isMobile) setSidebar(false)
+                }}
+                className="pressable flex w-full items-center gap-2 rounded-2xl border border-accent/30 bg-accent/10 px-3 py-2 text-sm font-semibold transition hover:bg-accent/15"
+              >
+                <Sparkles size={16} className="text-accent" />
+                <span>AskAI<span className="brand-gradient">+</span></span>
+                {isPlus ? (
+                  <span className="ml-auto rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent">
+                    Active
+                  </span>
+                ) : (
+                  <span className="ml-auto flex items-center gap-1 text-xs font-bold text-amber-400">
+                    <Coins size={12} /> {plus?.coins ?? 0}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => {
+                  navigate('/tasks')
+                  if (isMobile) setSidebar(false)
+                }}
+                className="pressable flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-sm font-medium text-muted transition hover:bg-white/10 hover:text-ink"
+              >
+                <ListChecks size={16} className="text-accent" /> Daily tasks
+                {plus && plus.tasksDone.length < 5 && (
+                  <span className="ml-auto h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]" title="Tasks available" />
+                )}
               </button>
             </div>
 

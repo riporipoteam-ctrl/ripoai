@@ -8,6 +8,7 @@ import { wantsCurrency, convertCurrency } from '../lib/currency'
 import { wantsDefine, getDefinition, wantsWiki, getWiki, wantsUnits, convertUnits } from '../lib/tools'
 import { streamPuter } from '../lib/puter'
 import { MAX_IMAGES_PER_MESSAGE } from '../lib/files'
+import { earnFromChat, tryImageGen } from '../lib/plus'
 import { wantsSlides, generateDeck } from '../lib/slides'
 import { getModel, resolveAutoModel, type ModelTier } from '../lib/models'
 import { buildSystemPrompt, AGENT_SYSTEM, WEB3D_INSTRUCTIONS, wantsWebsite, needsDeepThinking } from '../lib/prompt'
@@ -258,6 +259,28 @@ export function useChat(chatId: string | undefined) {
       // Image generation / editing mode.
       if (opts.image) {
         const prompt = (lastUser?.content ?? '').trim()
+        // Enforce the per-plan daily image-generation cap.
+        if (!tryImageGen(user.uid)) {
+          const assistantId = uid4()
+          let capped: StoredMessage[] = []
+          setMessages((m) => {
+            capped = [
+              ...m,
+              {
+                id: assistantId,
+                role: 'assistant',
+                content:
+                  "You've reached today's image-generation limit. Upgrade to **AskAI+** for more images per day, or come back tomorrow.",
+                model: opts.model,
+                createdAt: Date.now(),
+              },
+            ]
+            return capped
+          })
+          setStreaming(false)
+          await persist(capped, id, opts.model, opts.projectId)
+          return
+        }
         const editBase = (lastUser?.attachments ?? []).find((a) => a.kind === 'image' && a.url)?.url
         const assistantId = uid4()
         setMessages((m) => [
@@ -387,6 +410,13 @@ export function useChat(chatId: string | undefined) {
         (opts.webSearch ||
           (!opts.webSearch && shouldAutoSearch(history[history.length - 1]?.content ?? '')))
       const useCompound = !hasImages && wantsSearch
+      if (useCompound) {
+        try {
+          localStorage.setItem(`askai:did-search:${new Date().toISOString().slice(0, 10)}`, '1')
+        } catch {
+          /* ignore */
+        }
+      }
 
       // 3o models run on OpenRouter (free), with automatic Groq fallback on
       // rate-limit/slow/error. Not used for vision or web-search turns.
@@ -933,6 +963,12 @@ export function useChat(chatId: string | undefined) {
     async (text: string, attachments: Attachment[], opts: SendOptions) => {
       if (!user || (!text.trim() && attachments.length === 0) || streaming) return
       modelRef.current = opts.model
+      // Earn AskAI coins for chatting (daily-capped).
+      try {
+        earnFromChat(user.uid)
+      } catch {
+        /* economy is best-effort */
+      }
 
       let id = chatId
       if (!id) {
