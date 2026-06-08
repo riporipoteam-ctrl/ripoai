@@ -1,7 +1,7 @@
-// RipoAI logo — a clean, premium "spark" mark in the warm brand gradient.
-// `variant="mark"` renders just the gradient sparkle (for inline use next to the
-// wordmark); `variant="icon"` renders the rounded gradient tile with a white
-// sparkle (app-icon / standalone use).
+// AskAI logo — an iOS-26 "Liquid Glass" mark: a glossy squircle of fluid light
+// with a soft inner spark. `variant="mark"` renders the floating glass blob
+// (for inline use next to the wordmark); `variant="icon"` renders the full
+// rounded app-icon tile. Both adapt to the active accent via CSS vars.
 export default function Logo({
   size = 32,
   glow = false,
@@ -11,10 +11,9 @@ export default function Logo({
   glow?: boolean
   variant?: 'mark' | 'icon'
 }) {
-  const sparkle =
-    'M32 7 C34.5 23, 41 29.5, 57 32 C41 34.5, 34.5 41, 32 57 C29.5 41, 23 34.5, 7 32 C23 29.5, 29.5 23, 32 7 Z'
-  const mini =
-    'M48 11 C49 16.5, 51.5 19, 57 20 C51.5 21, 49 23.5, 48 29 C47 23.5, 44.5 21, 39 20 C44.5 19, 47 16.5, 48 11 Z'
+  // A fluid, asymmetric "A"-spark path — the AskAI signature glyph.
+  const spark =
+    'M32 9 C35 22, 42 29, 55 32 C42 35, 35 42, 32 55 C29 42, 22 35, 9 32 C22 29, 29 22, 32 9 Z'
 
   return (
     <svg
@@ -23,25 +22,65 @@ export default function Logo({
       viewBox="0 0 64 64"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      style={glow ? { filter: 'drop-shadow(0 8px 20px rgba(217,119,87,0.45))' } : undefined}
+      style={glow ? { filter: 'drop-shadow(0 10px 26px rgb(var(--accent) / 0.5))' } : undefined}
     >
       <defs>
-        <linearGradient id="ripo-grad" x1="4" y1="4" x2="60" y2="60" gradientUnits="userSpaceOnUse">
+        <linearGradient id="askai-grad" x1="6" y1="4" x2="58" y2="62" gradientUnits="userSpaceOnUse">
           <stop stopColor="rgb(var(--accent))" />
-          <stop offset="1" stopColor="rgb(var(--accent) / 0.72)" />
+          <stop offset="1" stopColor="rgb(var(--accent) / 0.66)" />
+        </linearGradient>
+        {/* Liquid-glass top highlight */}
+        <radialGradient id="askai-gloss" cx="0.32" cy="0.24" r="0.9">
+          <stop stopColor="#ffffff" stopOpacity="0.85" />
+          <stop offset="0.34" stopColor="#ffffff" stopOpacity="0.16" />
+          <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+        </radialGradient>
+        <linearGradient id="askai-sheen" x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#ffffff" stopOpacity="0.5" />
+          <stop offset="0.5" stopColor="#ffffff" stopOpacity="0" />
         </linearGradient>
       </defs>
+
       {variant === 'icon' ? (
         <>
-          <rect x="4" y="4" width="56" height="56" rx="16" fill="url(#ripo-grad)" />
+          {/* Squircle tile */}
+          <rect x="3" y="3" width="58" height="58" rx="17" fill="url(#askai-grad)" />
+          <rect x="3" y="3" width="58" height="58" rx="17" fill="url(#askai-gloss)" />
+          <rect
+            x="3.75"
+            y="3.75"
+            width="56.5"
+            height="56.5"
+            rx="16.25"
+            fill="none"
+            stroke="#ffffff"
+            strokeOpacity="0.35"
+            strokeWidth="1.2"
+          />
           <g transform="translate(11 11) scale(0.66)">
-            <path d={sparkle} fill="#fff" />
+            <path d={spark} fill="#fff" />
           </g>
         </>
       ) : (
         <>
-          <path d={sparkle} fill="url(#ripo-grad)" />
-          <path d={mini} fill="url(#ripo-grad)" opacity="0.85" />
+          {/* Floating liquid-glass blob */}
+          <rect x="4" y="4" width="56" height="56" rx="20" fill="url(#askai-grad)" />
+          <rect x="4" y="4" width="56" height="56" rx="20" fill="url(#askai-gloss)" />
+          <rect x="4" y="4" width="56" height="28" rx="14" fill="url(#askai-sheen)" />
+          <rect
+            x="4.6"
+            y="4.6"
+            width="54.8"
+            height="54.8"
+            rx="19.4"
+            fill="none"
+            stroke="#ffffff"
+            strokeOpacity="0.4"
+            strokeWidth="1.1"
+          />
+          <g transform="translate(11 11) scale(0.66)">
+            <path d={spark} fill="#fff" fillOpacity="0.95" />
+          </g>
         </>
       )}
     </svg>

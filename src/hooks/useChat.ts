@@ -7,6 +7,7 @@ import { wantsWeather, getWeather } from '../lib/weather'
 import { wantsCurrency, convertCurrency } from '../lib/currency'
 import { wantsDefine, getDefinition, wantsWiki, getWiki, wantsUnits, convertUnits } from '../lib/tools'
 import { streamPuter } from '../lib/puter'
+import { MAX_IMAGES_PER_MESSAGE } from '../lib/files'
 import { wantsSlides, generateDeck } from '../lib/slides'
 import { getModel, resolveAutoModel, type ModelTier } from '../lib/models'
 import { buildSystemPrompt, AGENT_SYSTEM, WEB3D_INSTRUCTIONS, wantsWebsite, needsDeepThinking } from '../lib/prompt'
@@ -71,8 +72,15 @@ function toGroqMessages(
           .join('\n\n')
     }
     if (m.role === 'user' && visionCapable && images.length) {
-      const parts: ContentPart[] = [{ type: 'text', text }]
-      for (const img of images) parts.push({ type: 'image_url', image_url: { url: img.url! } })
+      // Cap images per turn — vision models get confused / time out when handed
+      // too many at once. Keep the first MAX, note any extras in the text.
+      const shown = images.slice(0, MAX_IMAGES_PER_MESSAGE)
+      const extra = images.length - shown.length
+      let promptText = text
+      if (extra > 0)
+        promptText += `\n\n[${images.length} images attached; analyzing the first ${shown.length}. Ask about specific images if needed.]`
+      const parts: ContentPart[] = [{ type: 'text', text: promptText }]
+      for (const img of shown) parts.push({ type: 'image_url', image_url: { url: img.url! } })
       return { role: 'user', content: parts }
     }
     if (m.role === 'user' && images.length && !visionCapable) {
@@ -738,7 +746,7 @@ export function useChat(chatId: string | undefined) {
           usedAttempt &&
           usedAttempt.provider !== 'puter' &&
           finalContent.trim() &&
-          contRounds < 6 &&
+          contRounds < 12 &&
           !ac.signal.aborted
         ) {
           contRounds++

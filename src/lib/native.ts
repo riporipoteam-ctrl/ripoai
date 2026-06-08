@@ -2,7 +2,7 @@
 //
 // On the web this is almost entirely inert — every call is guarded by
 // `isNative` so the browser build behaves exactly as before. Inside the
-// Android/iOS shell it wires up the things that make RipoAI feel like a real
+// Android/iOS shell it wires up the things that make AskAI feel like a real
 // app instead of a web page: an overlaid translucent status bar, keyboard
 // resize handling, hardware back-button navigation, a splash hand-off, and
 // tactile haptics. A `.native` class is added to <html> so CSS can switch on

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Copy, Check, Sparkles } from 'lucide-react'
 
 // A floating toolbar that appears when you select text inside an AI answer:
-// Copy, or "Ask RipoAI" (drops the selection into the composer to ask about it).
+// Copy, or "Ask AskAI" (drops the selection into the composer to ask about it).
 export default function SelectionToolbar() {
   const [state, setState] = useState<{ x: number; y: number; text: string } | null>(null)
   const [copied, setCopied] = useState(false)
@@ -66,7 +66,7 @@ export default function SelectionToolbar() {
             onClick={ask}
             className="pressable flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-sm font-semibold text-accent hover:bg-white/10"
           >
-            <Sparkles size={15} /> Ask RipoAI
+            <Sparkles size={15} /> Ask AskAI
           </button>
           <div className="h-5 w-px bg-white/15" />
           <button

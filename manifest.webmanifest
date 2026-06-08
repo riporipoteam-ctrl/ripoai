@@ -1,6 +1,6 @@
 {
-  "name": "RipoAI",
-  "short_name": "RipoAI",
+  "name": "AskAI",
+  "short_name": "AskAI",
   "description": "Your intelligent AI workspace for chat, research and building.",
   "start_url": "./",
   "scope": "./",

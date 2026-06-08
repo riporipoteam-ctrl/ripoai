@@ -4,12 +4,12 @@ import { MODELS } from './models'
 // Render a conversation to Markdown and offer download / clipboard / share.
 
 export function chatToMarkdown(title: string, messages: StoredMessage[]): string {
-  const lines = [`# ${title}`, '', `_Exported from RipoAI · ${new Date().toLocaleString()}_`, '']
+  const lines = [`# ${title}`, '', `_Exported from AskAI · ${new Date().toLocaleString()}_`, '']
   for (const m of messages) {
     if (m.role === 'user') {
       lines.push(`**You:**`, '', m.content, '')
     } else {
-      const name = m.model ? MODELS[m.model]?.name ?? 'RipoAI' : 'RipoAI'
+      const name = m.model ? MODELS[m.model]?.name ?? 'AskAI' : 'AskAI'
       lines.push(`**${name}:**`, '', m.content, '')
     }
   }

@@ -1,4 +1,4 @@
-// RipoAI Skills — named instruction packs the AI can load and follow, à la
+// AskAI Skills — named instruction packs the AI can load and follow, à la
 // Claude's skills. A skill is just a prompt/instruction set with a slash trigger.
 // Users can create them (via the built-in "Skill Creator") or install one from a
 // public URL (e.g. a GitHub raw markdown file). Active skills get injected into
@@ -22,10 +22,10 @@ export const SKILL_CREATOR: Skill = {
   id: 'builtin-skill-creator',
   name: 'Skill Creator',
   slug: 'skill-creator',
-  description: 'Helps you design a new RipoAI skill, ready to save.',
+  description: 'Helps you design a new AskAI skill, ready to save.',
   source: 'builtin',
   createdAt: 0,
-  content: `You are the RipoAI Skill Creator. Help the user design a new "skill" — a reusable instruction pack RipoAI can follow.
+  content: `You are the AskAI Skill Creator. Help the user design a new "skill" — a reusable instruction pack AskAI can follow.
 Ask 1-2 quick questions if the goal is unclear, then output the finished skill in EXACTLY this format inside a fenced \`\`\`skill code block:
 \`\`\`skill
 name: <Short Name>

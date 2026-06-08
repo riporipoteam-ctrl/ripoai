@@ -2,7 +2,7 @@ import type { CapacitorConfig } from '@capacitor/cli'
 
 const config: CapacitorConfig = {
   appId: 'io.github.riporipoteam.ripoai',
-  appName: 'RipoAI',
+  appName: 'AskAI',
   webDir: 'dist',
   backgroundColor: '#1e1d1b',
   // Load the LIVE deployed web app instead of the bundled copy, so every push

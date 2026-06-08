@@ -8,9 +8,9 @@ import { MODEL_LIST, type ModelTier, type RipoModel } from '../lib/models'
 // default — tap a category to reveal its (older) models.
 const FEATURED: ModelTier[] = ['auto', 'ripoai-4o-pro', 'ripoai-4o-instant']
 const GROUPS: { label: string; ids: ModelTier[] }[] = [
-  { label: 'RipoAI 3o', ids: ['ripoai-3o-pro', 'ripoai-3o-instant'] },
-  { label: 'RipoAI 2o', ids: ['ripoai-2o-pro', 'ripoai-2o-instant'] },
-  { label: 'RipoAI 1o', ids: ['ripoai-1o-pro', 'ripoai-1o-instant'] },
+  { label: 'AskAI 3o', ids: ['ripoai-3o-pro', 'ripoai-3o-instant'] },
+  { label: 'AskAI 2o', ids: ['ripoai-2o-pro', 'ripoai-2o-instant'] },
+  { label: 'AskAI 1o', ids: ['ripoai-1o-pro', 'ripoai-1o-instant'] },
 ]
 
 function modelIcon(m: RipoModel) {
@@ -113,7 +113,7 @@ export default function ModelSelector({
         className="pressable flex items-center gap-1.5 rounded-2xl px-2.5 py-2 text-sm font-semibold hover:bg-white/10"
       >
         <Sparkles size={16} className="shrink-0 text-accent" />
-        <span className="whitespace-nowrap">{current.name.replace('RipoAI ', '')}</span>
+        <span className="whitespace-nowrap">{current.name.replace('AskAI ', '')}</span>
         <ChevronDown size={15} className={`shrink-0 text-muted transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 

@@ -67,7 +67,7 @@ export default function InstallHint() {
               <Logo size={40} />
             </div>
             <div className="text-sm leading-snug">
-              <div className="font-semibold">Install RipoAI</div>
+              <div className="font-semibold">Install AskAI</div>
               <div className="text-[rgb(var(--muted))]">
                 Tap <Share size={13} className="-mt-0.5 inline" /> then{' '}
                 <span className="whitespace-nowrap font-medium text-[rgb(var(--ink))]">

@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import Logo from './Logo'
 
 const FEATURES = [
-  'Chat with the latest RipoAI models',
+  'Chat with the latest AskAI models',
   'Live in-browser coding projects',
   'Web search & autonomous agent',
   'Memory that learns about you',
@@ -26,7 +26,7 @@ export default function AuthShell({
           <div className="accent-gradient-bg absolute inset-0 opacity-90" />
           <div className="relative z-10">
             <div className="mb-3"><Logo size={52} glow /></div>
-            <div className="text-4xl font-extrabold tracking-tight text-white">RipoAI</div>
+            <div className="text-4xl font-extrabold tracking-tight text-white">AskAI</div>
             <p className="mt-3 max-w-xs text-white/80">
               Your intelligent workspace for chatting, researching and building anything.
             </p>
@@ -61,7 +61,7 @@ export default function AuthShell({
         >
           <div className="mb-6 flex items-center gap-2 md:hidden">
             <Logo size={32} />
-            <div className="text-3xl font-extrabold brand-gradient">RipoAI</div>
+            <div className="text-3xl font-extrabold brand-gradient">AskAI</div>
           </div>
           <h1 className="text-2xl font-bold">{title}</h1>
           <p className="mt-1 text-sm text-muted">{subtitle}</p>

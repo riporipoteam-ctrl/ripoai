@@ -254,7 +254,7 @@ export async function streamChat(opts: StreamOptions): Promise<StreamResult> {
   if (apiKey) headers.Authorization = `Bearer ${apiKey}`
   if (isOR) {
     headers['HTTP-Referer'] = 'https://riporipoteam-ctrl.github.io/ripoai/'
-    headers['X-Title'] = 'RipoAI'
+    headers['X-Title'] = 'AskAI'
   }
 
   const doFetch = (b: Record<string, unknown>) =>

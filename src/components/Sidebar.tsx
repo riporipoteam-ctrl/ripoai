@@ -123,7 +123,7 @@ export default function Sidebar() {
             <div className="flex items-center justify-between p-3">
               <div className="flex items-center gap-2 px-1">
                 <Logo size={26} />
-                <span className="text-xl font-extrabold brand-gradient">RipoAI</span>
+                <span className="text-xl font-extrabold brand-gradient">AskAI</span>
               </div>
               <button
                 onClick={() => setSidebar(false)}
@@ -300,7 +300,7 @@ export default function Sidebar() {
                                       const full = await loadChat(user.uid, c.id)
                                       if (!full) return
                                       const md = `# ${full.title}\n\n${full.messages
-                                        .map((m) => `**${m.role === 'user' ? 'You' : 'RipoAI'}:** ${m.content}`)
+                                        .map((m) => `**${m.role === 'user' ? 'You' : 'AskAI'}:** ${m.content}`)
                                         .join('\n\n')}`
                                       navigator.clipboard.writeText(md)
                                     }}

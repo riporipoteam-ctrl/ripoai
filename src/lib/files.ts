@@ -3,6 +3,10 @@ import type { Attachment } from './db'
 const MAX_IMAGE = 8 * 1024 * 1024
 const MAX_TEXT = 4 * 1024 * 1024
 
+/** Vision models get confused/overloaded past a handful of images, so we cap
+ * the number of images attached to (and sent for) a single message. */
+export const MAX_IMAGES_PER_MESSAGE = 5
+
 function readAsDataURL(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader()

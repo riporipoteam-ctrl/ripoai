@@ -279,7 +279,7 @@ export default function Settings() {
                 <input
                   value={settings.displayName ?? ''}
                   onChange={(e) => updateSettings({ displayName: e.target.value })}
-                  placeholder="What should RipoAI call you?"
+                  placeholder="What should AskAI call you?"
                   className="w-full rounded-2xl border border-white/15 bg-white/5 px-3 py-2.5 outline-none focus:border-accent"
                 />
               </Field>
@@ -318,16 +318,16 @@ export default function Settings() {
                   ]}
                 />
               </Field>
-              <Field label="What should RipoAI know about you?">
+              <Field label="What should AskAI know about you?">
                 <textarea
                   value={settings.aboutYou}
                   onChange={(e) => updateSettings({ aboutYou: e.target.value })}
                   rows={4}
-                  placeholder="Your role, interests, the tools you use, anything that helps RipoAI tailor answers."
+                  placeholder="Your role, interests, the tools you use, anything that helps AskAI tailor answers."
                   className="w-full resize-none rounded-2xl border border-white/15 bg-white/5 px-3 py-2.5 outline-none focus:border-accent"
                 />
               </Field>
-              <Field label="How should RipoAI respond?">
+              <Field label="How should AskAI respond?">
                 <textarea
                   value={settings.responseStyle}
                   onChange={(e) => updateSettings({ responseStyle: e.target.value })}
@@ -385,7 +385,7 @@ export default function Settings() {
                   <div className="flex gap-2">
                     <Button
                       variant="glass"
-                      onClick={() => speak("Hi, I'm RipoAI. This is how I sound — pick the voice you like best.")}
+                      onClick={() => speak("Hi, I'm AskAI. This is how I sound — pick the voice you like best.")}
                     >
                       <Play size={15} /> Preview
                     </Button>
@@ -409,7 +409,7 @@ export default function Settings() {
               <label className="flex items-center justify-between rounded-2xl border border-white/10 px-4 py-3">
                 <div>
                   <div className="font-semibold">Memory</div>
-                  <div className="text-xs text-muted">Let RipoAI remember details across chats.</div>
+                  <div className="text-xs text-muted">Let AskAI remember details across chats.</div>
                 </div>
                 <Toggle
                   on={settings.memoryEnabled}
@@ -436,7 +436,7 @@ export default function Settings() {
                 </div>
                 {memories.length === 0 ? (
                   <p className="rounded-2xl border border-white/10 px-4 py-6 text-center text-sm text-muted">
-                    Nothing remembered yet. As you chat, RipoAI will save useful details here.
+                    Nothing remembered yet. As you chat, AskAI will save useful details here.
                   </p>
                 ) : (
                   <ul className="space-y-2">
@@ -470,7 +470,7 @@ export default function Settings() {
               <div>
                 <div className="font-semibold">Skills</div>
                 <p className="mt-1 text-xs text-muted">
-                  Skills are instruction packs RipoAI can follow. Type <code className="rounded bg-white/10 px-1">/</code> in
+                  Skills are instruction packs AskAI can follow. Type <code className="rounded bg-white/10 px-1">/</code> in
                   chat to use one, try <code className="rounded bg-white/10 px-1">/skill-creator</code> to build your own,
                   or in chat say <code className="rounded bg-white/10 px-1">install this skill: &lt;url&gt;</code>.
                 </p>
@@ -585,13 +585,13 @@ export default function Settings() {
 
           {tab === 'about' && (
             <div className="space-y-3 text-sm leading-relaxed text-muted">
-              <div className="text-2xl font-extrabold brand-gradient">RipoAI</div>
+              <div className="text-2xl font-extrabold brand-gradient">AskAI</div>
               <p>
-                RipoAI is your intelligent workspace for chatting, researching the live web, and
+                AskAI is your intelligent workspace for chatting, researching the live web, and
                 building apps with a real in-browser preview.
               </p>
               <p>
-                Models: RipoAI 1o instant & 2o instant for speed, 1o Pro & 2o Pro for the deepest
+                Models: AskAI 1o instant & 2o instant for speed, 1o Pro & 2o Pro for the deepest
                 reasoning and best designs. Web Search and Agent modes browse the live web.
               </p>
               <p className="text-xs">

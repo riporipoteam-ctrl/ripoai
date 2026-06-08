@@ -123,8 +123,8 @@ export default function VoiceCall({
     // Greet immediately — this runs inside the tap gesture, which unlocks
     // speech synthesis on iOS, and gives audible confirmation the call started.
     const greeting = sttSupported
-      ? `Hey, I'm RipoAI. I'm listening — what's up?`
-      : `Hey, I'm RipoAI. Heads up: this browser can't hear you — open RipoAI in Chrome to talk. I can still read out loud.`
+      ? `Hey, I'm AskAI. I'm listening — what's up?`
+      : `Hey, I'm AskAI. Heads up: this browser can't hear you — open AskAI in Chrome to talk. I can still read out loud.`
     setPhase('speaking')
     setCaption(greeting)
     if (window.speechSynthesis) {
@@ -137,7 +137,7 @@ export default function VoiceCall({
       u.onend = () => {
         if (!activeRef.current) return
         if (sttSupported) startListening()
-        else setCaption("This browser doesn't support voice input. Open RipoAI in Chrome to talk to me.")
+        else setCaption("This browser doesn't support voice input. Open AskAI in Chrome to talk to me.")
       }
       u.onerror = () => {
         if (activeRef.current && sttSupported) startListening()
@@ -283,7 +283,7 @@ export default function VoiceCall({
           exit={{ opacity: 0 }}
         >
           <div className="text-center">
-            <div className="text-lg font-bold brand-gradient">RipoAI Voice</div>
+            <div className="text-lg font-bold brand-gradient">AskAI Voice</div>
             <div className="mt-1 text-sm text-muted capitalize">{phase}</div>
           </div>
 
@@ -342,7 +342,7 @@ export default function VoiceCall({
                 <input
                   value={manual}
                   onChange={(e) => setManual(e.target.value)}
-                  placeholder="Type — RipoAI will reply out loud"
+                  placeholder="Type — AskAI will reply out loud"
                   className="flex-1 bg-transparent px-3 py-2 text-sm outline-none placeholder:text-muted"
                 />
                 <button type="submit" className="accent-gradient-bg rounded-xl px-3 py-2 text-sm font-semibold text-white">

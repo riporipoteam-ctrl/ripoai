@@ -24,7 +24,7 @@ function FullScreenLoader() {
             <Logo size={60} glow />
           </div>
         </div>
-        <div className="text-2xl font-extrabold tracking-tight brand-gradient">RipoAI</div>
+        <div className="text-2xl font-extrabold tracking-tight brand-gradient">AskAI</div>
         {/* loading bar shimmer */}
         <div className="h-1 w-32 overflow-hidden rounded-full bg-[rgb(var(--ink)/0.08)]">
           <div className="h-full w-1/2 rounded-full bg-[rgb(var(--accent))] [animation:loadbar_1.1s_ease-in-out_infinite]" />

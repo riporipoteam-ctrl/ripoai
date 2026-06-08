@@ -25,7 +25,7 @@ function searchUrl(prompt = '') {
     .replace(/\b(agent|browse|browser|click|type|search|open|go to|look up|find)\b/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim()
-  return `https://duckduckgo.com/?q=${encodeURIComponent(q || prompt || 'RipoAI')}`
+  return `https://duckduckgo.com/?q=${encodeURIComponent(q || prompt || 'AskAI')}`
 }
 
 async function proxyToConfiguredBackend(event, endpoint) {

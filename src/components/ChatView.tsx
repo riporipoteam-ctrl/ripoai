@@ -139,7 +139,7 @@ export default function ChatView() {
           </button>
           <div className="flex items-center gap-2">
             <Logo size={22} />
-            <span className="text-[17px] font-bold tracking-tight brand-gradient">RipoAI</span>
+            <span className="text-[17px] font-bold tracking-tight brand-gradient">AskAI</span>
           </div>
           <button
             onClick={() => navigate('/')}

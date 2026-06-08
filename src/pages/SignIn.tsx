@@ -40,7 +40,7 @@ export default function SignIn() {
   }
 
   return (
-    <AuthShell title="Welcome back" subtitle="Sign in to continue to RipoAI.">
+    <AuthShell title="Welcome back" subtitle="Sign in to continue to AskAI.">
       <form onSubmit={submit} className="space-y-3">
         <input
           type="email"
@@ -75,7 +75,7 @@ export default function SignIn() {
       <GoogleButton onClick={google} disabled={loading} label="Continue with Google" />
 
       <p className="mt-6 text-center text-sm text-muted">
-        New to RipoAI?{' '}
+        New to AskAI?{' '}
         <Link to="/signup" className="font-semibold text-accent hover:underline">
           Create an account
         </Link>
