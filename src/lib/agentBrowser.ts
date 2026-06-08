@@ -26,6 +26,9 @@ export function getAgentBrowserUrl(): string {
   try {
     const host = window.location.hostname
     if (host.endsWith('.netlify.app') || host.endsWith('.netlify.live')) return '/api/agent-browser'
+    // GitHub Pages/static hosts cannot run backend functions. Do not POST to
+    // /api/agent-browser there, because it returns 405 and looks like Agent broke.
+    if (host.endsWith('github.io')) return ''
     if (host && host !== 'localhost' && host !== '127.0.0.1' && host !== '::1') return '/api/agent-browser'
   } catch {
     /* ignore */
@@ -107,15 +110,15 @@ export async function runAgentBrowserTask(
   opts: { signal?: AbortSignal; onEvent?: (event: AgentBrowserEvent) => void } = {},
 ): Promise<AgentBrowserState> {
   const endpoint = getAgentBrowserUrl()
+  const started = normalizeEvent({ type: 'start', label: 'Starting real browser session' }, 'Starting real browser session')
   if (!endpoint) {
     return {
       status: 'unavailable',
-      events: [],
-      error: 'Agent browser backend is not connected for this deployment.',
+      events: [started],
+      error: 'Agent browser backend URL is not configured for this deployment. Set VITE_AGENT_BROWSER_URL to the Cloudflare/Netlify browser worker URL.',
     }
   }
 
-  const started = normalizeEvent({ type: 'start', label: 'Starting real browser session' }, 'Starting real browser session')
   opts.onEvent?.(started)
 
   try {
@@ -134,9 +137,9 @@ export async function runAgentBrowserTask(
         detail = await res.text().catch(() => '')
       }
       return {
-        status: res.status === 501 ? 'unavailable' : 'error',
+        status: res.status === 501 || res.status === 404 || res.status === 405 ? 'unavailable' : 'error',
         events: [started],
-        error: detail || `Agent browser failed (${res.status}).`,
+        error: detail || `Agent browser backend unavailable (${res.status}).`,
       }
     }
     if (contentType.includes('text/event-stream')) return readEventStream(res, opts.onEvent)
