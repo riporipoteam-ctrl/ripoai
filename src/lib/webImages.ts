@@ -177,7 +177,7 @@ export function webImageQuery(text: string): string {
     .replace(/\blook like\b/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim()
-  return expandImageQuery(q || text.trim() || 'RipoAI')
+  return expandImageQuery(q || text.trim() || 'AskAI')
 }
 
 async function searchOpenverse(query: string, limit: number): Promise<WebImageResult[]> {

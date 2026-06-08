@@ -60,7 +60,7 @@ export async function handler(event) {
   }
   if (provider === 'openrouter') {
     headers['HTTP-Referer'] = 'https://riporipoteam-ctrl.github.io/ripoai/'
-    headers['X-Title'] = 'RipoAI'
+    headers['X-Title'] = 'AskAI'
   }
 
   const upstream = await fetch(provider === 'openrouter' ? OPENROUTER_URL : GROQ_URL, {

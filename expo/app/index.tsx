@@ -15,7 +15,7 @@ const INJECT_NATIVE_MARKER = `
   true;
 `
 
-export default function RipoAIExpoShell() {
+export default function AskAIExpoShell() {
   const insets = useSafeAreaInsets()
   const webRef = useRef<WebView>(null)
   const [loading, setLoading] = useState(true)
@@ -56,7 +56,7 @@ export default function RipoAIExpoShell() {
           <AdaptiveGlass style={{ paddingHorizontal: 14, paddingVertical: 10, borderRadius: 999 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
               <ActivityIndicator color={PlatformColor('label')} />
-              <Text style={{ color: PlatformColor('label'), fontSize: 12, fontWeight: '700' }}>Loading RipoAI</Text>
+              <Text style={{ color: PlatformColor('label'), fontSize: 12, fontWeight: '700' }}>Loading AskAI</Text>
             </View>
           </AdaptiveGlass>
         </View>

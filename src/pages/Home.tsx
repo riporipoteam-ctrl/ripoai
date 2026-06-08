@@ -11,6 +11,9 @@ import { useStore } from '../store'
 
 // Sandpack is large — only load it when a project is opened.
 const ProjectsView = lazy(() => import('../components/ProjectsView'))
+const PlusPage = lazy(() => import('./PlusPage'))
+const TasksPage = lazy(() => import('./TasksPage'))
+const TeamPage = lazy(() => import('./TeamPage'))
 
 export default function Home() {
   const { sidebarOpen, toggleSidebar } = useStore()
@@ -58,6 +61,30 @@ export default function Home() {
                 }
               >
                 <ProjectsView />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/plus"
+            element={
+              <Suspense fallback={<div className="flex h-full items-center justify-center"><Spinner /></div>}>
+                <PlusPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/tasks"
+            element={
+              <Suspense fallback={<div className="flex h-full items-center justify-center"><Spinner /></div>}>
+                <TasksPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/team"
+            element={
+              <Suspense fallback={<div className="flex h-full items-center justify-center"><Spinner /></div>}>
+                <TeamPage />
               </Suspense>
             }
           />

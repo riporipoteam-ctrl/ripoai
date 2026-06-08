@@ -18,10 +18,11 @@ import {
   Check,
   Camera,
   Wand2,
+  Users,
 } from 'lucide-react'
 import ModelSelector from './ModelSelector'
 import { useVoiceInput, hapticPattern } from '../hooks/useSpeech'
-import { fileToAttachment } from '../lib/files'
+import { fileToAttachment, MAX_IMAGES_PER_MESSAGE } from '../lib/files'
 import { IMAGE_STYLES } from '../lib/imagegen'
 import type { Attachment } from '../lib/db'
 import type { ModelTier } from '../lib/models'
@@ -46,6 +47,7 @@ interface Props {
   placeholder?: string
   showModelSelector?: boolean
   onVoiceCall?: () => void
+  onTeam?: (text: string) => void
 }
 
 export default function Composer({
@@ -62,9 +64,10 @@ export default function Composer({
   onSend,
   onStop,
   streaming,
-  placeholder = 'Message RipoAI...',
+  placeholder = 'Message AskAI...',
   showModelSelector = true,
   onVoiceCall,
+  onTeam,
 }: Props) {
   const { user } = useStore()
   const [text, setText] = useState('')
@@ -90,7 +93,7 @@ export default function Composer({
     }
   }, [plusOpen])
 
-  // "Ask RipoAI" from the text-selection toolbar → quote it into the composer.
+  // "Ask AskAI" from the text-selection toolbar → quote it into the composer.
   useEffect(() => {
     function onAsk(e: Event) {
       const t = (e as CustomEvent).detail as string
@@ -134,9 +137,25 @@ export default function Composer({
     setErr('')
     setBusy(true)
     try {
+      const incoming = Array.from(files)
       const next: Attachment[] = []
-      for (const f of Array.from(files)) next.push(await fileToAttachment(f))
+      let imagesSoFar = attachments.filter((a) => a.kind === 'image').length
+      let droppedImages = 0
+      for (const f of incoming) {
+        const att = await fileToAttachment(f)
+        // Cap images per message so the vision model never gets overloaded.
+        if (att.kind === 'image') {
+          if (imagesSoFar >= MAX_IMAGES_PER_MESSAGE) {
+            droppedImages++
+            continue
+          }
+          imagesSoFar++
+        }
+        next.push(att)
+      }
       setAttachments((a) => [...a, ...next])
+      if (droppedImages > 0)
+        setErr(`You can attach up to ${MAX_IMAGES_PER_MESSAGE} images per message — extra ${droppedImages === 1 ? 'image was' : 'images were'} skipped.`)
     } catch (e: any) {
       setErr(e?.message ?? 'Could not read that file.')
     } finally {
@@ -397,6 +416,17 @@ export default function Composer({
                           </span>
                           Generate image
                           {imageMode && <Check size={18} className="ml-auto text-accent" />}
+                        </button>
+                      )}
+                      {onTeam && (
+                        <button
+                          onClick={() => { haptic('select'); onTeam(text); setPlusOpen(false) }}
+                          className="pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium hover:bg-white/10"
+                        >
+                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                            <Users size={18} />
+                          </span>
+                          Agent team
                         </button>
                       )}
 

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X, Users, Ban as BanIcon, ShieldCheck, MessageSquare } from 'lucide-react'
+import { X, Users, Ban as BanIcon, ShieldCheck, MessageSquare, Ticket, Trash2, Plus as PlusIcon } from 'lucide-react'
 import { listUsers, banUser, unbanUser, setUserMsgLimit, banActive, type AdminUser } from '../lib/admin'
+import { loadCodes, upsertCode, removeCode, type DiscountCode } from '../lib/plus'
 import Avatar from './ui/Avatar'
 
 const DURATIONS = [
@@ -30,6 +31,9 @@ export default function AdminPanel({ open, onClose }: { open: boolean; onClose: 
   const [banFor, setBanFor] = useState<string | null>(null)
   const [reason, setReason] = useState('')
   const [duration, setDuration] = useState(DURATIONS[1].ms)
+  const [tab, setTab] = useState<'users' | 'codes'>('users')
+  const [codes, setCodes] = useState<DiscountCode[]>([])
+  const [newCode, setNewCode] = useState({ code: '', kind: 'coins' as 'coins' | 'percent' | 'days', value: 100 })
 
   async function refresh() {
     setLoading(true)
@@ -37,14 +41,38 @@ export default function AdminPanel({ open, onClose }: { open: boolean; onClose: 
     try {
       setUsers(await listUsers())
     } catch (e: any) {
-      setErr('Could not load users. Make sure the admin Firestore rules are published.')
+      // Surface the real reason (e.g. permission-denied → rules not published).
+      setErr(
+        `Could not load users: ${e?.code || e?.message || 'unknown error'}. ` +
+          'If this says permission-denied, publish the admin Firestore rules (firestore.rules).',
+      )
     } finally {
       setLoading(false)
     }
   }
   useEffect(() => {
-    if (open) refresh()
+    if (open) {
+      refresh()
+      setCodes(loadCodes())
+    }
   }, [open])
+
+  function addCode() {
+    const code = newCode.code.trim().toUpperCase()
+    if (!code) return
+    const entry: DiscountCode = { code, active: true }
+    if (newCode.kind === 'coins') entry.coins = newCode.value
+    else if (newCode.kind === 'percent') entry.percentOff = Math.min(100, newCode.value)
+    else entry.freeDays = newCode.value
+    upsertCode(entry)
+    setCodes(loadCodes())
+    setNewCode({ code: '', kind: newCode.kind, value: newCode.value })
+  }
+
+  function deleteCode(code: string) {
+    removeCode(code)
+    setCodes(loadCodes())
+  }
 
   const banned = users.filter((u) => banActive(u.ban)).length
   const activeToday = users.filter((u) => u.lastSeen > Date.now() - 86400e3).length
@@ -83,6 +111,75 @@ export default function AdminPanel({ open, onClose }: { open: boolean; onClose: 
               </button>
             </div>
 
+            {/* Tabs */}
+            <div className="mb-3 flex gap-1 rounded-2xl bg-white/5 p-1 text-sm font-semibold">
+              <button
+                onClick={() => setTab('users')}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-1.5 ${tab === 'users' ? 'accent-gradient-bg text-white' : 'text-muted'}`}
+              >
+                <Users size={15} /> Users
+              </button>
+              <button
+                onClick={() => setTab('codes')}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-1.5 ${tab === 'codes' ? 'accent-gradient-bg text-white' : 'text-muted'}`}
+              >
+                <Ticket size={15} /> Discount codes
+              </button>
+            </div>
+
+            {tab === 'codes' ? (
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                <div className="mb-3 rounded-2xl border border-white/10 bg-white/5 p-3">
+                  <div className="mb-2 text-sm font-semibold">Create a code</div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      value={newCode.code}
+                      onChange={(e) => setNewCode({ ...newCode, code: e.target.value.toUpperCase() })}
+                      placeholder="CODE"
+                      className="w-28 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm uppercase outline-none"
+                    />
+                    <select
+                      value={newCode.kind}
+                      onChange={(e) => setNewCode({ ...newCode, kind: e.target.value as any })}
+                      className="rounded-xl border border-white/15 bg-white/5 px-2 py-2 text-sm outline-none"
+                    >
+                      <option value="coins">Coins</option>
+                      <option value="percent">% off Plus</option>
+                      <option value="days">Free Plus days</option>
+                    </select>
+                    <input
+                      type="number"
+                      min={1}
+                      value={newCode.value}
+                      onChange={(e) => setNewCode({ ...newCode, value: parseInt(e.target.value || '0', 10) })}
+                      className="w-20 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm outline-none"
+                    />
+                    <button onClick={addCode} className="accent-gradient-bg pressable flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-semibold text-white">
+                      <PlusIcon size={15} /> Add
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {codes.length === 0 && <p className="py-6 text-center text-sm text-muted">No codes yet.</p>}
+                  {codes.map((c) => (
+                    <div key={c.code} className="flex items-center gap-3 rounded-2xl border border-white/10 p-3">
+                      <Ticket size={18} className="text-accent" />
+                      <div className="min-w-0 flex-1">
+                        <div className="font-bold tracking-wide">{c.code}</div>
+                        <div className="text-xs text-muted">
+                          {c.coins ? `+${c.coins} coins` : c.percentOff ? `${c.percentOff}% off Plus` : c.freeDays ? `${c.freeDays} free Plus days` : '—'}
+                          {c.active ? '' : ' · inactive'}
+                        </div>
+                      </div>
+                      <button onClick={() => deleteCode(c.code)} className="pressable rounded-lg p-1.5 text-muted hover:bg-white/10 hover:text-red-400">
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+            <>
             {/* Stats */}
             <div className="mb-4 grid grid-cols-3 gap-2">
               {[
@@ -199,6 +296,8 @@ export default function AdminPanel({ open, onClose }: { open: boolean; onClose: 
                 )
               })}
             </div>
+            </>
+            )}
           </motion.div>
         </motion.div>
       )}

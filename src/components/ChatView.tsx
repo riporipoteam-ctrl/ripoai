@@ -25,6 +25,8 @@ import type { Attachment } from '../lib/db'
 import { banActive, todaysMessageCount, bumpMessageCount } from '../lib/admin'
 import { wantsImageGeneration } from '../lib/imagegen'
 import { wantsWebImageSearch } from '../lib/webImages'
+import { mentionedAgents, wantsTeamDispatch } from '../lib/agents'
+import { dispatchTeam } from '../pages/TeamPage'
 
 const ALL_SUGGESTIONS = [
   { title: 'Images', sub: 'find web photos with sources', icon: Images, prompt: 'Find web images with sources for ' },
@@ -106,6 +108,15 @@ export default function ChatView() {
 
   function handleSend(text: string, attachments: Attachment[]) {
     if (banned) return
+    // @mention an agent (and ask to dispatch the team) → hand off to the Team room.
+    if (user) {
+      const mentions = mentionedAgents(user.uid, text)
+      if (mentions.length && wantsTeamDispatch(text)) {
+        dispatchTeam(text, mentions[0].id)
+        navigate('/team')
+        return
+      }
+    }
     if (user && msgLimit > 0 && todaysMessageCount(user.uid) >= msgLimit) {
       window.alert(`You've reached your daily limit of ${msgLimit} messages. Try again tomorrow.`)
       return
@@ -139,7 +150,7 @@ export default function ChatView() {
           </button>
           <div className="flex items-center gap-2">
             <Logo size={22} />
-            <span className="text-[17px] font-bold tracking-tight brand-gradient">RipoAI</span>
+            <span className="text-[17px] font-bold tracking-tight brand-gradient">AskAI</span>
           </div>
           <button
             onClick={() => navigate('/')}
@@ -254,6 +265,10 @@ export default function ChatView() {
               onStop={stop}
               streaming={streaming}
               onVoiceCall={() => setVoiceCall(true)}
+              onTeam={(text) => {
+                if (text.trim()) dispatchTeam(text)
+                navigate('/team')
+              }}
             />
           </div>
         )}

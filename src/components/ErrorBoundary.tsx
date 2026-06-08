@@ -21,7 +21,7 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error) {
     // Surface for debugging; never throw from here.
-    console.error('RipoAI crashed:', error)
+    console.error('AskAI crashed:', error)
   }
 
   reset = () => {
@@ -56,7 +56,7 @@ export default class ErrorBoundary extends Component<Props, State> {
               onClick={this.reload}
               className="pressable accent-gradient-bg w-full rounded-2xl px-4 py-3 text-sm font-semibold text-white"
             >
-              Reload RipoAI
+              Reload AskAI
             </button>
             <button
               onClick={this.reset}

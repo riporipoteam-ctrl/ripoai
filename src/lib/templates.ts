@@ -26,7 +26,7 @@ export function newReactProject(name: string): Project {
 </head>
 <body>
   <div>
-    <h1>Hello from RipoAI 👋</h1>
+    <h1>Hello from AskAI 👋</h1>
     <p>Ask the agent on the left to build something amazing.</p>
   </div>
 </body>

@@ -22,7 +22,7 @@ export default function Onboarding() {
         <Logo size={80} glow />
       </motion.div>
       <h1 className="text-3xl font-extrabold">
-        Welcome to <span className="brand-gradient">RipoAI</span>
+        Welcome to <span className="brand-gradient">AskAI</span>
       </h1>
       <p className="mx-auto mt-3 max-w-sm text-muted">
         Your intelligent workspace for chatting, researching the live web, and building real apps —
@@ -32,7 +32,7 @@ export default function Onboarding() {
     // 1 — Name
     <div key="n">
       <h2 className="text-2xl font-bold">What should we call you?</h2>
-      <p className="mt-1 text-muted">RipoAI will use this to personalize your experience.</p>
+      <p className="mt-1 text-muted">AskAI will use this to personalize your experience.</p>
       <input
         autoFocus
         value={name}
@@ -85,7 +85,7 @@ export default function Onboarding() {
     </div>,
     // 3 — Custom instructions
     <div key="c">
-      <h2 className="text-2xl font-bold">Tell RipoAI about you</h2>
+      <h2 className="text-2xl font-bold">Tell AskAI about you</h2>
       <p className="mt-1 text-muted">Optional — helps tailor every answer. You can edit later in Settings.</p>
       <textarea
         value={about}
@@ -188,7 +188,7 @@ export default function Onboarding() {
           <Button onClick={next} className="px-6">
             {last ? (
               <>
-                <Sparkles size={16} /> Start using RipoAI
+                <Sparkles size={16} /> Start using AskAI
               </>
             ) : (
               'Continue'

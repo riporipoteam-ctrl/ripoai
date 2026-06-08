@@ -1,5 +1,5 @@
 // Puter.js client — free frontier models (incl. Claude) via Puter's "user-pays"
-// model. Used by the experimental RipoAI 4o Pro tier. Loaded from
+// model. Used by the experimental AskAI 4o Pro tier. Loaded from
 // https://js.puter.com/v2/ in index.html. Sign-in popup appears once.
 
 function P(): any {

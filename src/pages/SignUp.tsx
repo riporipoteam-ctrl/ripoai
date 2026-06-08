@@ -42,7 +42,7 @@ export default function SignUp() {
   }
 
   return (
-    <AuthShell title="Create your account" subtitle="Join RipoAI in a few seconds.">
+    <AuthShell title="Create your account" subtitle="Join AskAI in a few seconds.">
       <form onSubmit={submit} className="space-y-3">
         <input
           type="text"

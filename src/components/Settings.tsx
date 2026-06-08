@@ -25,6 +25,8 @@ import { isGmailConnected, connectGmail, disconnectGmail } from '../lib/gmail'
 import { isCalendarConnected, connectCalendar, disconnectCalendar } from '../lib/calendar'
 import { Calendar as CalIcon, Cloud, Map as MapIcon, Bitcoin, Globe, Wand2 } from 'lucide-react'
 import { loadSkills, deleteSkill, installSkillFromUrl, type Skill } from '../lib/skills'
+import { loadAgents, upsertAgent, deleteAgent, newAgent, type Agent } from '../lib/agents'
+import { Bot, Plus as PlusIcon } from 'lucide-react'
 
 const ACCENTS = ['#10a37f', '#4ea8ff', '#36e0c0', '#7c5cff', '#ff6b6b', '#ffa94d', '#f06595']
 const TABS = [
@@ -33,6 +35,7 @@ const TABS = [
   { id: 'voice', label: 'Voice', icon: Volume2 },
   { id: 'memory', label: 'Memory', icon: Brain },
   { id: 'skills', label: 'Skills', icon: Wand2 },
+  { id: 'agents', label: 'Agents', icon: Bot },
   { id: 'data', label: 'Data controls', icon: Database },
   { id: 'about', label: 'About', icon: Info },
 ] as const
@@ -62,6 +65,8 @@ export default function Settings() {
   const [skillUrl, setSkillUrl] = useState('')
   const [skillBusy, setSkillBusy] = useState(false)
   const [skillErr, setSkillErr] = useState('')
+  const [agents, setAgents] = useState<Agent[]>([])
+  const [editing, setEditing] = useState<Agent | null>(null)
   const avatarInput = useRef<HTMLInputElement>(null)
   async function handleAvatar(file?: File) {
     if (!file) return
@@ -88,8 +93,23 @@ export default function Settings() {
     updateSettings({ avatar: dataUrl })
   }
   useEffect(() => {
-    if (settingsOpen && user) setSkills(loadSkills(user.uid))
+    if (settingsOpen && user) {
+      setSkills(loadSkills(user.uid))
+      setAgents(loadAgents(user.uid))
+    }
   }, [settingsOpen, tab, user])
+
+  function saveAgent(a: Agent) {
+    if (!user || !a.name.trim()) return
+    upsertAgent(user.uid, { ...a, name: a.name.trim() })
+    setAgents(loadAgents(user.uid))
+    setEditing(null)
+  }
+  function removeAgent(id: string) {
+    if (!user) return
+    deleteAgent(user.uid, id)
+    setAgents(loadAgents(user.uid))
+  }
   async function installSkill() {
     if (!user || !skillUrl.trim()) return
     setSkillBusy(true)
@@ -279,7 +299,7 @@ export default function Settings() {
                 <input
                   value={settings.displayName ?? ''}
                   onChange={(e) => updateSettings({ displayName: e.target.value })}
-                  placeholder="What should RipoAI call you?"
+                  placeholder="What should AskAI call you?"
                   className="w-full rounded-2xl border border-white/15 bg-white/5 px-3 py-2.5 outline-none focus:border-accent"
                 />
               </Field>
@@ -318,16 +338,16 @@ export default function Settings() {
                   ]}
                 />
               </Field>
-              <Field label="What should RipoAI know about you?">
+              <Field label="What should AskAI know about you?">
                 <textarea
                   value={settings.aboutYou}
                   onChange={(e) => updateSettings({ aboutYou: e.target.value })}
                   rows={4}
-                  placeholder="Your role, interests, the tools you use, anything that helps RipoAI tailor answers."
+                  placeholder="Your role, interests, the tools you use, anything that helps AskAI tailor answers."
                   className="w-full resize-none rounded-2xl border border-white/15 bg-white/5 px-3 py-2.5 outline-none focus:border-accent"
                 />
               </Field>
-              <Field label="How should RipoAI respond?">
+              <Field label="How should AskAI respond?">
                 <textarea
                   value={settings.responseStyle}
                   onChange={(e) => updateSettings({ responseStyle: e.target.value })}
@@ -385,7 +405,7 @@ export default function Settings() {
                   <div className="flex gap-2">
                     <Button
                       variant="glass"
-                      onClick={() => speak("Hi, I'm RipoAI. This is how I sound — pick the voice you like best.")}
+                      onClick={() => speak("Hi, I'm AskAI. This is how I sound — pick the voice you like best.")}
                     >
                       <Play size={15} /> Preview
                     </Button>
@@ -409,7 +429,7 @@ export default function Settings() {
               <label className="flex items-center justify-between rounded-2xl border border-white/10 px-4 py-3">
                 <div>
                   <div className="font-semibold">Memory</div>
-                  <div className="text-xs text-muted">Let RipoAI remember details across chats.</div>
+                  <div className="text-xs text-muted">Let AskAI remember details across chats.</div>
                 </div>
                 <Toggle
                   on={settings.memoryEnabled}
@@ -436,7 +456,7 @@ export default function Settings() {
                 </div>
                 {memories.length === 0 ? (
                   <p className="rounded-2xl border border-white/10 px-4 py-6 text-center text-sm text-muted">
-                    Nothing remembered yet. As you chat, RipoAI will save useful details here.
+                    Nothing remembered yet. As you chat, AskAI will save useful details here.
                   </p>
                 ) : (
                   <ul className="space-y-2">
@@ -470,7 +490,7 @@ export default function Settings() {
               <div>
                 <div className="font-semibold">Skills</div>
                 <p className="mt-1 text-xs text-muted">
-                  Skills are instruction packs RipoAI can follow. Type <code className="rounded bg-white/10 px-1">/</code> in
+                  Skills are instruction packs AskAI can follow. Type <code className="rounded bg-white/10 px-1">/</code> in
                   chat to use one, try <code className="rounded bg-white/10 px-1">/skill-creator</code> to build your own,
                   or in chat say <code className="rounded bg-white/10 px-1">install this skill: &lt;url&gt;</code>.
                 </p>
@@ -535,6 +555,104 @@ export default function Settings() {
             </>
           )}
 
+          {tab === 'agents' && (
+            <>
+              <div className="mb-3 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold">Your agents</h3>
+                  <p className="text-xs text-muted">
+                    Give each agent a name and personality. Select or @mention them in chat, or dispatch the whole team.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setEditing(newAgent())}
+                  className="accent-gradient-bg pressable flex shrink-0 items-center gap-1 rounded-xl px-3 py-2 text-xs font-bold text-white"
+                >
+                  <PlusIcon size={14} /> New
+                </button>
+              </div>
+
+              {editing && (
+                <div className="mb-3 space-y-2 rounded-2xl border border-accent/30 bg-accent/5 p-3">
+                  <div className="flex gap-2">
+                    <input
+                      value={editing.emoji}
+                      onChange={(e) => setEditing({ ...editing, emoji: e.target.value.slice(0, 2) })}
+                      className="w-12 rounded-xl border border-white/15 bg-white/5 px-2 py-2 text-center text-lg outline-none"
+                      title="Emoji"
+                    />
+                    <input
+                      value={editing.name}
+                      onChange={(e) => setEditing({ ...editing, name: e.target.value.replace(/\s+/g, '') })}
+                      placeholder="Name (e.g. Bob)"
+                      className="flex-1 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm outline-none"
+                    />
+                    <input
+                      type="color"
+                      value={editing.color}
+                      onChange={(e) => setEditing({ ...editing, color: e.target.value })}
+                      className="h-10 w-10 shrink-0 cursor-pointer rounded-xl border border-white/15 bg-transparent"
+                      title="Color"
+                    />
+                  </div>
+                  <input
+                    value={editing.role}
+                    onChange={(e) => setEditing({ ...editing, role: e.target.value })}
+                    placeholder="Role (e.g. Engineer, Designer, Team Lead)"
+                    className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm outline-none"
+                  />
+                  <textarea
+                    value={editing.personality}
+                    onChange={(e) => setEditing({ ...editing, personality: e.target.value })}
+                    placeholder="Personality & instructions — how should this agent think, talk and work?"
+                    rows={3}
+                    className="w-full resize-none rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm outline-none"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => saveAgent(editing)}
+                      disabled={!editing.name.trim()}
+                      className="accent-gradient-bg pressable flex-1 rounded-xl px-3 py-2 text-sm font-bold text-white disabled:opacity-40"
+                    >
+                      Save agent
+                    </button>
+                    <button
+                      onClick={() => setEditing(null)}
+                      className="pressable rounded-xl border border-white/15 px-3 py-2 text-sm font-semibold"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                {agents.map((a) => (
+                  <div key={a.id} className="flex items-center gap-3 rounded-2xl border border-white/10 p-3">
+                    <span
+                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg"
+                      style={{ background: a.color + '2a', boxShadow: `0 0 0 1px ${a.color}55` }}
+                    >
+                      {a.emoji}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-semibold">
+                        {a.name} <span className="text-xs font-normal text-muted">{a.role}</span>
+                      </div>
+                      <div className="truncate text-xs text-muted">{a.personality}</div>
+                    </div>
+                    <button onClick={() => setEditing(a)} className="pressable rounded-lg px-2 py-1 text-xs font-semibold text-accent hover:bg-white/10">
+                      Edit
+                    </button>
+                    <button onClick={() => removeAgent(a.id)} className="pressable rounded-lg p-1 text-muted hover:bg-white/10 hover:text-red-400">
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
           {tab === 'data' && (
             <>
               <div className="mb-3 rounded-2xl border border-white/10 bg-white/5 p-4">
@@ -585,13 +703,13 @@ export default function Settings() {
 
           {tab === 'about' && (
             <div className="space-y-3 text-sm leading-relaxed text-muted">
-              <div className="text-2xl font-extrabold brand-gradient">RipoAI</div>
+              <div className="text-2xl font-extrabold brand-gradient">AskAI</div>
               <p>
-                RipoAI is your intelligent workspace for chatting, researching the live web, and
+                AskAI is your intelligent workspace for chatting, researching the live web, and
                 building apps with a real in-browser preview.
               </p>
               <p>
-                Models: RipoAI 1o instant & 2o instant for speed, 1o Pro & 2o Pro for the deepest
+                Models: AskAI 1o instant & 2o instant for speed, 1o Pro & 2o Pro for the deepest
                 reasoning and best designs. Web Search and Agent modes browse the live web.
               </p>
               <p className="text-xs">

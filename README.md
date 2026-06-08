@@ -1,4 +1,4 @@
-# RipoAI
+# AskAI
 
 A polished, ChatGPT‑style AI web app — chat, live web research, memory, and an in‑browser
 coding workspace with live preview. Built with React + Vite + TypeScript, Firebase Auth +
@@ -9,25 +9,25 @@ Firestore, Tailwind, Framer Motion and an iOS‑26 "Liquid Glass" design. Deploy
 - **Auth** — email/password + Google sign‑in (Firebase). Animated onboarding on first run.
 - **Chat** — streaming answers, Markdown + syntax‑highlighted code, math, copy, edit, regenerate,
   stop. Reasoning shown as a collapsible panel.
-- **Models** — pick a RipoAI tier per chat:
+- **Models** — pick a AskAI tier per chat:
   | Tier | Powered by (Groq) |
   | --- | --- |
-  | RipoAI 1o instant | `qwen/qwen3-32b` |
-  | RipoAI 2o instant | `meta-llama/llama-4-scout-17b-16e-instruct` (vision) |
-  | RipoAI 1o Pro | `llama-3.3-70b-versatile` |
-  | RipoAI 2o Pro (flagship) | `openai/gpt-oss-120b` |
-- **Web Search mode** — live, cited answers via Groq's `compound` model. When off, RipoAI
+  | AskAI 1o instant | `qwen/qwen3-32b` |
+  | AskAI 2o instant | `meta-llama/llama-4-scout-17b-16e-instruct` (vision) |
+  | AskAI 1o Pro | `llama-3.3-70b-versatile` |
+  | AskAI 2o Pro (flagship) | `openai/gpt-oss-120b` |
+- **Web Search mode** — live, cited answers via Groq's `compound` model. When off, AskAI
   auto‑decides whether a query needs the web.
-- **Web image search** - ask for real images/photos/logos from the web and RipoAI shows a
+- **Web image search** - ask for real images/photos/logos from the web and AskAI shows a
   preview gallery with source links, creator, provider, and license details when available.
 - **Agent mode** — autonomous, multi‑step web research with a visible step trace.
 - **Uploads** — images (sent to vision models) and files/PDFs (parsed client‑side as context).
 - **Image generation** — ask naturally for a photo, logo, poster, wallpaper, avatar, banner, or
-  illustration and RipoAI returns an image card on both the website and APK. Logo/text prompts
+  illustration and AskAI returns an image card on both the website and APK. Logo/text prompts
   use a safer high-contrast path and black/blank generations are retried automatically.
 - **Projects** — a coding agent + a real in‑browser sandbox (Sandpack) with **Code / Preview /
   Console** tabs. The agent writes files that run instantly.
-- **Memory** — RipoAI extracts durable facts about you and reuses them; manage them in Settings.
+- **Memory** — AskAI extracts durable facts about you and reuses them; manage them in Settings.
 - **Settings** — theme (light/dark/system), accent, liquid‑glass intensity, default model,
   custom instructions, memory, and data controls.
 - **History** — chats saved to Firestore, grouped by date, searchable, renamable.
@@ -78,15 +78,15 @@ A `netlify.toml` is included, so deploying is one click:
 
 ## Android APK (build on GitHub — no local Android SDK needed)
 
-RipoAI ships as an Android app via **Capacitor**, built by GitHub Actions:
+AskAI ships as an Android app via **Capacitor**, built by GitHub Actions:
 
 1. Make sure the repo secrets `VITE_GROQ_API_KEY` and `VITE_OPENROUTER_API_KEY`
    are set (Settings → Secrets and variables → Actions).
 2. **Actions** tab → **Build Android APK** → **Run workflow**.
 3. When it finishes (~5 min), download the APK from:
-   - the run's **Artifacts** (`RipoAI-apk`), or
-   - the **`android-latest` Release** (`RipoAI.apk`).
-4. On your phone: open `RipoAI.apk`, allow **install from unknown sources**, install.
+   - the run's **Artifacts** (`AskAI-apk`), or
+   - the **`android-latest` Release** (`AskAI.apk`).
+4. On your phone: open `AskAI.apk`, allow **install from unknown sources**, install.
 
 It's a **debug** APK (unsigned) — installable directly; for the Play Store you'd
 produce a signed release build.
@@ -112,10 +112,10 @@ the latest shell and live-site bundle path.
 
 ## iOS app
 
-iPhone/iPad get RipoAI three ways:
+iPhone/iPad get AskAI three ways:
 
-**1. Add to Home Screen (free, no Mac, recommended).** Open the deployed RipoAI
-site in **Safari** → tap **Share** → **Add to Home Screen**. RipoAI installs with
+**1. Add to Home Screen (free, no Mac, recommended).** Open the deployed AskAI
+site in **Safari** → tap **Share** → **Add to Home Screen**. AskAI installs with
 its app icon and launches **full‑screen** (no Safari chrome), respecting the
 notch and home indicator — it behaves like a native app. The app even shows a
 one‑time hint explaining this. This is a real PWA install and needs no Apple
@@ -126,12 +126,12 @@ Actions builds the iOS app on a macOS runner:
 
 1. **Actions** tab → **Build iOS app** → **Run workflow**.
 2. Download from the run's **Artifacts** (or the **`ios-latest` Release**):
-   - `RipoAI-iOS-Simulator.zip` — runs in Xcode's iOS Simulator on a Mac.
-   - `RipoAI-iOS-Xcode-project.zip` — open `App/App.xcodeworkspace` in Xcode,
+   - `AskAI-iOS-Simulator.zip` — runs in Xcode's iOS Simulator on a Mac.
+   - `AskAI-iOS-Xcode-project.zip` — open `App/App.xcodeworkspace` in Xcode,
      set your **Signing Team**, plug in your iPhone, press **Run** to install.
 
 **3. Expo iOS shell (live, connected wrapper).** The new [`expo`](./expo)
-app loads the same live RipoAI website in a native WebView, so installed iOS
+app loads the same live AskAI website in a native WebView, so installed iOS
 users get website updates on next launch without rebuilding the shell. It uses
 `expo-glass-effect` for real Liquid Glass on iOS 26+ and falls back to
 `expo-blur` where Liquid Glass is unavailable.
@@ -147,7 +147,7 @@ secret and Apple/EAS credentials are configured.
 
 > ⚠️ Apple does **not** allow installing **unsigned** apps on a physical device.
 > Running on a real iPhone requires an **Apple Developer account** ($99/yr) and
-> code signing — that's an Apple rule, not a RipoAI limitation. The PWA path
+> code signing — that's an Apple rule, not a AskAI limitation. The PWA path
 > above sidesteps all of it. Inside native iOS WebViews, Google sign‑in (popup) may
 > not work — use **email/password**.
 
@@ -179,9 +179,9 @@ the **`.web.app` install is the reliable one for Google in a PWA**. Email/
 password works everywhere regardless. In the **native APK/iOS app**, use
 email/password (native Google would need the Capacitor Firebase Auth plugin).
 
-## RipoAI 4o Pro (NVIDIA — needs a proxy)
+## AskAI 4o Pro (NVIDIA — needs a proxy)
 
-**RipoAI 4o Pro** runs NVIDIA's **Llama‑4 Maverick**. NVIDIA's API doesn't send
+**AskAI 4o Pro** runs NVIDIA's **Llama‑4 Maverick**. NVIDIA's API doesn't send
 CORS headers, so a static browser app can't call it directly — deploy the tiny
 Cloudflare Worker in [`worker/nvidia-proxy.js`](./worker/nvidia-proxy.js)
 (instructions in the file), then set the repo Actions secret **`VITE_NVIDIA_BASE`**

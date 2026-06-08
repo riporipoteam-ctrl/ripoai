@@ -1,4 +1,4 @@
-// RipoAI model registry. Each tier maps to a legitimately available Groq model,
+// AskAI model registry. Each tier maps to a legitimately available Groq model,
 // validated against the live Groq /models endpoint.
 
 export type ModelTier =
@@ -43,7 +43,7 @@ export interface RipoModel {
 export const MODELS: Record<ModelTier, RipoModel> = {
   'ripoai-1o-instant': {
     id: 'ripoai-1o-instant',
-    name: 'RipoAI 1o instant',
+    name: 'AskAI 1o instant',
     tagline: 'Fast everyday answers',
     groqModel: 'qwen/qwen3-32b',
     vision: false,
@@ -55,7 +55,7 @@ export const MODELS: Record<ModelTier, RipoModel> = {
   },
   'ripoai-2o-instant': {
     id: 'ripoai-2o-instant',
-    name: 'RipoAI 2o instant',
+    name: 'AskAI 2o instant',
     tagline: 'Quick + understands images',
     groqModel: 'meta-llama/llama-4-scout-17b-16e-instruct',
     vision: true,
@@ -66,7 +66,7 @@ export const MODELS: Record<ModelTier, RipoModel> = {
   },
   'ripoai-1o-pro': {
     id: 'ripoai-1o-pro',
-    name: 'RipoAI 1o Pro',
+    name: 'AskAI 1o Pro',
     tagline: 'Deeper reasoning + writing',
     groqModel: 'llama-3.3-70b-versatile',
     vision: false,
@@ -78,7 +78,7 @@ export const MODELS: Record<ModelTier, RipoModel> = {
   },
   'ripoai-2o-pro': {
     id: 'ripoai-2o-pro',
-    name: 'RipoAI 2o Pro',
+    name: 'AskAI 2o Pro',
     tagline: 'Flagship — best designs, code & reasoning',
     groqModel: 'openai/gpt-oss-120b',
     vision: false,
@@ -91,7 +91,7 @@ export const MODELS: Record<ModelTier, RipoModel> = {
   },
   'ripoai-3o-instant': {
     id: 'ripoai-3o-instant',
-    name: 'RipoAI 3o instant',
+    name: 'AskAI 3o instant',
     tagline: 'Lightning-fast and very capable',
     provider: 'openrouter',
     orModel: 'qwen/qwen3-next-80b-a3b-instruct:free',
@@ -105,7 +105,7 @@ export const MODELS: Record<ModelTier, RipoModel> = {
   },
   'ripoai-3o-pro': {
     id: 'ripoai-3o-pro',
-    name: 'RipoAI 3o Pro',
+    name: 'AskAI 3o Pro',
     tagline: 'Our most powerful — best for building & design',
     provider: 'openrouter',
     orModel: 'moonshotai/kimi-k2.6:free',
@@ -119,7 +119,7 @@ export const MODELS: Record<ModelTier, RipoModel> = {
   },
   'ripoai-4o-instant': {
     id: 'ripoai-4o-instant',
-    name: 'RipoAI 4o instant',
+    name: 'AskAI 4o instant',
     tagline: 'New — fast and very capable',
     provider: 'nvidia',
     nvModel: 'meta/llama-4-maverick-17b-128e-instruct',
@@ -133,10 +133,12 @@ export const MODELS: Record<ModelTier, RipoModel> = {
   },
   'ripoai-4o-pro': {
     id: 'ripoai-4o-pro',
-    name: 'RipoAI 4o Pro',
+    name: 'AskAI 4o Pro',
     tagline: 'Our most advanced — deepest reasoning',
     provider: 'nvidia',
-    nvModel: 'z-ai/glm-5.1',
+    // Secret backend: Kimi 2.6 (Moonshot) served via the NVIDIA proxy. Never
+    // surfaced to users — the UI only ever shows "AskAI 4o Pro".
+    nvModel: 'moonshotai/kimi-k2.6',
     groqModel: 'openai/gpt-oss-120b',
     vision: false,
     reasoning: true,
@@ -148,7 +150,7 @@ export const MODELS: Record<ModelTier, RipoModel> = {
   auto: {
     id: 'auto',
     name: 'Auto',
-    tagline: 'RipoAI picks the best model for each task',
+    tagline: 'AskAI picks the best model for each task',
     groqModel: 'openai/gpt-oss-120b',
     vision: false,
     reasoning: false,
