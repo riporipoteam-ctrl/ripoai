@@ -1,0 +1,105 @@
+name: Codex agent mode hotfix
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/ripoai-web-app-U0rvk']
+    paths:
+      - '.github/workflows/codex-agent-mode-hotfix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/ripoai-web-app-U0rvk
+
+      - name: Materialize real Agent mode source
+        run: |
+          node scripts/force-agent-browser.mjs
+          node <<'NODE'
+          const fs = require('fs')
+
+          function writeIfChanged(path, next) {
+            const prev = fs.readFileSync(path, 'utf8')
+            if (prev !== next) fs.writeFileSync(path, next)
+          }
+
+          {
+            const path = 'src/hooks/useChat.ts'
+            let s = fs.readFileSync(path, 'utf8')
+            s = s.replace(
+`      // Agent mode must never route through the compound web-search model.
+      // The real browser panel below is the source of truth when Agent is on.
+      const wantsSearch =
+        !opts.agent &&`,
+`      // Agent mode must never route through the compound web-search model.
+      // The real browser panel below is the source of truth when Agent is on.
+      const wantsSearch =
+        !opts.systemOverride &&
+        !opts.agent &&`,
+            )
+            s = s.replace(
+`      const wantsSearch =
+        opts.agent ||
+        opts.webSearch ||
+        (!opts.webSearch && shouldAutoSearch(history[history.length - 1]?.content ?? ''))`,
+`      // Agent mode must never route through the compound web-search model.
+      // The real browser panel below is the source of truth when Agent is on.
+      const wantsSearch =
+        !opts.systemOverride &&
+        !opts.agent &&
+        (opts.webSearch ||
+          (!opts.webSearch && shouldAutoSearch(history[history.length - 1]?.content ?? '')))`,
+            )
+            writeIfChanged(path, s)
+          }
+
+          {
+            const path = 'src/lib/agentBrowser.ts'
+            let s = fs.readFileSync(path, 'utf8')
+            if (!s.includes("host.endsWith('github.io')")) {
+              s = s.replace(
+"    if (host.endsWith('.netlify.app') || host.endsWith('.netlify.live')) return '/api/agent-browser'\n",
+"    if (host.endsWith('.netlify.app') || host.endsWith('.netlify.live')) return '/api/agent-browser'\n" +
+"    // GitHub Pages/static hosts cannot run backend functions. Do not POST to\n" +
+"    // /api/agent-browser there, because it returns 405 and looks like Agent broke.\n" +
+"    if (host.endsWith('github.io')) return ''\n",
+              )
+            }
+            s = s.replace(
+"  const endpoint = getAgentBrowserUrl()\n  if (!endpoint) {\n    return {\n      status: 'unavailable',\n      events: [],\n      error: 'Agent browser backend is not connected for this deployment.',\n    }\n  }\n\n  const started = normalizeEvent({ type: 'start', label: 'Starting real browser session' }, 'Starting real browser session')",
+"  const endpoint = getAgentBrowserUrl()\n  const started = normalizeEvent({ type: 'start', label: 'Starting real browser session' }, 'Starting real browser session')\n  if (!endpoint) {\n    return {\n      status: 'unavailable',\n      events: [started],\n      error: 'Agent browser backend URL is not configured for this deployment. Set VITE_AGENT_BROWSER_URL to the Cloudflare/Netlify browser worker URL.',\n    }\n  }",
+            )
+            s = s.replace(
+"        status: res.status === 501 ? 'unavailable' : 'error',\n        events: [started],\n        error: detail || `Agent browser failed (${res.status}).`,",
+"        status: res.status === 501 || res.status === 404 || res.status === 405 ? 'unavailable' : 'error',\n        events: [started],\n        error: detail || `Agent browser backend unavailable (${res.status}).`,",
+            )
+            writeIfChanged(path, s)
+          }
+
+          {
+            const path = 'src/main.tsx'
+            let s = fs.readFileSync(path, 'utf8')
+            s = s.replace(/APP_VERSION = 'v[^']+'/g, "APP_VERSION = 'v7.15.3'")
+            writeIfChanged(path, s)
+          }
+
+          writeIfChanged('scripts/force-agent-browser.mjs', "console.log('Agent mode source already patched.')\n")
+          NODE
+
+      - name: Commit source hotfix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/hooks/useChat.ts src/components/ChatView.tsx src/lib/agentBrowser.ts src/main.tsx scripts/force-agent-browser.mjs
+          if git diff --cached --quiet; then
+            echo "No Agent source changes needed."
+          else
+            git commit -m "Materialize agent browser source hotfix"
+            git push
+          fi
