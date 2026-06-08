@@ -84,12 +84,18 @@ patchFile('src/hooks/useChat.ts', (source, path) => {
     },
   ])
 
-  if (!source.includes('const initialAgentBrowser: AgentBrowserState | undefined')) {
+  if (!source.includes('agentBrowser: initialAgentBrowser')) {
     source = insertAfter(
       source,
       path,
       'initial agent browser state',
-      '      const assistantId = uid4()\n',
+      `      const groqMessages: ChatMessage[] = [
+        { role: 'system', content: system },
+        ...toGroqMessages(trimHistory(history), visionCapable),
+      ]
+
+      const assistantId = uid4()
+`,
       `      const initialAgentBrowser: AgentBrowserState | undefined =
         opts.agent && (settings.agentBrowserPreview ?? true)
           ? {
