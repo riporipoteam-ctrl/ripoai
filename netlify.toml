@@ -1,5 +1,5 @@
 # Netlify deployment config for RipoAI
-# Serves the app at the site root (e.g. ripoai.netlify.app) - no /ripoai/ path.
+# Serves the app at the site root (e.g. ripoai.netlify.app) — no /ripoai/ path.
 
 [build]
   command = "npm run build"
@@ -9,9 +9,9 @@
   VITE_BASE = "/"
   NODE_VERSION = "20"
 
-# Set these in Netlify UI -> Site settings -> Environment variables (not here):
-#   GROQ_API_KEY / VITE_GROQ_API_KEY
-#   OPENROUTER_API_KEY / VITE_OPENROUTER_API_KEY
+# Set these in Netlify UI → Site settings → Environment variables (not here):
+#   VITE_GROQ_API_KEY        (your Groq key)
+#   VITE_OPENROUTER_API_KEY  (your OpenRouter key, for 3o models)
 
 [functions]
   node_bundler = "esbuild"
@@ -19,6 +19,11 @@
 [[redirects]]
   from = "/api/ripoai-chat"
   to = "/.netlify/functions/ripoai-chat"
+  status = 200
+
+[[redirects]]
+  from = "/api/agent-browser"
+  to = "/.netlify/functions/agent-browser"
   status = 200
 
 # SPA fallback (the app uses hash routing, but this is safe).

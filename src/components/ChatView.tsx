@@ -125,7 +125,7 @@ export default function ChatView() {
   )
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="chat-stage relative h-full overflow-hidden">
       {/* Top app bar — gives the screen real structure instead of two lonely
           floating icons. Shown when the sidebar is collapsed (i.e. on mobile). */}
       {!sidebarOpen && (
@@ -150,7 +150,7 @@ export default function ChatView() {
           </button>
         </header>
       )}
-      <div ref={scrollRef} onScroll={onScroll} className="chat-scroll flex-1 overflow-y-auto">
+      <div ref={scrollRef} onScroll={onScroll} className="chat-scroll absolute inset-0 overflow-y-auto">
         {empty ? (
           <div className="empty-state relative flex h-full flex-col items-center justify-center px-4 py-6">
             <motion.div
@@ -185,7 +185,7 @@ export default function ChatView() {
             </div>
           </div>
         ) : (
-          <div className="chat-thread mx-auto w-full max-w-3xl space-y-6 px-4 py-6">
+          <div className="chat-thread mx-auto w-full max-w-3xl space-y-6 px-4 pb-44 pt-6 sm:pb-48">
             <AnimatePresence initial={false}>
               {messages.map((m, i) => {
                 const isLastAssistant =
@@ -217,7 +217,7 @@ export default function ChatView() {
         )}
       </div>
 
-      <div className="composer-dock pointer-events-none relative px-3 pt-2 pb-[max(env(safe-area-inset-bottom),0.7rem)] sm:px-4 sm:pb-4">
+      <div className="composer-dock pointer-events-none absolute inset-x-0 bottom-0 z-30 px-3 pt-8 pb-[max(env(safe-area-inset-bottom),0.7rem)] sm:px-4 sm:pb-4">
         <AnimatePresence>
           {!empty && !atBottom && (
             <motion.button

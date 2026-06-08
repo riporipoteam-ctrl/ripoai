@@ -4,6 +4,7 @@ import { Copy, Check, RefreshCw, Pencil, FileText, Volume2, Square, Bookmark, Ar
 import { Markdown } from './Markdown'
 import Reasoning from './Reasoning'
 import AgentTrace from './AgentTrace'
+import AgentBrowserPanel from './AgentBrowserPanel'
 import ImageCard from './ImageCard'
 import WebImagesCard from './WebImagesCard'
 import MapCard from './MapCard'
@@ -16,6 +17,7 @@ import { parseSkillBlock, saveSkill } from '../lib/skills'
 import { useStore } from '../store'
 import type { StoredMessage } from '../lib/db'
 import type { WebImageResult } from '../lib/webImages'
+import type { AgentBrowserState } from '../lib/agentBrowser'
 
 interface Props {
   message: StoredMessage
@@ -46,7 +48,7 @@ function ThinkingIndicator() {
 }
 
 export default function Message({ message, streaming, isLastAssistant, onRegenerate, onEdit, onFollowup, onToggleBookmark }: Props) {
-  const { user, settings } = useStore()
+  const { user } = useStore()
   const [installedSkill, setInstalledSkill] = useState('')
   const skillFromBlock =
     message.role !== 'user' && /```skill[\s\S]*?```/i.test(message.content)
@@ -60,6 +62,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
   const webImages = (
     message as StoredMessage & { webImages?: { query: string; images: WebImageResult[] } }
   ).webImages
+  const agentBrowser = (message as StoredMessage & { agentBrowser?: AgentBrowserState }).agentBrowser
 
   function copy() {
     navigator.clipboard.writeText(message.content)
@@ -170,12 +173,9 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
       </div>
       <div className="min-w-0 flex-1">
         {modelName && <div className="mb-1 text-xs font-semibold text-muted">{modelName}</div>}
+        <AgentBrowserPanel browser={agentBrowser} live={liveStreaming && agentBrowser?.status === 'running'} />
         {!!message.steps?.length && (
-          <AgentTrace
-            steps={message.steps}
-            live={emptyStreaming}
-            browserPreview={settings.agentBrowserPreview ?? true}
-          />
+          <AgentTrace steps={message.steps} live={emptyStreaming} />
         )}
         {emptyStreaming && !message.steps?.length && <ThinkingIndicator />}
         {message.reasoning && <Reasoning text={message.reasoning} live={liveStreaming && !message.content} thinkMs={message.thinkMs} />}

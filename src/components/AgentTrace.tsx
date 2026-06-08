@@ -16,11 +16,9 @@ function hostOf(s?: string): string | null {
 export default function AgentTrace({
   steps,
   live,
-  browserPreview = true,
 }: {
   steps: Step[]
   live?: boolean
-  browserPreview?: boolean
 }) {
   const [open, setOpen] = useState(false)
   if (!steps.length && !live) return null
@@ -28,10 +26,6 @@ export default function AgentTrace({
   const hosts = Array.from(
     new Set(steps.map((s) => hostOf(s.detail)).filter(Boolean) as string[]),
   ).slice(0, 6)
-  const activeHost = hosts[0] ?? 'search.ripoai.agent'
-  const actions = steps.length
-    ? steps.slice(-4).map((s) => s.type.replace(/[_-]+/g, ' ').toUpperCase())
-    : ['SEARCH', 'OPEN', 'READ']
 
   return (
     <div className="agent-trace mb-2.5 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.07] to-transparent">
@@ -69,29 +63,6 @@ export default function AgentTrace({
         </div>
         <ChevronDown size={16} className={`shrink-0 text-muted transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
-      {browserPreview && (
-        <div className="agent-browser-strip mx-3 mb-3 rounded-2xl border border-white/10 bg-black/[0.035] p-2 backdrop-blur-xl dark:bg-white/[0.04]">
-          <div className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-red-400/80" />
-            <span className="h-2.5 w-2.5 rounded-full bg-yellow-400/80" />
-            <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
-            <div className="ml-1 flex min-w-0 flex-1 items-center gap-1.5 rounded-full border border-white/10 bg-white/35 px-2.5 py-1 text-[11px] font-medium text-muted dark:bg-black/20">
-              <Globe size={11} className="shrink-0 text-accent" />
-              <span className="truncate">{activeHost}</span>
-            </div>
-          </div>
-          <div className="mt-2 flex flex-wrap gap-1.5">
-            {actions.map((action, i) => (
-              <span
-                key={`${action}-${i}`}
-                className="rounded-full border border-white/10 bg-white/30 px-2 py-0.5 text-[10px] font-bold text-ink/75 dark:bg-white/[0.06]"
-              >
-                {live && i === actions.length - 1 ? `${action}...` : action}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
       <AnimatePresence initial={false}>
         {open && steps.length > 0 && (
           <motion.ul
