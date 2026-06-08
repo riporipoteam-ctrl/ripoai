@@ -3,7 +3,7 @@ dist
 dist-ssr
 android
 ios
-RipoAI.apk
+AskAI.apk
 *.local
 .DS_Store
 .vscode/*

@@ -1,6 +1,6 @@
 name: Deploy to Firebase Hosting
 
-# Deploys RipoAI to Firebase Hosting (https://ripoai-dff5d.web.app).
+# Deploys AskAI to Firebase Hosting (https://ripoai-dff5d.web.app).
 #
 # Why this exists: Google sign-in works in an installed/home-screen PWA only
 # when the OAuth handler is SAME-ORIGIN as the app. On GitHub Pages / Netlify

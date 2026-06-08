@@ -5,7 +5,6 @@ import { ArrowLeft, Users, Loader2, Sparkles, FolderGit2, Square, PanelLeftOpen,
 import { useStore } from '../store'
 import { loadAgents, mentionedAgents, type Agent } from '../lib/agents'
 import { runTeam, type TeamEvent } from '../lib/agentTeam'
-import { wantsWebsite } from '../lib/prompt'
 import { parseCodeFiles } from '../lib/parseCode'
 import { saveProject } from '../lib/db'
 import { Markdown } from '../components/Markdown'
@@ -90,7 +89,9 @@ export default function TeamPage() {
         color: '#888',
         role: 'system',
         phase: 'system',
-        text: `${lead.name} is mobilizing the team — ${list.length} agents on the job.`,
+        text: mentioned.length
+          ? `Routing to ${mentioned.map((a) => a.name).join(', ')}…`
+          : `The team is reading your message…`,
         done: true,
       },
     ])
@@ -100,7 +101,7 @@ export default function TeamPage() {
         task: cleanTask,
         agents: list,
         lead,
-        buildy: wantsWebsite(cleanTask) || /\b(app|code|build|website|game|tool|script|component)\b/i.test(cleanTask),
+        preselected: mentioned.length ? mentioned : undefined,
         signal: ac.signal,
         onEvent: (ev) =>
           setEvents((prev) => {

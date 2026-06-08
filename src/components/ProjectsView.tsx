@@ -140,6 +140,14 @@ export default function ProjectsView() {
   const [streaming, setStreaming] = useState(false)
   const [liveText, setLiveText] = useState('')
   const [mobileView, setMobileView] = useState<'chat' | 'build'>('chat')
+  // On phones the Sandpack file-explorer squeezes the editor unusably narrow, so
+  // we hide it in portrait and let the code fill the width.
+  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768)
+  useEffect(() => {
+    const onResize = () => setNarrow(window.innerWidth < 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
   const [model, setModel] = useState<ModelTier>(settings.defaultModel === 'auto' ? 'ripoai-2o-pro' : settings.defaultModel)
   const [attached, setAttached] = useState<Attachment[]>([])
   const fileRef = useRef<HTMLInputElement>(null)
@@ -630,8 +638,13 @@ export default function ProjectsView() {
             <SandpackLayout style={{ height: '100%', borderRadius: 20, border: '1px solid rgba(255,255,255,0.1)' }}>
               {tab === 'code' && (
                 <>
-                  <SandpackFileExplorer style={{ height: '100%' }} />
-                  <SandpackCodeEditor showLineNumbers showInlineErrors style={{ height: '100%' }} />
+                  {!narrow && <SandpackFileExplorer style={{ height: '100%' }} />}
+                  <SandpackCodeEditor
+                    showLineNumbers
+                    showInlineErrors
+                    showTabs={narrow}
+                    style={{ height: '100%', minWidth: 0, flex: 1 }}
+                  />
                 </>
               )}
               {tab === 'preview' && <SandpackPreview showOpenInCodeSandbox={false} style={{ height: '100%' }} />}

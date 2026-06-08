@@ -1,4 +1,4 @@
-name: Deploy RipoAI to GitHub Pages
+name: Deploy AskAI to GitHub Pages
 
 on:
   push:
