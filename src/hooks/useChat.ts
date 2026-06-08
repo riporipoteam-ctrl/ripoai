@@ -13,6 +13,7 @@ import { buildSystemPrompt, AGENT_SYSTEM, WEB3D_INSTRUCTIONS, wantsWebsite, need
 import { extractSocialImages, buildSocialPrompt } from '../lib/social'
 import { searchModel, shouldAutoSearch } from '../lib/search'
 import { searchWebImages, wantsWebImageSearch, webImageQuery } from '../lib/webImages'
+import { runAgentBrowserTask, type AgentBrowserEvent, type AgentBrowserState } from '../lib/agentBrowser'
 import { extractMemories } from '../lib/memory'
 import { installSkillFromUrl, detectSkillInstall, detectSlashSkill, findSkill, autoPickSkill } from '../lib/skills'
 import { haptic } from './useSpeech'
@@ -370,10 +371,13 @@ export function useChat(chatId: string | undefined) {
       // the compound model can't view images.
       const hasImages = (lastUser?.attachments ?? []).some((a) => a.kind === 'image' && a.url)
 
+      // Agent mode must never route through the compound web-search model.
+      // The real browser panel below is the source of truth when Agent is on.
       const wantsSearch =
-        opts.agent ||
-        opts.webSearch ||
-        (!opts.webSearch && shouldAutoSearch(history[history.length - 1]?.content ?? ''))
+        !opts.systemOverride &&
+        !opts.agent &&
+        (opts.webSearch ||
+          (!opts.webSearch && shouldAutoSearch(history[history.length - 1]?.content ?? '')))
       const useCompound = !hasImages && wantsSearch
 
       // 3o models run on OpenRouter (free), with automatic Groq fallback on
@@ -504,9 +508,27 @@ export function useChat(chatId: string | undefined) {
       ]
 
       const assistantId = uid4()
+      const initialAgentBrowser: AgentBrowserState | undefined =
+        opts.agent && (settings.agentBrowserPreview ?? true)
+          ? {
+              status: 'running',
+              events: [{ type: 'start', label: 'Starting real browser session', at: Date.now() }],
+            }
+          : undefined
       setMessages((m) => [
         ...m,
-        { id: assistantId, role: 'assistant', content: '', reasoning: '', model: opts.model, steps: [], map: placesData ?? undefined, weather: weatherData ?? undefined, createdAt: Date.now() },
+        {
+          id: assistantId,
+          role: 'assistant',
+          content: '',
+          reasoning: '',
+          model: opts.model,
+          steps: [],
+          map: placesData ?? undefined,
+          weather: weatherData ?? undefined,
+          agentBrowser: initialAgentBrowser,
+          createdAt: Date.now(),
+        } as StoredMessage & { agentBrowser?: AgentBrowserState },
       ])
       setSteps([])
       setStreaming(true)
@@ -518,6 +540,55 @@ export function useChat(chatId: string | undefined) {
       // away, the run keeps going in the background (and still saves) but stops
       // touching the now-different view.
       const isLive = () => loadedId.current === id
+
+      let agentBrowser: AgentBrowserState | undefined = initialAgentBrowser
+      if (opts.agent && (settings.agentBrowserPreview ?? true)) {
+        const events: AgentBrowserEvent[] = [...(initialAgentBrowser?.events ?? [])]
+        const applyAgentBrowser = (state: AgentBrowserState) => {
+          agentBrowser = state
+          if (!isLive()) return
+          setMessages((m) =>
+            m.map((x) =>
+              x.id === assistantId
+                ? ({ ...x, agentBrowser: state } as StoredMessage & { agentBrowser?: AgentBrowserState })
+                : x,
+            ),
+          )
+        }
+        try {
+          const browserResult = await runAgentBrowserTask(lastText, {
+            signal: ac.signal,
+            onEvent: (event) => {
+              events.push(event)
+              applyAgentBrowser({ ...(agentBrowser ?? { status: 'running', events: [] }), status: 'running', events: [...events] })
+            },
+          })
+          const finalBrowser = { ...browserResult, events: browserResult.events?.length ? browserResult.events : events }
+          applyAgentBrowser(finalBrowser)
+          const browserNotes = [
+            finalBrowser.currentUrl ? `Current URL: ${finalBrowser.currentUrl}` : '',
+            finalBrowser.title ? `Page title: ${finalBrowser.title}` : '',
+            finalBrowser.summary ? `Browser summary: ${finalBrowser.summary}` : '',
+            finalBrowser.sources?.length
+              ? `Sources opened: ${finalBrowser.sources.map((s) => `${s.title || s.url} (${s.url})`).join('; ')}`
+              : '',
+            finalBrowser.error ? `Browser status: ${finalBrowser.error}` : '',
+          ]
+            .filter(Boolean)
+            .join('\n')
+          if (browserNotes) {
+            system += `\n\nReal agent browser session results:\n${browserNotes}\nUse these browser results when relevant. If the browser backend was unavailable, say you could not open the live browser; do not fall back to the web-search model and do not pretend to click pages you did not click.`
+            groqMessages[0] = { role: 'system', content: system }
+          }
+        } catch (e: any) {
+          if (e?.name === 'AbortError') throw e
+          applyAgentBrowser({
+            status: 'error',
+            events,
+            error: e?.message || 'Agent browser failed.',
+          })
+        }
+      }
 
       let finalContent = ''
       let finalReasoning = ''
@@ -772,8 +843,9 @@ export function useChat(chatId: string | undefined) {
         steps: localSteps.length ? [...localSteps] : undefined,
         map: placesData ?? undefined,
         weather: weatherData ?? undefined,
+        agentBrowser,
         createdAt: Date.now(),
-      }
+      } as StoredMessage & { agentBrowser?: AgentBrowserState }
       const finalMsgs: StoredMessage[] = [...history, assistantMsg]
       if (isLive()) setMessages(finalMsgs)
 

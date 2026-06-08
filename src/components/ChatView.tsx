@@ -245,8 +245,8 @@ export default function ChatView() {
               webSearch={webSearch}
               agent={agent}
               imageMode={imageMode}
-              onToggleWeb={() => { setWebSearch((v) => !v); setImageMode(false) }}
-              onToggleAgent={() => { setAgent((v) => !v); setImageMode(false) }}
+              onToggleWeb={() => { setWebSearch((v) => !v); setAgent(false); setImageMode(false) }}
+              onToggleAgent={() => { setAgent((v) => !v); setWebSearch(false); setImageMode(false) }}
               onToggleImage={() => { setImageMode((v) => !v); setWebSearch(false); setAgent(false) }}
               imageStyle={imageStyle}
               onImageStyle={setImageStyle}
