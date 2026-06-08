@@ -175,6 +175,17 @@ export default function ChatView() {
             >
               <Logo size={82} variant="icon" glow />
             </motion.div>
+            <motion.h1
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.08 }}
+              className="mt-5 text-center text-2xl font-extrabold tracking-tight sm:text-3xl"
+            >
+              {(() => {
+                const name = (settings.displayName || user?.displayName || '').split(' ')[0]
+                return name ? <>How can I help, {name}?</> : <>How can I help today?</>
+              })()}
+            </motion.h1>
             <div className="empty-suggestions mt-6 grid w-full max-w-2xl grid-cols-2 gap-2.5 sm:gap-3">
               {suggestions.map((s, i) => (
                 <motion.button

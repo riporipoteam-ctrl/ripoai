@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   PenSquare,
@@ -65,6 +65,8 @@ function groupByDate(chats: ChatMeta[]) {
 export default function Sidebar() {
   const navigate = useNavigate()
   const { chatId, projectId } = useParams()
+  const location = useLocation()
+  const path = location.pathname
   const { user, settings, chats, projects, sidebarOpen, setSidebar, openSettings, unreadChats } = useStore()
   const [search, setSearch] = useState('')
   const [bookmarksOpen, setBookmarksOpen] = useState(false)
@@ -133,31 +135,34 @@ export default function Sidebar() {
             style={{ width: 288 }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-3">
-              <div className="flex items-center gap-2 px-1">
-                <Logo size={26} />
-                <span className="text-xl font-extrabold brand-gradient">AskAI</span>
+            <div className="flex items-center justify-between px-4 pb-2 pt-4">
+              <div className="flex items-center gap-2.5">
+                <Logo size={28} />
+                <span className="text-[1.35rem] font-extrabold tracking-tight brand-gradient">AskAI</span>
               </div>
               <button
                 onClick={() => setSidebar(false)}
-                className="pressable rounded-xl p-2 text-muted hover:bg-white/10 hover:text-ink"
+                className="pressable rounded-xl p-2 text-muted transition hover:bg-white/10 hover:text-ink"
                 title="Collapse sidebar"
               >
                 <PanelLeftClose size={18} />
               </button>
             </div>
 
-            <div className="space-y-1 px-3">
+            <div className="space-y-2 px-3">
+              {/* Primary action */}
               <button
                 onClick={() => {
                   navigate('/')
                   if (isMobile) setSidebar(false)
                 }}
-                className="pressable flex w-full items-center gap-2 rounded-2xl border border-white/10 px-3 py-2.5 text-sm font-semibold transition hover:bg-white/10"
+                className="pressable accent-gradient-bg flex w-full items-center justify-center gap-2 rounded-2xl px-3 py-3 text-sm font-bold shadow-sm transition hover:brightness-110"
               >
-                <PenSquare size={17} className="text-accent" /> New chat
+                <PenSquare size={17} /> New chat
               </button>
-              <div className="flex items-center gap-2 rounded-2xl bg-white/5 px-3 py-2">
+
+              {/* Search */}
+              <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2.5 transition focus-within:border-accent/40">
                 <Search size={16} className="text-muted" />
                 <input
                   value={search}
@@ -166,52 +171,76 @@ export default function Sidebar() {
                   className="w-full bg-transparent text-sm outline-none placeholder:text-muted"
                 />
               </div>
-              <button
-                onClick={() => setBookmarksOpen(true)}
-                className="pressable flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-sm font-medium text-muted transition hover:bg-white/10 hover:text-ink"
-              >
-                <Bookmark size={16} className="text-accent" /> Saved messages
-              </button>
-              <button
-                onClick={() => {
-                  navigate('/plus')
-                  if (isMobile) setSidebar(false)
-                }}
-                className="pressable flex w-full items-center gap-2 rounded-2xl border border-accent/30 bg-accent/10 px-3 py-2 text-sm font-semibold transition hover:bg-accent/15"
-              >
-                <Sparkles size={16} className="text-accent" />
-                <span>AskAI<span className="brand-gradient">+</span></span>
-                {isPlus ? (
-                  <span className="ml-auto rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent">
-                    Active
-                  </span>
-                ) : (
-                  <span className="ml-auto flex items-center gap-1 text-xs font-bold text-amber-400">
-                    <Coins size={12} /> {plus?.coins ?? 0}
-                  </span>
-                )}
-              </button>
-              <button
-                onClick={() => {
-                  navigate('/team')
-                  if (isMobile) setSidebar(false)
-                }}
-                className="pressable flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-sm font-medium text-muted transition hover:bg-white/10 hover:text-ink"
-              >
-                <Users size={16} className="text-accent" /> Agent team
-              </button>
-              <button
-                onClick={() => {
-                  navigate('/tasks')
-                  if (isMobile) setSidebar(false)
-                }}
-                className="pressable flex w-full items-center gap-2 rounded-2xl px-3 py-2 text-sm font-medium text-muted transition hover:bg-white/10 hover:text-ink"
-              >
-                <ListChecks size={16} className="text-accent" /> Daily tasks
-                {plus && plus.tasksDone.length < 5 && (
-                  <span className="ml-auto h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]" title="Tasks available" />
-                )}
-              </button>
+
+              {/* Navigation cluster */}
+              <div className="space-y-0.5 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-1.5">
+                {(() => {
+                  const NavItem = ({
+                    icon,
+                    label,
+                    to,
+                    onClick,
+                    active,
+                    trailing,
+                  }: {
+                    icon: React.ReactNode
+                    label: React.ReactNode
+                    to?: string
+                    onClick?: () => void
+                    active?: boolean
+                    trailing?: React.ReactNode
+                  }) => (
+                    <button
+                      onClick={() => {
+                        if (onClick) onClick()
+                        else if (to) navigate(to)
+                        if (isMobile) setSidebar(false)
+                      }}
+                      className={`pressable flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                        active ? 'bg-accent/15 text-ink' : 'text-muted hover:bg-white/[0.06] hover:text-ink'
+                      }`}
+                    >
+                      <span className={active ? 'text-accent' : 'text-muted'}>{icon}</span>
+                      <span className="flex-1 text-left">{label}</span>
+                      {trailing}
+                    </button>
+                  )
+                  return (
+                    <>
+                      <NavItem
+                        icon={<Sparkles size={17} />}
+                        label={<span className="font-semibold">AskAI<span className="brand-gradient">+</span></span>}
+                        to="/plus"
+                        active={path === '/plus'}
+                        trailing={
+                          isPlus ? (
+                            <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent">
+                              Active
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-xs font-bold text-amber-400">
+                              <Coins size={12} /> {plus?.coins ?? 0}
+                            </span>
+                          )
+                        }
+                      />
+                      <NavItem icon={<Users size={17} />} label="Agent team" to="/team" active={path === '/team'} />
+                      <NavItem
+                        icon={<ListChecks size={17} />}
+                        label="Daily tasks"
+                        to="/tasks"
+                        active={path === '/tasks'}
+                        trailing={
+                          plus && plus.tasksDone.length < 5 ? (
+                            <span className="h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]" title="Tasks available" />
+                          ) : undefined
+                        }
+                      />
+                      <NavItem icon={<Bookmark size={17} />} label="Saved messages" onClick={() => setBookmarksOpen(true)} />
+                    </>
+                  )
+                })()}
+              </div>
             </div>
 
             {/* Scroll area */}
@@ -234,7 +263,7 @@ export default function Sidebar() {
                 <div
                   key={p.id}
                   className={`group flex items-center gap-2 rounded-xl px-2 py-2 text-sm transition hover:bg-white/10 ${
-                    projectId === p.id ? 'bg-white/10' : ''
+                    projectId === p.id ? 'bg-accent/15 text-ink' : ''
                   }`}
                 >
                   <button
@@ -275,7 +304,7 @@ export default function Sidebar() {
                       <div
                         key={c.id}
                         className={`group relative flex items-center gap-2 rounded-xl px-2 py-2 text-sm transition hover:bg-white/10 ${
-                          chatId === c.id ? 'bg-white/10' : ''
+                          chatId === c.id ? 'bg-accent/15 text-ink' : ''
                         }`}
                       >
                         {renaming === c.id ? (
@@ -384,8 +413,8 @@ export default function Sidebar() {
             </div>
 
             {/* Profile */}
-            <div className="border-t border-white/10 p-2">
-              <div className="flex items-center gap-2 rounded-2xl px-2 py-2 hover:bg-white/5">
+            <div className="p-2">
+              <div className="flex items-center gap-2 rounded-2xl border border-white/[0.07] bg-white/[0.03] px-2.5 py-2.5">
                 <Avatar name={settings.displayName || user?.displayName} photoURL={settings.avatar || user?.photoURL} size={34} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-semibold">
