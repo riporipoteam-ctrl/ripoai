@@ -5,10 +5,10 @@
   "type": "module",
   "homepage": "https://riporipoteam-ctrl.github.io/ripoai/",
   "scripts": {
-    "dev": "node scripts/use-source-index.mjs && vite",
-    "build": "node scripts/use-source-index.mjs && tsc -b && vite build",
+    "dev": "node scripts/use-source-index.mjs && node scripts/force-agent-browser.mjs && vite",
+    "build": "node scripts/use-source-index.mjs && node scripts/force-agent-browser.mjs && tsc -b && vite build",
     "preview": "vite preview",
-    "lint": "tsc -b --noEmit",
+    "lint": "node scripts/force-agent-browser.mjs && tsc -b --noEmit",
     "expo:start": "npm --prefix expo start",
     "expo:ios": "npm --prefix expo run ios",
     "expo:build:ios": "npm --prefix expo run build:ios"
