@@ -6,10 +6,11 @@ import ErrorBoundary from './components/ErrorBoundary'
 import './styles/globals.css'
 import './styles/glass.css'
 import './styles/release-polish.css'
+import './styles/composer-float-hotfix.css'
 import 'katex/dist/katex.min.css'
 
 // Bump on each deploy so the build hash changes and the version stamp updates.
-export const APP_VERSION = 'v7.13.0'
+export const APP_VERSION = 'v7.14.0'
 console.log('RipoAI', APP_VERSION)
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

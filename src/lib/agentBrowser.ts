@@ -26,6 +26,7 @@ export function getAgentBrowserUrl(): string {
   try {
     const host = window.location.hostname
     if (host.endsWith('.netlify.app') || host.endsWith('.netlify.live')) return '/api/agent-browser'
+    if (host && host !== 'localhost' && host !== '127.0.0.1' && host !== '::1') return '/api/agent-browser'
   } catch {
     /* ignore */
   }
