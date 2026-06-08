@@ -8,6 +8,7 @@ import { completeGoogleRedirect } from './lib/googleAuth'
 import SignIn from './pages/SignIn'
 import SignUp from './pages/SignUp'
 import Home from './pages/Home'
+import Landing from './pages/Landing'
 import Onboarding from './components/Onboarding'
 import InstallHint from './components/InstallHint'
 import SelectionToolbar from './components/SelectionToolbar'
@@ -38,7 +39,8 @@ function Protected({ children }: { children: React.ReactNode }) {
   const { user, authReady, dataReady, settings } = useStore()
   const location = useLocation()
   if (!authReady) return <FullScreenLoader />
-  if (!user) return <Navigate to="/signin" replace state={{ from: location }} />
+  // Visitors see the public landing (chat showcase) instead of a bare login wall.
+  if (!user) return <Navigate to="/welcome" replace state={{ from: location }} />
   if (!dataReady) return <FullScreenLoader />
   // Onboarding shows at most once per browser (even across accounts).
   let onboardedGlobally = false
@@ -109,6 +111,10 @@ export default function App() {
           <Route
             path="/signup"
             element={authReady && user ? <Navigate to="/" replace /> : <SignUp />}
+          />
+          <Route
+            path="/welcome"
+            element={authReady && user ? <Navigate to="/" replace /> : <Landing />}
           />
           <Route
             path="/*"

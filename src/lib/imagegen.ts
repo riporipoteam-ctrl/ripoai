@@ -202,9 +202,11 @@ export function imageUrl(
   const w = opts.w ?? 1024
   const h = opts.h ?? 1024
   const model = opts.model ?? 'flux'
+  // `enhance` runs prompt-upscaling for noticeably better composition/detail on
+  // the free fallback path; `nofeed` keeps generations private.
   return `https://image.pollinations.ai/prompt/${encodeURIComponent(
     prompt,
-  )}?width=${w}&height=${h}&nologo=true&seed=${seed}&model=${model}`
+  )}?width=${w}&height=${h}&nologo=true&nofeed=true&enhance=true&seed=${seed}&model=${model}`
 }
 
 /** Resolves once the generated image has finished loading (or errors out). */

@@ -692,9 +692,11 @@ export function useChat(chatId: string | undefined) {
         attempts.push({ provider: 'groq', model: searchModel(), maxTokens: 2048 })
         attempts.push({ provider: 'groq', model: 'llama-3.3-70b-versatile', maxTokens: 1500 })
       } else if (hasImages) {
-        // Two different vision models so a flaky/over-loaded one still answers.
-        attempts.push({ provider: 'groq', model: visionModel.groqModel, maxTokens: 1500 })
-        attempts.push({ provider: 'groq', model: 'meta-llama/llama-4-maverick-17b-128e-instruct', maxTokens: 1500 })
+        // Strongest vision model first (Maverick), then Scout as a fast fallback,
+        // so image understanding is as accurate as possible. Bigger budget lets
+        // it describe rich/multi-image inputs thoroughly.
+        attempts.push({ provider: 'groq', model: 'meta-llama/llama-4-maverick-17b-128e-instruct', maxTokens: 2048 })
+        attempts.push({ provider: 'groq', model: visionModel.groqModel, maxTokens: 2048 })
       } else if (usePuter) {
         attempts.push({ provider: 'puter', model: model.puterModel!, maxTokens: model.maxTokens })
         attempts.push({ provider: 'groq', model: model.groqModel, maxTokens: Math.min(model.maxTokens, 4096) })
