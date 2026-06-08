@@ -1,7 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, Globe, Plane, PanelLeftOpen, PenSquare, Sparkles, Code2, FileText, MapPin, Images, Search, Zap } from 'lucide-react'
+import {
+  ChevronDown,
+  Plane,
+  PanelLeftOpen,
+  PenSquare,
+  Sparkles,
+  Code2,
+  FileText,
+  MapPin,
+  Images,
+  Search,
+  Zap,
+} from 'lucide-react'
 import { useChat } from '../hooks/useChat'
 import { useStore } from '../store'
 import Composer from './Composer'
@@ -148,17 +160,6 @@ export default function ChatView() {
               className="home-mark animate-float"
             >
               <Logo size={82} variant="icon" glow />
-            </motion.div>
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.08 }}
-              className="home-command-bar mt-5 flex w-full max-w-xl items-center justify-center gap-2"
-              aria-label="RipoAI quick actions"
-            >
-              <span className="h-1.5 w-1.5 rounded-full bg-[rgb(var(--accent))]" />
-              <span className="text-sm font-semibold text-muted">RipoAI</span>
-              <span className="h-1.5 w-1.5 rounded-full bg-[rgb(var(--accent))]" />
             </motion.div>
             <div className="empty-suggestions mt-6 grid w-full max-w-2xl grid-cols-2 gap-2.5 sm:gap-3">
               {suggestions.map((s, i) => (

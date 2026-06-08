@@ -39,6 +39,99 @@ function stripHtml(text?: string): string | undefined {
   return clean || undefined
 }
 
+const IMAGE_STOPWORDS = new Set([
+  'a',
+  'an',
+  'and',
+  'any',
+  'are',
+  'as',
+  'at',
+  'can',
+  'could',
+  'find',
+  'for',
+  'from',
+  'get',
+  'give',
+  'image',
+  'images',
+  'internet',
+  'link',
+  'links',
+  'look',
+  'me',
+  'of',
+  'on',
+  'online',
+  'photo',
+  'photos',
+  'picture',
+  'pictures',
+  'please',
+  'preview',
+  'search',
+  'show',
+  'source',
+  'sources',
+  'the',
+  'to',
+  'web',
+  'with',
+])
+
+function imageTerms(text: string): string[] {
+  const terms = (text || '')
+    .toLowerCase()
+    .replace(/https?:\/\/\S+/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .split(/\s+/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 2 && !IMAGE_STOPWORDS.has(s))
+  return Array.from(new Set(terms)).slice(0, 12)
+}
+
+function expandImageQuery(query: string): string {
+  const q = query.trim().replace(/\s+/g, ' ')
+  const lower = q.toLowerCase()
+  const extras: string[] = []
+  if (/\b(car|cars|vehicle|vehicles|auto|automotive|peugeot|bmw|mercedes|audi|toyota|ford|tesla)\b/.test(lower)) {
+    extras.push('car', 'vehicle', 'automotive', 'photo')
+  }
+  if (/\b(logo|brand|wordmark|emblem)\b/.test(lower)) extras.push('logo', 'brand mark')
+  if (/\b(shop|garage|mechanic|service|servis|repair)\b/.test(lower)) extras.push('garage', 'mechanic shop')
+  return Array.from(new Set([q, ...extras].filter(Boolean))).join(' ')
+}
+
+function imageScore(item: WebImageResult, terms: string[], originalQuery: string): number {
+  const hay = `${item.title} ${item.sourceUrl} ${item.provider} ${item.creator ?? ''}`.toLowerCase()
+  let score = 0
+  for (const term of terms) {
+    if (hay.includes(term)) score += 3
+    if (item.imageUrl.toLowerCase().includes(term)) score += 1
+  }
+  const phrase = originalQuery.toLowerCase().trim()
+  if (phrase.length > 4 && hay.includes(phrase)) score += 8
+  if (item.width && item.height) {
+    const pixels = item.width * item.height
+    if (pixels >= 600 * 400) score += 2
+    if (pixels >= 1200 * 800) score += 2
+  }
+  if (/svg|logo|brand|wordmark|emblem/i.test(`${item.title} ${originalQuery}`)) score += 1
+  return score
+}
+
+function rankImages(items: WebImageResult[], query: string, strict: boolean): WebImageResult[] {
+  const terms = imageTerms(query)
+  if (!terms.length) return uniqueBySource(items)
+  const scored = uniqueBySource(items)
+    .map((item, index) => ({ item, index, score: imageScore(item, terms, query) }))
+    .filter((x) => !strict || x.score > 0)
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+  const ranked = scored.map((x) => x.item)
+  return ranked.length ? ranked : uniqueBySource(items)
+}
+
 function uniqueBySource(items: WebImageResult[]): WebImageResult[] {
   const seen = new Set<string>()
   const out: WebImageResult[] = []
@@ -77,14 +170,14 @@ export function webImageQuery(text: string): string {
   let q = (text || '').replace(/\s+/g, ' ').trim()
   q = q
     .replace(/\b(can you|could you|please|for me)\b/gi, ' ')
-    .replace(/\b(search|find|look up|lookup|google|browse|get|show|display|preview|pull up|source|send|give|provide|fetch)\b/gi, ' ')
+    .replace(/\b(search|find|look up|lookup|google|browse|get|show|display|preview|pull up|source|send|give|provide|fetch|need|want)\b/gi, ' ')
     .replace(/\b(images?|pictures?|pics?|photos?|visuals?|wallpapers?|reference images?)\b/gi, ' ')
     .replace(/\b(from|on|the)?\s*(web|online|internet|source|sources|links?)\b/gi, ' ')
     .replace(/\bwhat does\b/gi, ' ')
     .replace(/\blook like\b/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim()
-  return q || text.trim() || 'RipoAI'
+  return expandImageQuery(q || text.trim() || 'RipoAI')
 }
 
 async function searchOpenverse(query: string, limit: number): Promise<WebImageResult[]> {
@@ -194,13 +287,15 @@ async function searchWikipediaPageImages(query: string, limit: number): Promise<
     .filter(Boolean) as WebImageResult[]
 }
 
-export async function searchWebImages(query: string, limit = 8): Promise<WebImageResult[]> {
+export async function searchWebImages(query: string, limit = 8, strict = true): Promise<WebImageResult[]> {
   const results: WebImageResult[] = []
-  const attempts = [
-    () => searchOpenverse(query, limit),
-    () => searchCommons(query, limit),
-    () => searchWikipediaPageImages(query, limit),
-  ]
+  const expanded = expandImageQuery(query)
+  const queries = Array.from(new Set([query, expanded].filter(Boolean)))
+  const attempts = queries.flatMap((q) => [
+    () => searchOpenverse(q, limit),
+    () => searchCommons(q, limit),
+    () => searchWikipediaPageImages(q, limit),
+  ])
 
   for (const attempt of attempts) {
     try {
@@ -208,9 +303,7 @@ export async function searchWebImages(query: string, limit = 8): Promise<WebImag
     } catch {
       // Keep trying the next source.
     }
-    const unique = uniqueBySource(results)
-    if (unique.length >= limit) return unique.slice(0, limit)
   }
 
-  return uniqueBySource(results).slice(0, limit)
+  return rankImages(results, query, strict).slice(0, limit)
 }

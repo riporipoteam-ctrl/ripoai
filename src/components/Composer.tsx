@@ -18,20 +18,6 @@ import {
   Check,
   Camera,
   Wand2,
-  Eraser,
-  Maximize2,
-  Images,
-  Code2,
-  MapPin,
-  Plane,
-  Languages,
-  Presentation,
-  ListChecks,
-  Lightbulb,
-  ImagePlus,
-  Search,
-  Braces,
-  type LucideIcon,
 } from 'lucide-react'
 import ModelSelector from './ModelSelector'
 import { useVoiceInput, hapticPattern } from '../hooks/useSpeech'
@@ -61,34 +47,6 @@ interface Props {
   showModelSelector?: boolean
   onVoiceCall?: () => void
 }
-
-type QuickAction = {
-  id: string
-  label: string
-  icon: LucideIcon
-  prompt: string
-  mode?: 'web' | 'image' | 'agent' | 'voice'
-  wrap?: boolean
-}
-
-const QUICK_ACTIONS: QuickAction[] = [
-  { id: 'web-images', label: 'Web images', icon: Images, prompt: 'Find web images with preview cards and source links for ', wrap: true },
-  { id: 'generate', label: 'Generate', icon: ImagePlus, prompt: 'Generate a high quality image of ', mode: 'image', wrap: true },
-  { id: 'logo', label: 'Logo', icon: Sparkles, prompt: 'Generate a clean premium logo concept with readable text for ', mode: 'image', wrap: true },
-  { id: 'edit-image', label: 'Edit image', icon: Wand2, prompt: 'Edit this image and improve it: ', mode: 'image', wrap: true },
-  { id: 'deep-search', label: 'Deep search', icon: Search, prompt: 'Search the web and give sources for ', mode: 'web', wrap: true },
-  { id: 'agent-plan', label: 'Agent', icon: Bot, prompt: 'Act as an agent and complete this step by step: ', mode: 'agent', wrap: true },
-  { id: 'summarize', label: 'Summarize', icon: ListChecks, prompt: 'Summarize this clearly with action points: ', wrap: true },
-  { id: 'files', label: 'Files', icon: FileText, prompt: 'Analyze the attached files and extract the important details.' },
-  { id: 'code', label: 'Code fix', icon: Code2, prompt: 'Fix this code and explain the bug: ', wrap: true },
-  { id: 'app', label: 'Build app', icon: Braces, prompt: 'Build a polished app with animations for ', wrap: true },
-  { id: 'slides', label: 'Slides', icon: Presentation, prompt: 'Create a sharp slide deck outline for ', wrap: true },
-  { id: 'translate', label: 'Translate', icon: Languages, prompt: 'Translate this and keep the tone natural: ', wrap: true },
-  { id: 'ideas', label: 'Ideas', icon: Lightbulb, prompt: 'Give me 12 strong ideas for ', wrap: true },
-  { id: 'places', label: 'Places', icon: MapPin, prompt: 'Find places near me for ', wrap: true },
-  { id: 'trip', label: 'Trip', icon: Plane, prompt: 'Plan a realistic trip for ', wrap: true },
-  { id: 'voice', label: 'Voice', icon: Mic, prompt: '', mode: 'voice' },
-]
 
 export default function Composer({
   model,
@@ -122,7 +80,6 @@ export default function Composer({
   }
   const [plusOpen, setPlusOpen] = useState(false)
   const [dragging, setDragging] = useState(false)
-  const [focusOpen, setFocusOpen] = useState(false)
 
   useEffect(() => {
     if (!plusOpen) return
@@ -197,54 +154,6 @@ export default function Composer({
     files.forEach((f) => dt.items.add(f))
     haptic('light')
     await handleFiles(dt.files)
-  }
-
-  const focusComposer = () => requestAnimationFrame(() => taRef.current?.focus())
-
-  function applyQuickAction(action: QuickAction) {
-    haptic('select')
-    setPlusOpen(false)
-
-    if (action.mode === 'voice') {
-      onVoiceCall?.()
-      return
-    }
-
-    if (action.mode === 'web' && !webSearch) onToggleWeb()
-    if (action.mode === 'image' && onToggleImage && !imageMode) onToggleImage()
-    if (action.mode === 'agent' && !agent) onToggleAgent()
-
-    setText((previous) => {
-      const clean = previous.trim()
-      if (action.wrap && clean) return `${action.prompt}${clean}`
-      return action.prompt
-    })
-
-    setTimeout(() => {
-      autosize()
-      focusComposer()
-    }, 0)
-  }
-
-  function enhancePrompt() {
-    haptic('light')
-    setText((previous) => {
-      const clean = previous.trim()
-      return clean
-        ? `Improve this request for a precise, useful RipoAI answer:\n\n${clean}`
-        : 'Improve this request for a precise, useful RipoAI answer: '
-    })
-    setTimeout(() => {
-      autosize()
-      focusComposer()
-    }, 0)
-  }
-
-  function clearComposer() {
-    haptic('light')
-    setText('')
-    setPlusOpen(false)
-    focusComposer()
   }
 
   function handleDragOver(event: DragEvent<HTMLDivElement>) {
@@ -360,82 +269,9 @@ export default function Composer({
         )}
       </AnimatePresence>
 
-      {createPortal(
-        <AnimatePresence>
-          {focusOpen && (
-            <motion.div
-              className="focus-composer-overlay fixed inset-0 z-[130] flex items-end justify-center bg-black/20 p-3 backdrop-blur-xl sm:items-center"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setFocusOpen(false)}
-            >
-              <motion.div
-                className="focus-composer-panel w-full max-w-3xl rounded-[30px] border border-white/20 bg-white/70 p-3 shadow-2xl backdrop-blur-3xl dark:bg-black/55"
-                initial={{ y: 26, scale: 0.98 }}
-                animate={{ y: 0, scale: 1 }}
-                exit={{ y: 26, scale: 0.98 }}
-                onClick={(event) => event.stopPropagation()}
-              >
-                <textarea
-                  value={text}
-                  onChange={(event) => setText(event.target.value)}
-                  placeholder="Write the full request..."
-                  className="min-h-[220px] w-full resize-none rounded-[22px] border border-black/5 bg-white/45 p-4 text-base outline-none backdrop-blur-xl placeholder:text-[rgb(var(--muted))] dark:border-white/10 dark:bg-white/5"
-                  autoFocus
-                />
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <button className="composer-tool" type="button" title="Improve prompt" onClick={enhancePrompt}>
-                    <Wand2 size={16} />
-                  </button>
-                  <button className="composer-tool" type="button" title="Clear" onClick={clearComposer}>
-                    <Eraser size={16} />
-                  </button>
-                  <span className="composer-meter ml-auto">{text.length} chars</span>
-                  <button className="rounded-full px-4 py-2 text-sm font-semibold text-[rgb(var(--muted))] hover:bg-black/5" type="button" onClick={() => setFocusOpen(false)}>
-                    Close
-                  </button>
-                  <button
-                    className="rounded-full bg-[rgb(var(--ink))] px-4 py-2 text-sm font-semibold text-[rgb(var(--paper))] disabled:opacity-45"
-                    type="button"
-                    disabled={!text.trim() && attachments.length === 0}
-                    onClick={() => {
-                      setFocusOpen(false)
-                      submit()
-                    }}
-                  >
-                    Send
-                  </button>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>,
-        document.body,
-      )}
-
-      <div className="quick-action-rail no-scrollbar mb-2 flex gap-1.5 overflow-x-auto px-1 pb-1" aria-label="RipoAI quick features">
-        {QUICK_ACTIONS.map((action) => {
-          const Icon = action.icon
-          return (
-            <motion.button
-              key={action.id}
-              type="button"
-              whileTap={{ scale: 0.96 }}
-              className="quick-action-chip inline-flex shrink-0 items-center gap-1.5 rounded-full border border-black/[0.06] bg-white/34 px-3 py-2 text-xs font-semibold text-[rgb(var(--ink))] shadow-sm backdrop-blur-2xl transition hover:bg-white/55 dark:border-white/[0.08] dark:bg-white/[0.06]"
-              onClick={() => applyQuickAction(action)}
-              title={action.label}
-            >
-              <Icon size={14} />
-              <span>{action.label}</span>
-            </motion.button>
-          )
-        })}
-      </div>
-
       <motion.div
         layout
-        className={`composer-shell floating-composer relative z-20 rounded-[28px] border border-white/[0.12] bg-[rgb(var(--glass-bg)/0.08)] p-2 shadow-sm backdrop-blur-2xl ${dragging ? 'composer-drop-hot' : ''}`}
+        className={`composer-shell floating-composer relative z-20 rounded-[28px] border border-white/[0.12] p-2 backdrop-blur-2xl ${dragging ? 'composer-drop-hot' : ''}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -613,18 +449,7 @@ export default function Composer({
             </button>
           )}
 
-          <button className="composer-tool" type="button" title="Improve prompt" onClick={enhancePrompt}>
-            <Wand2 size={16} />
-          </button>
-          <button className="composer-tool" type="button" title="Clear composer" onClick={clearComposer}>
-            <Eraser size={16} />
-          </button>
-          <button className="composer-tool" type="button" title="Focus composer" onClick={() => setFocusOpen(true)}>
-            <Maximize2 size={16} />
-          </button>
-
           <div className="ml-auto flex items-center gap-1.5">
-            <span className="composer-meter hidden sm:inline-flex">{attachments.length ? `${attachments.length} files` : `${text.length} chars`}</span>
             {showModelSelector && (
               <ModelSelector value={model} onChange={onModelChange} />
             )}

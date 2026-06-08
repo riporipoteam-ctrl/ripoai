@@ -11,6 +11,11 @@ const IDENTITY_RULES = `IDENTITY (strict): You are "RipoAI". You were created by
 
 const DESIGN_PERSONA = `You have world-class taste in product and UI design. When asked to build or design interfaces, produce modern, polished, responsive results with thoughtful spacing, typography, motion and accessibility.`
 
+const DESIGN_BOOST_INSTRUCTIONS = `Design boost is enabled.
+For websites/apps: act like a senior product designer and front-end creative director. Build complete, polished, responsive experiences with strong layout rhythm, intentional typography, tasteful motion, accessible contrast, and real interaction states.
+For generated websites that need images: derive exact image keywords from the user's subject. If they ask for cars, Peugeot, a mechanic shop, a restaurant, a product, a person, or a place, use those exact subject words and researched image URLs. Never fall back to unrelated nature/forest/mountain imagery unless the user asked for nature.
+For 3D/animation: use a real Three.js scene or real glTF asset when possible, full-screen or meaningfully integrated, with lighting, resize handling, motion tied to scroll or interaction, and no blank/primitive-only demos.`
+
 /** Did the user ask for 3D / heavy motion / scroll animation? */
 export function wants3D(text: string): boolean {
   return /\b(3d|three\.?js|webgl|glb|gltf|model|animat(e|ed|ion|ions)|scroll[- ]?(animation|effect|driven|based)?|parallax|gsap|cinematic|immersive|particles?|kinetic|awwwards|interactive)\b/i.test(
@@ -44,6 +49,7 @@ export function buildSystemPrompt(
   memories: Memory[],
 ): string {
   const parts = [BASE_PERSONA, IDENTITY_RULES, DESIGN_PERSONA, `You are currently running as ${model.name}.`]
+  if (settings.designBoost ?? true) parts.push(DESIGN_BOOST_INSTRUCTIONS)
 
   if (model.badge === 'PRO' || model.badge === 'MAX') {
     parts.push(
@@ -117,6 +123,7 @@ Design bar (make it genuinely stunning, agency-quality):
   • 3D: Three.js (https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js).
   • Icons: Font Awesome CDN. Fonts: Google Fonts <link>.
 - IMAGES (use REAL, on-topic ones — never empty boxes, never broken images):
+  • First derive IMAGE KEYWORDS from the user's exact subject and brand words. If the user asks for cars/Peugeot/mechanic/garage, use car, Peugeot, automotive, mechanic, garage keywords. If they ask for food, use food/restaurant keywords. NEVER use generic nature/forest/mountain images unless nature was requested.
   • Real photos by topic: https://loremflickr.com/1200/800/<keywords> (e.g. /forest,nature) or https://picsum.photos/seed/<word>/1200/800.
   • Real profile photos: if the user gives a social handle, use https://unavatar.io/<platform>/<handle> (platform = instagram, tiktok, x, youtube, github, facebook, telegram…) for that person/brand's avatar.
   • If research provided real image URLs, USE them (a plain <img src> shows cross-origin images fine).
@@ -157,7 +164,7 @@ Motion stack:
 - GSAP + ScrollTrigger (https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js and .../ScrollTrigger.min.js): pin the hero, scrub the model's rotation/position & camera to scroll, stagger-reveal sections, parallax layers.
 - Split big headings into per-word <span>s and stagger them in. Custom lerped cursor, magnetic buttons, subtle grain/noise overlay.
 
-Aesthetic: dark, cinematic, HUGE display type (Google Fonts 'Space Grotesk' / 'Syne'), lots of negative space, gradient accents. Build a SUBSTANTIAL multi-section page (immersive 3D hero, about, gallery/work, a big scroll moment, footer) and FINISH it. Use REAL topical photos: https://loremflickr.com/1600/1000/<keywords> (matches the keyword, e.g. /perfume,luxury) or https://picsum.photos/seed/<word>/1600/1000; embed a YouTube <iframe> if a video fits. No placeholders/TODOs, close every tag.
+Aesthetic: dark, cinematic, HUGE display type (Google Fonts 'Space Grotesk' / 'Syne'), lots of negative space, gradient accents. Build a SUBSTANTIAL multi-section page (immersive 3D hero, about, gallery/work, a big scroll moment, footer) and FINISH it. Use REAL topical photos: https://loremflickr.com/1600/1000/<keywords> (keywords MUST match the user's subject, e.g. /car,peugeot,mechanic for a car/mechanic site; /perfume,luxury for perfume) or https://picsum.photos/seed/<subject-word>/1600/1000. Do not use nature imagery unless nature is the subject. Embed a YouTube <iframe> if a video fits. No placeholders/TODOs, close every tag.
 
 KINETIC TYPOGRAPHY + SCROLL-LINKED TEXT (the signature of $20k sites like supersonik / quibi — do this):
 - Layer HUGE headlines OVER and AROUND the 3D canvas. z-index so the 3D subject sits BETWEEN text layers (a word behind the model, a word in front). Mix a bold display font with thin italics.

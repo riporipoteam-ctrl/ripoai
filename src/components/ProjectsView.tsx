@@ -266,7 +266,7 @@ export default function ProjectsView() {
         setLiveText('🔎 Researching…')
         research = await complete(
           'groq/compound',
-          [{ role: 'user', content: `For building a website about: "${userText.slice(0, 220)}". Give 4-6 short, accurate, current factual bullets. Then a line "REAL IMAGE URLS: <up to 4 direct https links to real public images (logos/products/photos) ending in .jpg/.png/.webp if you can find them, else none>". Then a final line "IMAGE KEYWORDS: <comma keywords for loremflickr>".` }],
+          [{ role: 'user', content: `For building a website about: "${userText.slice(0, 220)}". Give 4-6 short, accurate, current factual bullets. Then a line "REAL IMAGE URLS: <up to 4 direct https links to real public images (logos/products/photos) ending in .jpg/.png/.webp if you can find them, else none>". Then a final line "IMAGE KEYWORDS: <comma keywords for loremflickr>". The image keywords MUST match the exact requested subject, brand, product, vehicle, place, or industry. If the request is about cars, Peugeot, mechanics, garages, or automotive service, use car/vehicle/automotive/mechanic/garage keywords and never nature/forest/mountain keywords unless nature is requested.` }],
           { maxTokens: 500 },
         )
         setLiveText('')
@@ -286,7 +286,7 @@ export default function ProjectsView() {
           setLiveText('🔎 Finding the best 3D + motion references…')
           const dir = await complete(
             'groq/compound',
-            [{ role: 'user', content: `I'm building an Awwwards-tier 3D website for: "${userText.slice(0, 220)}". In 5-7 short bullets give concrete art direction: the hero 3D subject, how it should move/animate on scroll, a color palette (hex), font pairing, and section ideas. End with a line "IMAGE KEYWORDS: <comma keywords for loremflickr>".` }],
+            [{ role: 'user', content: `I'm building an Awwwards-tier 3D website for: "${userText.slice(0, 220)}". In 5-7 short bullets give concrete art direction: the hero 3D subject, how it should move/animate on scroll, a color palette (hex), font pairing, and section ideas. End with a line "IMAGE KEYWORDS: <comma keywords for loremflickr>". The keywords must be literal subject keywords from the request, not generic nature fillers.` }],
             { maxTokens: 500 },
           )
           if (dir) asset3D += `\n\nArt direction (from research — follow it):\n${dir}`
@@ -309,7 +309,7 @@ export default function ProjectsView() {
         (want3D ? `\n\n${WEB3D_INSTRUCTIONS}${asset3D}` : '') +
         (social ? `\n\n${social}` : '') +
         `\n\nProject: ${project.name} (static website, entry /index.html).\nCurrent files:\n${fileContext}` +
-        (research ? `\n\nResearched facts to use (be accurate; prefer the REAL IMAGE URLS for real photos with an onerror fallback to loremflickr keywords):\n${research}` : ''),
+        (research ? `\n\nResearched facts to use (be accurate; prefer the REAL IMAGE URLS for real photos with an onerror fallback to loremflickr keywords). Use subject-matched images only; do not substitute nature photos unless the user asked for nature:\n${research}` : ''),
     }
     const convo = history.map((m, i) =>
       i === history.length - 1 ? { role: m.role, content: userText } : { role: m.role, content: m.content },

@@ -1,4 +1,4 @@
-import { COMPOUND_MODEL } from './models'
+import { COMPOUND_MINI_MODEL, COMPOUND_MODEL } from './models'
 
 // Web Search + Agent modes are powered by Groq's `compound` model, which has
 // built-in web search and runs tool calls server-side. We route through it and
@@ -54,8 +54,8 @@ export function shouldAutoSearch(text: string): boolean {
 }
 
 /** The Groq model to use when search/agent tooling is required. */
-export function searchModel(): string {
-  return COMPOUND_MODEL
+export function searchModel(depth: 'fast' | 'deep' = 'deep'): string {
+  return depth === 'fast' ? COMPOUND_MINI_MODEL : COMPOUND_MODEL
 }
 
 // Optional, keyless page reader (Jina). Used to pull readable text from an
