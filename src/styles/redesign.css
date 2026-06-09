@@ -188,3 +188,111 @@
 .askai-sidebar {
   border-right: 1px solid rgb(var(--ink) / 0.08) !important;
 }
+
+/* ============================================================
+   ✦ LIQUID GLASS PRO — global visual identity (mono)
+   Heavy frosted blur, floating translucent panels, glossy depth.
+   This block loads last and intentionally overrides earlier glass rules.
+   ============================================================ */
+
+/* A richer mono backdrop so frosted glass has something to refract. */
+:root { --glass-blur: 34px; }
+.aurora {
+  background:
+    radial-gradient(60% 50% at 18% 12%, rgb(var(--orb-1) / 0.22), transparent 60%),
+    radial-gradient(55% 45% at 85% 20%, rgb(var(--orb-2) / 0.20), transparent 60%),
+    radial-gradient(60% 55% at 70% 90%, rgb(var(--orb-3) / 0.20), transparent 60%),
+    linear-gradient(180deg, rgb(var(--page-grad-2) / 0.9), transparent 70%),
+    rgb(var(--surface)) !important;
+  background-size: 160% 160%, 150% 150%, 170% 170%, 100% 100%, auto !important;
+}
+.dark .aurora { filter: saturate(1.05); }
+
+/* Deep frosted glass for every surface. */
+.glass,
+.glass-strong {
+  position: relative;
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(185%) !important;
+  backdrop-filter: blur(var(--glass-blur)) saturate(185%) !important;
+  background: rgb(var(--glass-bg) / 0.55) !important;
+  border: 1px solid rgb(255 255 255 / 0.22) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.55),
+    inset 0 0 0 1px rgb(255 255 255 / 0.04),
+    0 26px 60px -26px rgb(var(--ink) / 0.5),
+    0 6px 18px -12px rgb(var(--ink) / 0.3) !important;
+}
+.glass-strong { background: rgb(var(--glass-bg) / 0.72) !important; }
+.dark .glass,
+.dark .glass-strong {
+  background: rgb(var(--glass-bg) / 0.42) !important;
+  border-color: rgb(255 255 255 / 0.12) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.1),
+    0 26px 64px -24px rgb(0 0 0 / 0.72) !important;
+}
+.dark .glass-strong { background: rgb(var(--glass-bg) / 0.6) !important; }
+
+/* Glossy top sheen + a faint specular streak on every glass surface. */
+.glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.28), transparent 42%),
+    radial-gradient(120% 60% at 20% -10%, rgb(255 255 255 / 0.18), transparent 60%);
+  opacity: 0.9;
+}
+.dark .glass::before {
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.1), transparent 42%),
+    radial-gradient(120% 60% at 20% -10%, rgb(255 255 255 / 0.08), transparent 60%);
+}
+
+/* The sidebar becomes a FLOATING frosted rail detached from the edges. */
+.askai-sidebar {
+  margin: 12px !important;
+  height: calc(100% - 24px) !important;
+  border-radius: 30px !important;
+  border: 1px solid rgb(255 255 255 / 0.24) !important;
+}
+@media (max-width: 767px) {
+  .askai-sidebar { margin: 10px !important; height: calc(100% - 20px) !important; }
+}
+
+/* Composer = a thick, glossy floating glass pill. */
+.composer-shell {
+  border-radius: 32px !important;
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(185%) !important;
+  backdrop-filter: blur(var(--glass-blur)) saturate(185%) !important;
+  background: rgb(var(--glass-bg) / 0.62) !important;
+  border: 1px solid rgb(255 255 255 / 0.28) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.6),
+    0 22px 50px -24px rgb(var(--ink) / 0.6) !important;
+}
+.dark .composer-shell {
+  background: rgb(var(--glass-bg) / 0.5) !important;
+  border-color: rgb(255 255 255 / 0.14) !important;
+}
+
+/* Glossy user bubble. */
+.user-bubble {
+  position: relative;
+  overflow: hidden;
+  border-radius: 24px 24px 8px 24px !important;
+}
+.user-bubble::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.18), transparent 45%);
+  pointer-events: none;
+}
+
+/* Rounder, glossier primary buttons + icon tiles. */
+.accent-gradient-bg {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 10px 26px -12px rgb(var(--ink) / 0.6);
+}
