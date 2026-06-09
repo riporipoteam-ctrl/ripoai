@@ -30,20 +30,22 @@ interface Props {
   onToggleBookmark?: () => void
 }
 
+const THINKING_PHRASES = ['Thinking', 'Reasoning', 'Working on it', 'Putting it together']
+
 function ThinkingIndicator() {
   const [s, setS] = useState(0)
   useEffect(() => {
     const t = setInterval(() => setS((n) => n + 1), 1000)
     return () => clearInterval(t)
   }, [])
+  const phrase = THINKING_PHRASES[Math.min(Math.floor(s / 4), THINKING_PHRASES.length - 1)]
   return (
-    <div className="flex items-center gap-2 py-2 text-sm text-muted">
-      <span className="flex items-center gap-1">
-        <span className="h-2 w-2 animate-pulse-dot rounded-full bg-accent" />
-        <span className="h-2 w-2 animate-pulse-dot rounded-full bg-accent [animation-delay:0.2s]" />
-        <span className="h-2 w-2 animate-pulse-dot rounded-full bg-accent [animation-delay:0.4s]" />
+    <div className="flex items-center gap-2.5 py-2">
+      <span className="thinking-orb" aria-hidden />
+      <span className="shimmer-text text-sm font-semibold">
+        {phrase}
+        {s >= 2 ? ` · ${s}s` : '…'}
       </span>
-      <span className="font-medium">Thinking{s >= 2 ? ` · ${s}s` : '…'}</span>
     </div>
   )
 }
@@ -139,7 +141,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
         ) : (
           message.content && (
             <div className="group relative max-w-[82%]">
-              <div className="user-bubble whitespace-pre-wrap rounded-[22px] rounded-tr-md bg-[rgb(var(--accent))] px-4 py-2.5 font-medium text-[rgb(var(--accent-ink))] shadow-[0_8px_22px_-12px_rgb(var(--ink)/0.5)]">
+              <div className="user-bubble whitespace-pre-wrap rounded-[22px] rounded-tr-md bg-gradient-to-br from-[rgb(var(--accent))] to-[rgb(var(--accent)/0.82)] px-4 py-2.5 font-medium text-[rgb(var(--accent-ink))] shadow-[0_8px_22px_-12px_rgb(var(--ink)/0.5)]">
                 {message.content}
               </div>
               {onEdit && (
@@ -175,9 +177,16 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
         </div>
       </div>
       <div className="min-w-0 flex-1">
-        <div className="mb-1 flex items-center gap-2">
-          <span className="text-sm font-extrabold tracking-tight">AskAI</span>
-          {modelName && <span className="text-xs font-medium text-muted">{modelName}</span>}
+        <div className="mb-1.5 flex items-center gap-2">
+          <span className="font-display text-sm font-bold tracking-tight">AskAI</span>
+          {modelName && (
+            <span className="rounded-full border border-[rgb(var(--ink)/0.08)] bg-[rgb(var(--ink)/0.04)] px-2 py-0.5 text-[10px] font-semibold text-muted">
+              {modelName}
+            </span>
+          )}
+          {liveStreaming && !emptyStreaming && (
+            <span className="shimmer-text text-[11px] font-semibold">writing…</span>
+          )}
         </div>
         <AgentBrowserPanel browser={agentBrowser} live={liveStreaming && agentBrowser?.status === 'running'} />
         {!!message.steps?.length && (
@@ -257,7 +266,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
           </button>
         )}
         {!liveStreaming && message.content && (
-          <div className="mt-2 flex items-center gap-1">
+          <div className="action-pill mt-2.5 inline-flex items-center gap-0.5 rounded-full border border-[rgb(var(--ink)/0.07)] bg-[rgb(var(--glass-bg)/0.5)] px-1 py-0.5 backdrop-blur-md">
             <button
               onClick={copy}
               className="pressable flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium text-muted hover:bg-[rgb(var(--ink)/0.07)] hover:text-ink"

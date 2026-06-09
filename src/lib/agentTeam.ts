@@ -8,7 +8,7 @@ import { streamChat, complete } from './groq'
 import { CODER_MODEL } from './models'
 import type { Agent } from './agents'
 
-export type Phase = 'plan' | 'work' | 'final' | 'system' | 'chat'
+export type Phase = 'plan' | 'work' | 'final' | 'system' | 'chat' | 'user'
 
 export interface TeamEvent {
   id: string
@@ -31,6 +31,9 @@ export interface RunTeamArgs {
   onEvent: (ev: TeamEvent) => void
   /** Optional pre-selected agents (e.g. from @mentions). */
   preselected?: Agent[]
+  /** Earlier conversation in this team room (previous tasks + deliverable),
+   * so follow-ups like "make it darker" work on the existing result. */
+  context?: string
 }
 
 const uid = () => Math.random().toString(36).slice(2)
@@ -137,7 +140,10 @@ async function routeMessage(task: string, agents: Agent[], lead: Agent): Promise
 }
 
 export async function runTeam(args: RunTeamArgs): Promise<{ deliverable: string; mode: Route['mode'] }> {
-  const { task, agents, lead, signal, onEvent, preselected } = args
+  const { task, agents, lead, signal, onEvent, preselected, context } = args
+  const ctxBlock = context
+    ? `\n\nEarlier in this conversation (continue from here — treat follow-ups as changes to this existing work, do NOT start from scratch):\n${context}`
+    : ''
 
   // Route: who answers, and is this chat or a build?
   const route = preselected?.length
@@ -158,7 +164,7 @@ export async function runTeam(args: RunTeamArgs): Promise<{ deliverable: string;
       if (signal?.aborted) break
       const system = `You are ${a.name}, the ${a.role} on the AskAI team. ${a.personality}
 Reply to the user naturally and briefly, in first person and in character. This is casual conversation — do NOT build anything, write code, or produce a deliverable unless explicitly asked. Just chat like a friendly teammate.`
-      last = await streamAgent(a, 'chat', system, `The user says: "${task}"\n\nReply briefly in character.`, onEvent, signal, {
+      last = await streamAgent(a, 'chat', system, `The user says: "${task}"${ctxBlock}\n\nReply briefly in character.`, onEvent, signal, {
         maxTokens: 500,
       })
     }
@@ -178,7 +184,7 @@ Speak in first person as ${theLead.name}. Keep it tight and energetic — you're
     theLead,
     'plan',
     planSystem,
-    `The user's goal:\n"${task}"\n\nRestate the goal in one line, then assign ONE concrete task to each teammate by name. Be brief — a few lines. End by telling the team to start.`,
+    `The user's goal:\n"${task}"${ctxBlock}\n\nRestate the goal in one line, then assign ONE concrete task to each teammate by name. Be brief — a few lines. End by telling the team to start.`,
     onEvent,
     signal,
     { maxTokens: 600 },
@@ -204,7 +210,7 @@ Speak in first person as ${a.name}. Do your actual job fully — don't just desc
       a,
       'work',
       system,
-      `Team goal: "${task}"\n\n${theLead.name}'s plan:\n${plan}${prior}\n\nNow do YOUR part completely.`,
+      `Team goal: "${task}"${ctxBlock}\n\n${theLead.name}'s plan:\n${plan}${prior}\n\nNow do YOUR part completely.`,
       onEvent,
       signal,
       { model: buildHint ? CODER_MODEL : 'llama-3.3-70b-versatile', maxTokens: buildHint ? 6000 : 1400, to: theLead.name },
@@ -224,7 +230,7 @@ Do NOT give up early or write "rest of code here". Finish everything.`
     theLead,
     'final',
     finalSystem,
-    `Team goal: "${task}"\n\nContributions:\n${contributions
+    `Team goal: "${task}"${ctxBlock}\n\nContributions:\n${contributions
       .map((c) => `### ${c.agent.name} (${c.agent.role})\n${c.text}`)
       .join('\n\n')}\n\nAssemble the FINAL, complete deliverable now. One-line summary, then the finished result.`,
     onEvent,

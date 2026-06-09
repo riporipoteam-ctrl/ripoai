@@ -358,3 +358,78 @@
   50% { opacity: 1; transform: scaleY(1); }
 }
 @media (prefers-reduced-motion: reduce) { .stream-caret::after { animation: none; opacity: 0.8; } }
+
+/* ============================================================
+   ✦ REDESIGN v3 — new typography + living motion
+   Manrope body, Sora display, shimmer states, ambient motion.
+   ============================================================ */
+
+/* Display face for brand moments and headings. */
+.font-display { font-family: 'Sora', 'Manrope', system-ui, sans-serif; }
+h1, h2, .empty-state h1, .empty-state h2 { font-family: 'Sora', 'Manrope', system-ui, sans-serif; }
+.prose-ripo h1, .prose-ripo h2, .prose-ripo h3 {
+  font-family: 'Sora', 'Manrope', system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+
+/* Shimmering gradient text — used for "Thinking…" and live states. */
+.shimmer-text {
+  background: linear-gradient(
+    100deg,
+    rgb(var(--muted)) 20%,
+    rgb(var(--ink)) 50%,
+    rgb(var(--muted)) 80%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer-sweep 1.8s linear infinite;
+}
+@keyframes shimmer-sweep {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+/* Breathing liquid orb shown while the model thinks. */
+.thinking-orb {
+  width: 14px;
+  height: 14px;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 32% 28%, rgb(var(--accent) / 0.95), rgb(var(--accent) / 0.45));
+  box-shadow: 0 0 14px rgb(var(--accent) / 0.5);
+  animation: orb-breathe 1.6s ease-in-out infinite;
+}
+@keyframes orb-breathe {
+  0%, 100% { transform: scale(0.82); opacity: 0.65; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+
+/* Assistant answers slide in with a soft blur-out for a premium feel. */
+.assistant-message-row { animation: msg-blur-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes msg-blur-in {
+  from { opacity: 0; transform: translateY(12px); filter: blur(6px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+
+/* Hover state for the per-message action pill. */
+.action-pill button { border-radius: 9999px; }
+.action-pill { transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+.action-pill:hover {
+  border-color: rgb(var(--ink) / 0.14);
+  box-shadow: 0 6px 18px -12px rgb(var(--ink) / 0.4);
+}
+
+/* Page-level enter transition (chat stage, team room, settings). */
+.chat-stage, .page-enter { animation: page-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(6px) scale(0.997); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer-text { animation: none; color: rgb(var(--muted)); background: none; }
+  .thinking-orb,
+  .assistant-message-row,
+  .chat-stage, .page-enter { animation: none; }
+}
