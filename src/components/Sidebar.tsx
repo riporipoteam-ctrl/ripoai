@@ -140,7 +140,7 @@ export default function Sidebar() {
                 <div className="overflow-hidden rounded-xl shadow-[0_4px_14px_-6px_rgb(var(--ink)/0.55)] ring-1 ring-[rgb(var(--ink)/0.1)]">
                   <Logo size={32} variant="icon" />
                 </div>
-                <span className="text-[1.4rem] font-extrabold tracking-tight">AskAI</span>
+                <span className="font-display text-[1.4rem] font-bold tracking-tight">AskAI</span>
               </div>
               <button
                 onClick={() => setSidebar(false)}
