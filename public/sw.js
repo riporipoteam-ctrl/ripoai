@@ -1,7 +1,7 @@
 // AskAI service worker — NETWORK-FIRST so the installed PWA / browser always
 // gets the latest deploy (no more stale cached versions), with a cache fallback
 // only when offline.
-const CACHE = 'ripoai-runtime-v2'
+const CACHE = 'askai-runtime-v3'
 
 self.addEventListener('install', () => {
   self.skipWaiting()

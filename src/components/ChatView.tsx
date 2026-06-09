@@ -152,8 +152,10 @@ export default function ChatView() {
             <PanelLeftOpen size={20} />
           </button>
           <div className="flex items-center gap-2">
-            <Logo size={22} />
-            <span className="text-[17px] font-bold tracking-tight brand-gradient">AskAI</span>
+            <div className="overflow-hidden rounded-lg ring-1 ring-[rgb(var(--ink)/0.1)]">
+              <Logo size={24} variant="icon" />
+            </div>
+            <span className="text-[17px] font-extrabold tracking-tight">AskAI</span>
           </div>
           <button
             onClick={() => navigate('/')}

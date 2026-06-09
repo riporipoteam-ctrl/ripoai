@@ -137,8 +137,10 @@ export default function Sidebar() {
             {/* Header */}
             <div className="flex items-center justify-between px-4 pb-2 pt-4">
               <div className="flex items-center gap-2.5">
-                <Logo size={28} />
-                <span className="text-[1.35rem] font-extrabold tracking-tight brand-gradient">AskAI</span>
+                <div className="overflow-hidden rounded-xl shadow-[0_4px_14px_-6px_rgb(var(--ink)/0.55)] ring-1 ring-[rgb(var(--ink)/0.1)]">
+                  <Logo size={32} variant="icon" />
+                </div>
+                <span className="text-[1.4rem] font-extrabold tracking-tight">AskAI</span>
               </div>
               <button
                 onClick={() => setSidebar(false)}
