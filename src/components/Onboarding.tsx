@@ -19,7 +19,9 @@ export default function Onboarding() {
         animate={{ scale: 1, opacity: 1 }}
         className="mx-auto mb-6 flex w-fit items-center justify-center"
       >
-        <Logo size={80} glow />
+        <div className="overflow-hidden rounded-3xl shadow-2xl ring-1 ring-[rgb(var(--ink)/0.1)]">
+          <Logo size={84} variant="icon" glow />
+        </div>
       </motion.div>
       <h1 className="text-3xl font-extrabold">
         Welcome to <span className="brand-gradient">AskAI</span>
@@ -113,10 +115,12 @@ export default function Onboarding() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 * i }}
-            className="glass rounded-2xl p-4"
+            className="lift-card glass rounded-2xl p-4"
           >
-            <f.icon size={20} className="text-accent" />
-            <div className="mt-2 font-semibold">{f.t}</div>
+            <span className="accent-gradient-bg flex h-9 w-9 items-center justify-center rounded-xl">
+              <f.icon size={18} strokeWidth={2.4} />
+            </span>
+            <div className="mt-2.5 font-bold">{f.t}</div>
             <div className="text-xs text-muted">{f.d}</div>
           </motion.div>
         ))}
