@@ -131,7 +131,7 @@ export default function Sidebar() {
             animate={{ x: 0, width: 288 }}
             exit={{ x: -300, width: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 32 }}
-            className="glass z-40 flex h-full shrink-0 flex-col overflow-hidden max-md:fixed max-md:left-0 max-md:top-0"
+            className="askai-sidebar glass z-40 flex h-full shrink-0 flex-col overflow-hidden max-md:fixed max-md:left-0 max-md:top-0"
             style={{ width: 288 }}
           >
             {/* Header */}

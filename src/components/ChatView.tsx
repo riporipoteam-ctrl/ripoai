@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ChevronDown,
+  ChevronRight,
   Plane,
   PanelLeftOpen,
   PenSquare,
@@ -209,15 +210,19 @@ export default function ChatView() {
                   transition={{ delay: 0.1 + 0.06 * i }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => handleSend(s.prompt, [])}
-                  className="suggestion-card lift-card glass pressable group flex items-center gap-3 rounded-2xl p-3.5 text-left sm:p-4"
+                  className="suggestion-card lift-card glass pressable group flex items-center gap-3.5 rounded-2xl p-3.5 text-left sm:p-4"
                 >
-                  <span className="launch-icon flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[rgb(var(--accent)/0.1)] text-accent transition group-hover:bg-[rgb(var(--accent)/0.16)]">
-                    <s.icon size={19} />
+                  <span className="launch-icon accent-gradient-bg flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-[0_6px_16px_-8px_rgb(var(--ink)/0.6)]">
+                    <s.icon size={19} strokeWidth={2.4} />
                   </span>
-                  <span className="min-w-0">
-                    <div className="text-[15px] font-bold">{s.title}</div>
+                  <span className="min-w-0 flex-1">
+                    <div className="text-[15px] font-extrabold tracking-tight">{s.title}</div>
                     <div className="mt-0.5 truncate text-xs text-muted sm:text-[13px]">{s.sub}</div>
                   </span>
+                  <ChevronRight
+                    size={18}
+                    className="shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-ink"
+                  />
                 </motion.button>
               ))}
             </div>
