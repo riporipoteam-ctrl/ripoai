@@ -14,6 +14,9 @@ import {
   Images,
   Search,
   Zap,
+  Users,
+  Presentation,
+  GraduationCap,
 } from 'lucide-react'
 import { useChat } from '../hooks/useChat'
 import { useStore } from '../store'
@@ -38,6 +41,9 @@ const ALL_SUGGESTIONS = [
   { title: 'Trips', sub: 'routes and budgets', icon: Plane, prompt: 'Plan a trip to ' },
   { title: 'Files', sub: 'summaries and answers', icon: FileText, prompt: 'Summarize this document and pull out the key points.' },
   { title: 'Fast', sub: 'short direct answer', icon: Zap, prompt: 'Give me a fast answer for ' },
+  { title: 'Team', sub: 'dispatch your AI agents', icon: Users, prompt: '@Bob get the team to build ' },
+  { title: 'Slides', sub: 'instant presentations', icon: Presentation, prompt: 'Make a presentation about ' },
+  { title: 'Learn', sub: 'explained step by step', icon: GraduationCap, prompt: 'Teach me, step by step: ' },
 ]
 
 function BanBanner({ ban }: { ban: { until: number; reason: string } }) {

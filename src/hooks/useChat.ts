@@ -45,7 +45,7 @@ const uid4 = () => crypto.randomUUID()
 // Keep the prompt within free-tier token limits: send only the most recent
 // messages that fit a rough character budget (~4 chars/token), always keeping
 // the latest user turn.
-function trimHistory(messages: StoredMessage[], maxChars = 9000): StoredMessage[] {
+function trimHistory(messages: StoredMessage[], maxChars = 13000): StoredMessage[] {
   const out: StoredMessage[] = []
   let total = 0
   for (let i = messages.length - 1; i >= 0; i--) {
@@ -371,8 +371,9 @@ export function useChat(chatId: string | undefined) {
         try {
           const images = await searchWebImages(queryText, 8)
           const content = images.length
-            ? `I found ${images.length} web image${images.length === 1 ? '' : 's'} for "${queryText}". Tap any preview to see the source link, creator, and license details when available.`
+            ? `Here ${images.length === 1 ? 'is an image' : `are ${images.length} images`} for "${queryText}" — tap any one to see it full-size with its source, creator and license.`
             : `I could not find good web images for "${queryText}" from the public image sources available right now. Try a more specific name or turn on Web Search for a broader answer.`
+          const subject = queryText.split(/\s+/).slice(0, 6).join(' ')
           setMessages((m) => {
             finalMsgs = m.map((x) =>
               x.id === assistantId
@@ -380,6 +381,9 @@ export function useChat(chatId: string | undefined) {
                     ...x,
                     content,
                     webImages: images.length ? { query: queryText, images } : undefined,
+                    followups: images.length
+                      ? [`Tell me about ${subject}`, `Show me more images of ${subject}`]
+                      : undefined,
                   }
                 : x,
             )
