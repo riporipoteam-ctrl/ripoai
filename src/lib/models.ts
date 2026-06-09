@@ -189,15 +189,32 @@ export function getModel(id: ModelTier): RipoModel {
 }
 
 // Auto mode: pick the best real model for the task (like auto web search).
-export function resolveAutoModel(text: string): ModelTier {
+// `hasImages` routes image inputs to a vision-capable tier.
+export function resolveAutoModel(text: string, hasImages = false): ModelTier {
   const t = (text || '').toLowerCase()
-  if (/\b(website|web ?app|landing|portfolio site|3d|three\.?js|webgl|game)\b/.test(t)) return 'ripoai-4o-pro'
-  if (/\b(code|coding|function|component|script|debug|refactor|algorithm|program|api|regex|sql|build (me )?an? (app|tool))\b/.test(t))
+  const len = t.trim().length
+
+  // Anything with an attached image must go to a vision model.
+  if (hasImages) return 'ripoai-2o-instant'
+
+  // Heavy creative builds (sites / 3D / games) → flagship.
+  if (/\b(website|web ?app|landing|portfolio site|3d|three\.?js|webgl|game|shader|simulation)\b/.test(t))
+    return 'ripoai-4o-pro'
+
+  // Code work → the dedicated coding-strong Pro tier.
+  if (/\b(code|coding|function|component|script|debug|refactor|algorithm|program|api|regex|sql|typescript|python|rust|leetcode|stack ?trace|build (me )?an? (app|tool))\b/.test(t))
     return 'ripoai-2o-pro'
+
+  // Deep reasoning / long or analytical asks → deepest tier.
   if (
-    t.length > 260 ||
-    /\b(explain|why|how come|analy|reason|prove|solve|step[- ]by[- ]step|essay|compare|strateg|in depth|research|complex|architecture|trade-?offs?)\b/.test(t)
+    len > 260 ||
+    /\b(explain|why|how come|analy|reason|prove|solve|math|equation|step[- ]by[- ]step|essay|compare|strateg|in depth|research|complex|architecture|trade-?offs?|philosoph|theorem)\b/.test(t)
   )
     return 'ripoai-4o-pro'
+
+  // Trivial chit-chat / very short asks → snappiest instant tier.
+  if (len < 24 || /^(hi|hey|hello|yo|sup|thanks|thank you|ok(ay)?|cool|nice|lol|haha|good (morning|afternoon|evening|night))\b/.test(t))
+    return 'ripoai-3o-instant'
+
   return 'ripoai-4o-instant'
 }
