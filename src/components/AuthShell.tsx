@@ -22,33 +22,40 @@ export default function AuthShell({
     <div className="flex h-full w-full items-center justify-center overflow-y-auto p-4">
       <div className="grid w-full max-w-5xl overflow-hidden rounded-4xl md:grid-cols-2">
         {/* Brand panel */}
-        <div className="relative hidden flex-col justify-between p-10 md:flex">
-          <div className="accent-gradient-bg absolute inset-0 opacity-90" />
-          <div className="relative z-10">
-            <div className="mb-3"><Logo size={52} glow /></div>
-            <div className="text-4xl font-extrabold tracking-tight text-white">AskAI</div>
-            <p className="mt-3 max-w-xs text-white/80">
-              Your intelligent workspace for chatting, researching and building anything.
-            </p>
+        <div className="relative hidden flex-col justify-between overflow-hidden p-10 md:flex">
+          <div className="accent-gradient-bg absolute inset-0" />
+          {/* floating depth orbs */}
+          <span className="pointer-events-none absolute -right-16 -top-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" />
+          <span className="pointer-events-none absolute -bottom-20 -left-10 h-52 w-52 rounded-full bg-black/10 blur-2xl" />
+          <div className="relative z-10 flex items-center gap-3">
+            <span className="rounded-2xl bg-white/15 p-2 backdrop-blur-sm">
+              <Logo size={40} variant="icon" />
+            </span>
+            <div className="text-3xl font-extrabold tracking-tight text-[rgb(var(--accent-ink))]">AskAI</div>
           </div>
-          <ul className="relative z-10 space-y-3">
-            {FEATURES.map((f, i) => (
-              <motion.li
-                key={f}
-                initial={{ opacity: 0, x: -12 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 * i + 0.2 }}
-                className="flex items-center gap-3 text-white/90"
-              >
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white/25 text-xs">
-                  ✓
-                </span>
-                {f}
-              </motion.li>
-            ))}
-          </ul>
-          <div className="float-element relative z-10 text-sm text-white/60">
-            Designed with iOS-26 Liquid Glass aesthetics.
+          <div className="relative z-10">
+            <h2 className="max-w-xs text-3xl font-extrabold leading-tight text-[rgb(var(--accent-ink))]">
+              One workspace for everything you can imagine.
+            </h2>
+            <ul className="mt-6 space-y-3">
+              {FEATURES.map((f, i) => (
+                <motion.li
+                  key={f}
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 * i + 0.2 }}
+                  className="flex items-center gap-3 text-[rgb(var(--accent-ink))]/90"
+                >
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[rgb(var(--accent-ink))]/20 text-xs">
+                    ✓
+                  </span>
+                  {f}
+                </motion.li>
+              ))}
+            </ul>
+          </div>
+          <div className="relative z-10 text-sm text-[rgb(var(--accent-ink))]/55">
+            Free to start · earn coins · unlock AskAI+
           </div>
         </div>
 
