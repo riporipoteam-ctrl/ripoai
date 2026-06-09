@@ -51,6 +51,16 @@ interface Props {
   onTeam?: (text: string) => void
 }
 
+const PLACEHOLDER_HINTS = [
+  'Message AskAI...',
+  'Ask anything…',
+  'Show me images of…',
+  'Build me a website for…',
+  'Search the web for…',
+  'Generate an image of…',
+  '@mention an agent to dispatch the team…',
+]
+
 export default function Composer({
   model,
   onModelChange,
@@ -73,6 +83,15 @@ export default function Composer({
   const { user } = useStore()
   const [text, setText] = useState('')
   const [attachments, setAttachments] = useState<Attachment[]>([])
+
+  // Rotate gentle hints through the default placeholder while the box is empty.
+  const [hintIdx, setHintIdx] = useState(0)
+  useEffect(() => {
+    if (placeholder !== 'Message AskAI...' || text) return
+    const t = setInterval(() => setHintIdx((i) => (i + 1) % PLACEHOLDER_HINTS.length), 4000)
+    return () => clearInterval(t)
+  }, [placeholder, text])
+  const effPlaceholder = placeholder === 'Message AskAI...' ? PLACEHOLDER_HINTS[hintIdx] : placeholder
 
   // Slash-command skill picker: typing "/" (before a space) lists matching skills.
   const slashQuery = text.startsWith('/') && !text.includes(' ') ? text.slice(1) : null
@@ -361,7 +380,7 @@ export default function Composer({
           }}
           onPaste={handlePaste}
           rows={1}
-          placeholder={imageMode ? 'Describe an image to generate...' : placeholder}
+          placeholder={imageMode ? 'Describe an image to generate...' : effPlaceholder}
           className="no-scrollbar max-h-[220px] w-full resize-none bg-transparent px-3 py-2 text-[0.975rem] outline-none placeholder:text-muted"
         />
 

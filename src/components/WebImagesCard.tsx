@@ -4,6 +4,25 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { ExternalLink, Image as ImageIcon, Link2, Search, X } from 'lucide-react'
 import type { WebImageResult } from '../lib/webImages'
 
+/** Image that heals itself: thumb → full image → topical photo. Hotlink-blocked
+ * or dead URLs from public APIs would otherwise show as broken/gray tiles. */
+function SafeImg({ image, query, className }: { image: WebImageResult; query: string; className: string }) {
+  const [stage, setStage] = useState(0)
+  const fallback = `https://loremflickr.com/640/480/${encodeURIComponent(
+    query.split(/\s+/).slice(0, 3).join(','),
+  )}?lock=${(image.id || '1').split('').reduce((a, c) => a + c.charCodeAt(0), 0) % 50}`
+  const srcs = [image.thumbUrl || image.imageUrl, image.imageUrl, fallback]
+  return (
+    <img
+      src={srcs[Math.min(stage, srcs.length - 1)]}
+      alt={image.title}
+      loading="lazy"
+      onError={() => setStage((s) => Math.min(s + 1, srcs.length - 1))}
+      className={className}
+    />
+  )
+}
+
 export default function WebImagesCard({ query, images }: { query: string; images: WebImageResult[] }) {
   const [selected, setSelected] = useState<WebImageResult | null>(null)
   if (!images.length) return null
@@ -38,10 +57,9 @@ export default function WebImagesCard({ query, images }: { query: string; images
             onClick={() => setSelected(image)}
             className="web-image-tile pressable group relative aspect-[4/3] overflow-hidden rounded-2xl border border-white/10 bg-[rgb(var(--muted)/0.08)] text-left"
           >
-            <img
-              src={image.thumbUrl || image.imageUrl}
-              alt={image.title}
-              loading="lazy"
+            <SafeImg
+              image={image}
+              query={query}
               className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
             />
             <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent p-2 text-[11px] font-semibold leading-tight text-white">
@@ -84,11 +102,7 @@ export default function WebImagesCard({ query, images }: { query: string; images
                 </button>
                 <div className="grid max-h-[92vh] grid-cols-1 md:grid-cols-[minmax(0,1fr)_280px]">
                   <div className="flex min-h-[280px] items-center justify-center bg-black/70">
-                    <img
-                      src={selected.imageUrl}
-                      alt={selected.title}
-                      className="max-h-[70vh] w-full object-contain"
-                    />
+                    <SafeImg image={selected} query={query} className="max-h-[70vh] w-full object-contain" />
                   </div>
                   <aside className="space-y-3 overflow-y-auto p-4">
                     <div>
