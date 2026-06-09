@@ -168,42 +168,53 @@ export default function ChatView() {
         {empty ? (
           <div className="empty-state relative flex h-full flex-col items-center justify-center px-4 py-6">
             <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 8 }}
-              animate={{ opacity: 1, scale: 1 }}
+              initial={{ opacity: 0, scale: 0.9, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ type: 'spring', stiffness: 200, damping: 18 }}
-              className="home-mark animate-float"
+              className="home-mark relative"
             >
-              <Logo size={82} variant="icon" glow />
+              <span className="pointer-events-none absolute inset-0 -z-10 -m-6 rounded-full bg-[rgb(var(--accent)/0.10)] blur-2xl" />
+              <div className="animate-float">
+                <Logo size={72} variant="icon" glow />
+              </div>
             </motion.div>
             <motion.h1
-              initial={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.08 }}
-              className="mt-5 text-center text-2xl font-extrabold tracking-tight sm:text-3xl"
+              className="mt-6 text-center text-[1.75rem] font-extrabold leading-tight tracking-tight sm:text-4xl"
             >
               {(() => {
                 const name = (settings.displayName || user?.displayName || '').split(' ')[0]
-                return name ? <>How can I help, {name}?</> : <>How can I help today?</>
+                return name ? <>How can I help, {name}?</> : <>What can I help with?</>
               })()}
             </motion.h1>
-            <div className="empty-suggestions mt-6 grid w-full max-w-2xl grid-cols-2 gap-2.5 sm:gap-3">
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.16 }}
+              className="mt-2 max-w-md text-center text-sm text-muted"
+            >
+              Ask anything, build apps & sites, search the live web, create images, or dispatch a team of agents.
+            </motion.p>
+
+            <div className="empty-suggestions mt-7 grid w-full max-w-xl grid-cols-2 gap-2.5 sm:gap-3">
               {suggestions.map((s, i) => (
                 <motion.button
                   key={s.title}
-                  initial={{ opacity: 0, y: 14, scale: 0.98 }}
+                  initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.05 * i }}
-                  whileHover={{ y: -4, scale: 1.01 }}
+                  transition={{ delay: 0.1 + 0.06 * i }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => handleSend(s.prompt, [])}
-                  className="suggestion-card launch-card glass pressable flex min-h-[92px] items-start gap-3 rounded-[22px] p-3.5 text-left transition hover:brightness-110 sm:min-h-[104px] sm:p-4"
+                  className="suggestion-card lift-card glass pressable group flex items-center gap-3 rounded-2xl p-3.5 text-left sm:p-4"
                 >
-                  <span className="launch-icon flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-accent/15 text-accent">
-                    <s.icon size={18} />
+                  <span className="launch-icon flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[rgb(var(--accent)/0.1)] text-accent transition group-hover:bg-[rgb(var(--accent)/0.16)]">
+                    <s.icon size={19} />
                   </span>
                   <span className="min-w-0">
                     <div className="text-[15px] font-bold">{s.title}</div>
-                    <div className="mt-0.5 text-xs leading-snug text-muted sm:text-sm">{s.sub}</div>
+                    <div className="mt-0.5 truncate text-xs text-muted sm:text-[13px]">{s.sub}</div>
                   </span>
                 </motion.button>
               ))}
