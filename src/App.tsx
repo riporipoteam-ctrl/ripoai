@@ -17,17 +17,20 @@ import Logo from './components/Logo'
 function FullScreenLoader() {
   return (
     <div className="relative z-10 flex h-full items-center justify-center">
-      <div className="flex flex-col items-center gap-5">
+      <div className="flex flex-col items-center gap-6">
         <div className="relative">
-          {/* pulsing ring behind the mark */}
-          <span className="absolute inset-0 -m-3 animate-ping rounded-full bg-[rgb(var(--accent)/0.18)]" />
-          <div className="animate-float overflow-hidden rounded-2xl shadow-xl">
-            <Logo size={60} variant="icon" glow />
+          {/* orbiting ring */}
+          <span className="absolute inset-0 -m-4 rounded-[28px] border border-[rgb(var(--ink)/0.12)]" />
+          <span className="absolute inset-0 -m-4 animate-ping rounded-[28px] bg-[rgb(var(--ink)/0.05)]" />
+          <div className="animate-float overflow-hidden rounded-[22px] shadow-2xl ring-1 ring-[rgb(var(--ink)/0.1)]">
+            <Logo size={76} variant="icon" />
           </div>
         </div>
-        <div className="text-2xl font-extrabold tracking-tight brand-gradient">AskAI</div>
-        {/* loading bar shimmer */}
-        <div className="h-1 w-32 overflow-hidden rounded-full bg-[rgb(var(--ink)/0.08)]">
+        <div className="text-center">
+          <div className="text-2xl font-extrabold tracking-tight">AskAI</div>
+          <div className="mt-1 text-xs font-medium text-muted">Loading your workspace…</div>
+        </div>
+        <div className="h-1 w-36 overflow-hidden rounded-full bg-[rgb(var(--ink)/0.08)]">
           <div className="h-full w-1/2 rounded-full bg-[rgb(var(--accent))] [animation:loadbar_1.1s_ease-in-out_infinite]" />
         </div>
       </div>
