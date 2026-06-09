@@ -57,6 +57,11 @@ jobs:
           npx cap add android
           npx cap sync android
 
+      - name: Apply AskAI launcher icon
+        run: |
+          python3 -m pip install --quiet Pillow
+          python3 scripts/gen-android-icons.py
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 

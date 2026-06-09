@@ -71,6 +71,11 @@ export default function TasksPage() {
           <p className="mt-1 text-sm text-muted">
             {doneCount}/{total} done today · resets at midnight
           </p>
+          {state.streak > 0 && (
+            <div className="mx-auto mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1 text-sm font-bold text-amber-500">
+              <Flame size={14} /> {state.streak}-day streak
+            </div>
+          )}
           <div className="mx-auto mt-3 h-2 w-48 overflow-hidden rounded-full bg-white/10">
             <motion.div
               className="h-full accent-gradient-bg"

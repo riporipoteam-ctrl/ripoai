@@ -1,0 +1,92 @@
+/* AskAI redesign polish — additive, strictly monochrome (uses theme accent).
+   Adds depth, micro-interactions and a CSS-3D hero without changing the palette. */
+
+/* Hover-lift for tappable cards (suggestions, feature tiles). Hover-only so
+   touch devices don't get stuck states. */
+@media (hover: hover) {
+  .lift-card {
+    transition:
+      transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.28s ease;
+  }
+  .lift-card:hover {
+    transform: translateY(-3px);
+    box-shadow:
+      0 14px 34px -16px rgb(var(--ink) / 0.45),
+      0 2px 8px rgb(var(--ink) / 0.08);
+  }
+}
+
+/* Pop-in for newly mounted blocks. */
+@keyframes askai-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-pop {
+  animation: askai-pop 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ---- CSS-3D landing hero ------------------------------------------------ */
+.hero3d {
+  perspective: 1100px;
+  perspective-origin: 50% 40%;
+}
+.hero3d-stage {
+  position: relative;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 0.18s ease-out;
+  will-change: transform;
+}
+/* Concentric glass rings floating behind the mark at different depths. */
+.hero3d-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 9999px;
+  border: 1px solid rgb(var(--ink) / 0.12);
+  transform: translate(-50%, -50%) translateZ(var(--z, -60px));
+  box-shadow: 0 0 60px -10px rgb(var(--accent) / 0.18) inset;
+}
+.hero3d-mark {
+  position: relative;
+  transform: translateZ(60px);
+  filter: drop-shadow(0 18px 40px rgb(var(--ink) / 0.28));
+  animation: hero3d-bob 6s ease-in-out infinite;
+}
+@keyframes hero3d-bob {
+  0%, 100% { transform: translateZ(60px) translateY(0); }
+  50% { transform: translateZ(60px) translateY(-10px); }
+}
+.hero3d-orb {
+  position: absolute;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 35% 30%, rgb(var(--ink) / 0.1), transparent 70%);
+  filter: blur(6px);
+  animation: orb-drift 9s ease-in-out infinite;
+}
+@keyframes orb-drift {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(0, -16px, 30px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero3d-mark,
+  .hero3d-orb { animation: none; }
+  .hero3d-stage { transition: none; }
+}
+
+/* ---- Composer focus glow ------------------------------------------------ */
+.composer-shell {
+  transition: border-color 0.2s ease, box-shadow 0.25s ease;
+}
+.composer-shell:focus-within {
+  border-color: rgb(var(--accent) / 0.45) !important;
+  box-shadow: 0 0 0 4px rgb(var(--accent) / 0.08), 0 18px 40px -22px rgb(var(--ink) / 0.5);
+}

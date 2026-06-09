@@ -34,6 +34,7 @@ export default function Landing() {
   const [busy, setBusy] = useState(false)
   const [turns, setTurns] = useState(0)
   const acRef = useRef<AbortController | null>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
   const DEMO_LIMIT = 2
 
   async function demo(prompt: string) {
@@ -114,8 +115,34 @@ export default function Landing() {
       <main className="mx-auto max-w-3xl px-4 pb-24 pt-6 sm:pt-12">
         {/* Hero */}
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="text-center">
-          <div className="mx-auto mb-5 w-fit animate-float">
-            <Logo size={72} glow variant="icon" />
+          {/* CSS-3D hero stage with mouse parallax */}
+          <div
+            className="hero3d mx-auto mb-6 flex h-44 w-44 items-center justify-center sm:h-52 sm:w-52"
+            onMouseMove={(e) => {
+              const el = stageRef.current
+              if (!el) return
+              const r = e.currentTarget.getBoundingClientRect()
+              const px = (e.clientX - r.left) / r.width - 0.5
+              const py = (e.clientY - r.top) / r.height - 0.5
+              el.style.setProperty('--ry', `${px * 22}deg`)
+              el.style.setProperty('--rx', `${-py * 22}deg`)
+            }}
+            onMouseLeave={() => {
+              const el = stageRef.current
+              if (!el) return
+              el.style.setProperty('--ry', '0deg')
+              el.style.setProperty('--rx', '0deg')
+            }}
+          >
+            <div ref={stageRef} className="hero3d-stage flex h-full w-full items-center justify-center">
+              <span className="hero3d-ring h-40 w-40 sm:h-48 sm:w-48" style={{ ['--z' as string]: '-90px' }} />
+              <span className="hero3d-ring h-28 w-28 sm:h-36 sm:w-36" style={{ ['--z' as string]: '-40px' }} />
+              <span className="hero3d-orb left-2 top-4 h-10 w-10" />
+              <span className="hero3d-orb bottom-3 right-3 h-8 w-8" style={{ animationDelay: '1.5s' }} />
+              <div className="hero3d-mark">
+                <Logo size={96} glow variant="icon" />
+              </div>
+            </div>
           </div>
           <h1 className="text-4xl font-extrabold tracking-tight sm:text-6xl">
             Meet <span className="brand-gradient">AskAI</span>
@@ -219,7 +246,7 @@ export default function Landing() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ delay: i * 0.05 }}
-              className="glass rounded-3xl p-5"
+              className="lift-card glass rounded-3xl p-5"
             >
               <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-2xl accent-gradient-bg text-white">
                 <f.icon size={20} />
