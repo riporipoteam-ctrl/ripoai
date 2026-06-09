@@ -153,23 +153,30 @@ export function wantsWebImageSearch(text: string): boolean {
   const searchVerb = /\b(search|find|look up|lookup|google|browse|get|show|display|preview|pull up|source|send|give|provide|fetch)\b/.test(t)
   const sourceHint = /\b(web|online|internet|source|sources|link|links|real|actual|from search|where .* from)\b/.test(t)
   const lookLike = /\bwhat does\b.+\blook like\b/.test(t)
+  // Bare "images/pics of X" (or "X images") is image intent on its own.
+  const imagesOf = /\b(images?|pictures?|pics?|photos?|wallpapers?|logos?)\s+(of|for|from)\b/.test(t)
   const explicitImageSearch =
     /\b(search|find|look up|lookup|google|browse|fetch)\b.+\b(images?|pictures?|pics?|photos?|visuals?|wallpapers?|logos?)\b/.test(t) ||
     /\b(images?|pictures?|pics?|photos?|visuals?|wallpapers?|logos?)\b.+\b(search|find|look up|lookup|google|browse|fetch)\b/.test(t)
   const sendOnlineImages =
-    /\b(send|give|provide|show|get)\b.+\b(images?|pictures?|pics?|photos?|visuals?|wallpapers?|logos?)\b.+\b(web|online|internet|source|sources|links?|search)\b/.test(t)
+    /\b(send|give|provide|show|get)\b.+\b(images?|pictures?|pics?|photos?|visuals?|wallpapers?|logos?)\b/.test(t)
   const generationIntent =
-    /\b(generate|create|make|draw|design|render|paint|illustrate)\b/.test(t) &&
+    /\b(generate|create|make|draw|design|render|paint|illustrate|imagine)\b/.test(t) &&
     /\b(image|picture|photo|logo|poster|wallpaper|avatar|banner|thumbnail|illustration)\b/.test(t)
 
   if (generationIntent && !sourceHint && !/\b(search|find|web)\b/.test(t)) return false
-  return explicitImageSearch || sendOnlineImages || (hasImageWord && (searchVerb || sourceHint)) || lookLike
+  return explicitImageSearch || sendOnlineImages || imagesOf || (hasImageWord && (searchVerb || sourceHint)) || lookLike
 }
 
 export function webImageQuery(text: string): string {
-  let q = (text || '').replace(/\s+/g, ' ').trim()
+  const raw = (text || '').replace(/\s+/g, ' ').trim()
+  // Best signal: the phrase right after "images/pictures/photos of …".
+  const ofMatch = raw.match(
+    /\b(?:images?|pictures?|pics?|photos?|visuals?|wallpapers?|logos?)\s+(?:of|for|from)\s+(.{2,80}?)(?:\s+(?:from|on)\s+(?:the\s+)?(?:web|internet|online)|[.?!]|$)/i,
+  )
+  let q = ofMatch?.[1]?.trim() || raw
   q = q
-    .replace(/\b(can you|could you|please|for me)\b/gi, ' ')
+    .replace(/\b(can you|could you|please|for me|some|a few)\b/gi, ' ')
     .replace(/\b(search|find|look up|lookup|google|browse|get|show|display|preview|pull up|source|send|give|provide|fetch|need|want)\b/gi, ' ')
     .replace(/\b(images?|pictures?|pics?|photos?|visuals?|wallpapers?|reference images?)\b/gi, ' ')
     .replace(/\b(from|on|the)?\s*(web|online|internet|source|sources|links?)\b/gi, ' ')
@@ -177,7 +184,14 @@ export function webImageQuery(text: string): string {
     .replace(/\blook like\b/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim()
-  return expandImageQuery(q || text.trim() || 'AskAI')
+  return expandImageQuery(q || raw || 'AskAI')
+}
+
+/** Fetch with a hard timeout so one slow provider can't stall the search. */
+function fetchT(url: string, ms = 7000): Promise<Response> {
+  const ac = new AbortController()
+  const t = setTimeout(() => ac.abort(), ms)
+  return fetch(url, { signal: ac.signal }).finally(() => clearTimeout(t))
 }
 
 async function searchOpenverse(query: string, limit: number): Promise<WebImageResult[]> {
@@ -186,7 +200,7 @@ async function searchOpenverse(query: string, limit: number): Promise<WebImageRe
     page_size: String(Math.min(Math.max(limit, 4), 20)),
     mature: 'false',
   })
-  const res = await fetch(`https://api.openverse.engineering/v1/images/?${params.toString()}`)
+  const res = await fetchT(`https://api.openverse.org/v1/images/?${params.toString()}`)
   if (!res.ok) throw new Error(`Openverse image search failed (${res.status}).`)
   const data = await res.json()
   const results = Array.isArray(data?.results) ? (data.results as OpenverseImage[]) : []
@@ -226,7 +240,7 @@ async function searchCommons(query: string, limit: number): Promise<WebImageResu
     iiprop: 'url|mime|size|extmetadata',
     iiurlwidth: '900',
   })
-  const res = await fetch(`https://commons.wikimedia.org/w/api.php?${params.toString()}`)
+  const res = await fetchT(`https://commons.wikimedia.org/w/api.php?${params.toString()}`)
   if (!res.ok) throw new Error(`Wikimedia image search failed (${res.status}).`)
   const data = await res.json()
   const pages = Object.values(data?.query?.pages ?? {}) as any[]
@@ -265,7 +279,7 @@ async function searchWikipediaPageImages(query: string, limit: number): Promise<
     piprop: 'thumbnail|original',
     pithumbsize: '900',
   })
-  const res = await fetch(`https://en.wikipedia.org/w/api.php?${params.toString()}`)
+  const res = await fetchT(`https://en.wikipedia.org/w/api.php?${params.toString()}`)
   if (!res.ok) throw new Error(`Wikipedia image search failed (${res.status}).`)
   const data = await res.json()
   const pages = Object.values(data?.query?.pages ?? {}) as any[]
@@ -287,23 +301,37 @@ async function searchWikipediaPageImages(query: string, limit: number): Promise<
     .filter(Boolean) as WebImageResult[]
 }
 
+/** Always-on fallback: topical photos keyed to the query keywords. Guarantees
+ * the user gets SOMETHING relevant-looking even when every API comes up dry. */
+function topicalFallback(query: string, count: number): WebImageResult[] {
+  const kw = imageTerms(query).slice(0, 3)
+  const slug = (kw.length ? kw : ['photo']).join(',')
+  return Array.from({ length: count }, (_, i) => ({
+    id: `topic-${slug}-${i}`,
+    title: `${query} — topic photo ${i + 1}`,
+    imageUrl: `https://loremflickr.com/960/640/${encodeURIComponent(slug)}?lock=${i + 1}`,
+    thumbUrl: `https://loremflickr.com/480/320/${encodeURIComponent(slug)}?lock=${i + 1}`,
+    sourceUrl: `https://loremflickr.com/960/640/${encodeURIComponent(slug)}?lock=${i + 1}`,
+    provider: 'Topic photos (Flickr)',
+  }))
+}
+
 export async function searchWebImages(query: string, limit = 8, strict = true): Promise<WebImageResult[]> {
-  const results: WebImageResult[] = []
   const expanded = expandImageQuery(query)
   const queries = Array.from(new Set([query, expanded].filter(Boolean)))
+  // All providers race in parallel — one slow/dead API no longer blocks the rest.
   const attempts = queries.flatMap((q) => [
-    () => searchOpenverse(q, limit),
-    () => searchCommons(q, limit),
-    () => searchWikipediaPageImages(q, limit),
+    searchOpenverse(q, limit),
+    searchCommons(q, limit),
+    searchWikipediaPageImages(q, limit),
   ])
+  const settled = await Promise.allSettled(attempts)
+  const results = settled.flatMap((s) => (s.status === 'fulfilled' ? s.value : []))
 
-  for (const attempt of attempts) {
-    try {
-      results.push(...(await attempt()))
-    } catch {
-      // Keep trying the next source.
-    }
+  const ranked = rankImages(results, query, strict).slice(0, limit)
+  // Never return empty: pad with topical photos so the user always sees images.
+  if (ranked.length < 4) {
+    return [...ranked, ...topicalFallback(query, Math.max(4, Math.min(limit, 6)) - ranked.length)]
   }
-
-  return rankImages(results, query, strict).slice(0, limit)
+  return ranked
 }

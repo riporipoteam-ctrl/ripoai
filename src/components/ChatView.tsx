@@ -189,7 +189,18 @@ export default function ChatView() {
             >
               {(() => {
                 const name = (settings.displayName || user?.displayName || '').split(' ')[0]
-                return name ? <>How can I help, {name}?</> : <>What can I help with?</>
+                const h = new Date().getHours()
+                const slot = h < 5 ? 'Up late' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
+                return name ? (
+                  <>
+                    {slot}, {name}.
+                    <span className="mt-1 block bg-gradient-to-r from-[rgb(var(--ink))] to-[rgb(var(--muted))] bg-clip-text text-transparent">
+                      What are we making?
+                    </span>
+                  </>
+                ) : (
+                  <>What can I help with?</>
+                )
               })()}
             </motion.h1>
             <motion.p

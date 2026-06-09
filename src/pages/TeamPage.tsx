@@ -275,15 +275,16 @@ export default function TeamPage() {
           <Users size={18} className="text-accent" /> Agent Team
         </div>
         <div className="ml-auto flex -space-x-2">
-          {agents.slice(0, 6).map((a) => (
-            <span
+          {agents.slice(0, 8).map((a) => (
+            <button
               key={a.id}
-              className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[rgb(var(--surface))] text-sm"
+              onClick={() => setDraft((d) => (d.includes(`@${a.name}`) ? d : `@${a.name} ${d}`))}
+              className="pressable flex h-7 w-7 items-center justify-center rounded-full border-2 border-[rgb(var(--surface))] text-sm transition hover:z-10 hover:scale-110"
               style={{ background: a.color + '33' }}
-              title={`${a.name} · ${a.role}`}
+              title={`Message ${a.name} (${a.role}) directly`}
             >
               {a.emoji}
-            </span>
+            </button>
           ))}
         </div>
         {events.length > 0 && !running && (

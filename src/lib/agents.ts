@@ -52,6 +52,37 @@ export const DEFAULT_AGENTS: Agent[] = [
   },
 ]
 
+/** Newer default agents, merged once into existing users' rosters. */
+export const EXTRA_AGENTS: Agent[] = [
+  {
+    id: 'vera',
+    name: 'Vera',
+    emoji: '✍️',
+    role: 'Writer',
+    personality:
+      'A brilliant copywriter and storyteller. You write headlines, product copy, scripts, posts and long-form content that is sharp, on-brand and a joy to read. No clichés, no filler.',
+    color: '#06b6d4',
+  },
+  {
+    id: 'leo',
+    name: 'Leo',
+    emoji: '📣',
+    role: 'Marketer',
+    personality:
+      'A growth marketer with killer instincts. You handle positioning, launch plans, social strategy, SEO and conversion — always with concrete, actionable tactics and example copy.',
+    color: '#a855f7',
+  },
+  {
+    id: 'nova',
+    name: 'Nova',
+    emoji: '📊',
+    role: 'Analyst',
+    personality:
+      'A rigorous data analyst. You structure problems, crunch numbers, build comparisons and projections, and present findings as clear takeaways. You show your working and flag uncertainty.',
+    color: '#14b8a6',
+  },
+]
+
 const EMOJIS = ['🤖', '🧠', '⚡', '🚀', '✨', '🦾', '🎯', '🛠️', '📐', '🧪', '🎬', '📊']
 const COLORS = ['#6366f1', '#10b981', '#ec4899', '#f59e0b', '#06b6d4', '#a855f7', '#ef4444', '#14b8a6']
 
@@ -64,14 +95,27 @@ export function randomColor() {
 
 const key = (uid: string) => `askai:agents:${uid}`
 
+const seededKey = (uid: string) => `askai:agents:seeded-extra:${uid}`
+
 export function loadAgents(uid: string): Agent[] {
   try {
     const raw = localStorage.getItem(key(uid))
-    if (!raw) return [...DEFAULT_AGENTS]
+    if (!raw) return [...DEFAULT_AGENTS, ...EXTRA_AGENTS]
     const list = JSON.parse(raw) as Agent[]
-    return Array.isArray(list) && list.length ? list : [...DEFAULT_AGENTS]
+    if (!Array.isArray(list) || !list.length) return [...DEFAULT_AGENTS, ...EXTRA_AGENTS]
+    // One-time merge of the newer specialists for users with a saved roster.
+    // Done once so deleting them afterwards sticks.
+    if (!localStorage.getItem(seededKey(uid))) {
+      const merged = [...list, ...EXTRA_AGENTS.filter((e) => !list.some((a) => a.id === e.id))]
+      localStorage.setItem(seededKey(uid), '1')
+      if (merged.length !== list.length) {
+        localStorage.setItem(key(uid), JSON.stringify(merged))
+        return merged
+      }
+    }
+    return list
   } catch {
-    return [...DEFAULT_AGENTS]
+    return [...DEFAULT_AGENTS, ...EXTRA_AGENTS]
   }
 }
 
