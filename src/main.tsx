@@ -7,6 +7,7 @@ import './styles/globals.css'
 import './styles/glass.css'
 import './styles/release-polish.css'
 import './styles/composer-float-hotfix.css'
+import './styles/redesign.css'
 import 'katex/dist/katex.min.css'
 
 // Bump on each deploy so the build hash changes and the version stamp updates.

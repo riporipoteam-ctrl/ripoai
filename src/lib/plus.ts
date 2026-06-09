@@ -66,6 +66,9 @@ export interface PlusState {
   msgsToday: number
   /** Task ids claimed today. */
   tasksDone: string[]
+  /** Consecutive-day check-in streak. */
+  streak: number
+  lastCheckinDay: string
 }
 
 export interface DiscountCode {
@@ -98,7 +101,20 @@ function freshState(now = Date.now()): PlusState {
     creditsUsedToday: 0,
     msgsToday: 0,
     tasksDone: [],
+    streak: 0,
+    lastCheckinDay: '',
   }
+}
+
+const dayKeyOffset = (offset: number) => {
+  const d = new Date()
+  d.setDate(d.getDate() + offset)
+  return d.toISOString().slice(0, 10)
+}
+
+/** Streak bonus coins for the current check-in (escalates, caps at 7 days). */
+export function streakBonus(streak: number): number {
+  return Math.min(7, Math.max(1, streak)) * 5
 }
 
 const key = (uid: string) => `askai:plus:${uid}`
@@ -201,9 +217,18 @@ export function claimTask(uid: string, taskId: string): number {
   const task = DAILY_TASKS.find((t) => t.id === taskId)
   if (!task || s.tasksDone.includes(taskId)) return 0
   s.tasksDone.push(taskId)
-  s.coins += task.reward
+  let reward = task.reward
+  // The daily check-in builds a streak with an escalating bonus.
+  if (taskId === 'checkin') {
+    const today = todayKey()
+    if (s.lastCheckinDay === dayKeyOffset(-1)) s.streak += 1
+    else if (s.lastCheckinDay !== today) s.streak = 1
+    s.lastCheckinDay = today
+    reward += streakBonus(s.streak)
+  }
+  s.coins += reward
   savePlus(uid, s)
-  return task.reward
+  return reward
 }
 
 /** Buy / extend AskAI+ for one month using coins. */
