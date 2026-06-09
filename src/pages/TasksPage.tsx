@@ -105,10 +105,10 @@ export default function TasksPage() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.04 }}
-                className={`glass flex items-center gap-3 rounded-2xl p-3.5 ${claimed ? 'opacity-60' : ''}`}
+                className={`lift-card glass flex items-center gap-3 rounded-2xl p-3.5 ${claimed ? 'opacity-60' : ''}`}
               >
-                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${claimed ? 'bg-emerald-500/20 text-emerald-400' : 'bg-accent/15 text-accent'}`}>
-                  {claimed ? <Check size={18} /> : <Sparkles size={18} />}
+                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${claimed ? 'bg-emerald-500/20 text-emerald-400' : 'accent-gradient-bg shadow-[0_6px_16px_-8px_rgb(var(--ink)/0.6)]'}`}>
+                  {claimed ? <Check size={18} /> : <Sparkles size={18} strokeWidth={2.4} />}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-semibold">{t.title}</div>
