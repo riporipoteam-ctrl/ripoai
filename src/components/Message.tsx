@@ -260,7 +260,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
           <div className="mt-2 flex items-center gap-1">
             <button
               onClick={copy}
-              className="pressable flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted hover:bg-white/10 hover:text-ink"
+              className="pressable flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium text-muted hover:bg-[rgb(var(--ink)/0.07)] hover:text-ink"
             >
               {copied ? <Check size={13} /> : <Copy size={13} />}
               {copied ? 'Copied' : 'Copy'}
@@ -276,7 +276,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
                     speakHQ(message.content, () => setSpeaking(false))
                   }
                 }}
-                className="pressable flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted hover:bg-white/10 hover:text-ink"
+                className="pressable flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium text-muted hover:bg-[rgb(var(--ink)/0.07)] hover:text-ink"
               >
                 {speaking ? <Square size={13} /> : <Volume2 size={13} />}
                 {speaking ? 'Stop' : 'Read'}
@@ -285,7 +285,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
             {isLastAssistant && onRegenerate && (
               <button
                 onClick={onRegenerate}
-                className="pressable flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-muted hover:bg-white/10 hover:text-ink"
+                className="pressable flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium text-muted hover:bg-[rgb(var(--ink)/0.07)] hover:text-ink"
               >
                 <RefreshCw size={13} />
                 Regenerate
