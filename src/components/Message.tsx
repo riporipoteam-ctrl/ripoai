@@ -138,8 +138,8 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
           </div>
         ) : (
           message.content && (
-            <div className="group relative max-w-[80%]">
-              <div className="user-bubble whitespace-pre-wrap rounded-3xl rounded-tr-lg border border-[rgb(var(--accent)/0.18)] bg-[rgb(var(--accent)/0.1)] px-4 py-2.5 text-ink">
+            <div className="group relative max-w-[82%]">
+              <div className="user-bubble whitespace-pre-wrap rounded-[22px] rounded-tr-md bg-[rgb(var(--accent))] px-4 py-2.5 font-medium text-[rgb(var(--accent-ink))] shadow-[0_8px_22px_-12px_rgb(var(--ink)/0.5)]">
                 {message.content}
               </div>
               {onEdit && (
@@ -170,10 +170,15 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
       className={`message-row assistant-message-row flex gap-3 ${message.bookmarked ? 'rounded-2xl border-l-2 border-accent bg-accent/5 py-2 pl-3 pr-2' : ''}`}
     >
       <div className="assistant-avatar mt-0.5 shrink-0">
-        <Logo size={32} />
+        <div className="overflow-hidden rounded-xl shadow-[0_4px_12px_-6px_rgb(var(--ink)/0.5)] ring-1 ring-[rgb(var(--ink)/0.08)]">
+          <Logo size={32} variant="icon" />
+        </div>
       </div>
       <div className="min-w-0 flex-1">
-        {modelName && <div className="mb-1 text-xs font-semibold text-muted">{modelName}</div>}
+        <div className="mb-1 flex items-center gap-2">
+          <span className="text-sm font-extrabold tracking-tight">AskAI</span>
+          {modelName && <span className="text-xs font-medium text-muted">{modelName}</span>}
+        </div>
         <AgentBrowserPanel browser={agentBrowser} live={liveStreaming && agentBrowser?.status === 'running'} />
         {!!message.steps?.length && (
           <AgentTrace steps={message.steps} live={emptyStreaming} />

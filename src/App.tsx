@@ -21,8 +21,8 @@ function FullScreenLoader() {
         <div className="relative">
           {/* pulsing ring behind the mark */}
           <span className="absolute inset-0 -m-3 animate-ping rounded-full bg-[rgb(var(--accent)/0.18)]" />
-          <div className="animate-float">
-            <Logo size={60} glow />
+          <div className="animate-float overflow-hidden rounded-2xl shadow-xl">
+            <Logo size={60} variant="icon" glow />
           </div>
         </div>
         <div className="text-2xl font-extrabold tracking-tight brand-gradient">AskAI</div>

@@ -11,7 +11,7 @@ import './styles/redesign.css'
 import 'katex/dist/katex.min.css'
 
 // Bump on each deploy so the build hash changes and the version stamp updates.
-export const APP_VERSION = 'v7.15.6'
+export const APP_VERSION = 'v8.0.0'
 console.log('AskAI', APP_VERSION)
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
