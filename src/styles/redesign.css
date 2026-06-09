@@ -182,35 +182,9 @@
 }
 
 /* ============================================================
-   Dark charcoal sidebar — a bold, premium "app rail" in both themes.
-   We rescope the theme tokens inside the sidebar so every utility
-   (text-ink, text-muted, bg-accent, accent-gradient-bg, brand-gradient,
-   borders) adapts automatically: the New chat button becomes white-on-dark,
-   active rows become subtle light tints, text turns light. No per-element
-   rewrites needed.
+   Sidebar rail — structural only, follows the active theme
+   (light in light mode, dark in dark mode). No forced colors.
    ============================================================ */
 .askai-sidebar {
-  --surface: 24 24 27;
-  --surface-raised: 39 39 42;
-  --ink: 245 245 247;
-  --muted: 160 160 170;
-  --accent: 245 245 247;
-  --accent-soft: 245 245 247;
-  --accent-ink: 22 22 25;
-  --glass-bg: 30 30 34;
-  background: rgb(20 20 23) !important;
-  color: rgb(245 245 247);
-  border-right: 1px solid rgb(255 255 255 / 0.07) !important;
-  box-shadow: 2px 0 40px -20px rgb(0 0 0 / 0.6) !important;
+  border-right: 1px solid rgb(var(--ink) / 0.08) !important;
 }
-/* New chat: solid white pill with dark text, strong presence. */
-.askai-sidebar .accent-gradient-bg {
-  box-shadow: 0 8px 22px -10px rgb(0 0 0 / 0.7);
-}
-/* The brand wordmark reads pure white here. */
-.askai-sidebar .brand-gradient {
-  -webkit-text-fill-color: rgb(245 245 247);
-}
-/* Active rows: brighter so selection is obvious on dark. */
-.askai-sidebar .bg-accent\/15 { background: rgb(255 255 255 / 0.1) !important; }
-/* Amber "tasks" / unread dots already pop on dark — leave as is. */
