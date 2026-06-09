@@ -144,16 +144,18 @@ export default function Settings() {
     <Modal open={settingsOpen} onClose={closeSettings} title="Settings" wide>
       <div className="flex flex-col gap-0 sm:flex-row">
         {/* Tabs */}
-        <div className="flex shrink-0 gap-1 overflow-x-auto border-b border-white/10 p-3 sm:w-48 sm:flex-col sm:border-b-0 sm:border-r">
+        <div className="no-scrollbar flex shrink-0 gap-1.5 overflow-x-auto border-b border-white/10 p-3 sm:w-52 sm:flex-col sm:border-b-0 sm:border-r">
           {TABS.map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`flex items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium transition ${
-                tab === t.id ? 'bg-white/10 text-ink' : 'text-muted hover:bg-white/5'
+              className={`pressable flex items-center gap-2.5 whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
+                tab === t.id
+                  ? 'bg-[rgb(var(--accent)/0.14)] text-ink'
+                  : 'text-muted hover:bg-white/[0.06] hover:text-ink'
               }`}
             >
-              <t.icon size={16} /> {t.label}
+              <t.icon size={16} className={tab === t.id ? 'text-accent' : ''} /> {t.label}
             </button>
           ))}
         </div>
