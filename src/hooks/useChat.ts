@@ -182,7 +182,8 @@ export function useChat(chatId: string | undefined) {
       if (!user) return
       const lastUser = [...history].reverse().find((m) => m.role === 'user')
       // Auto mode → pick the best real model for this task.
-      const effModel = opts.model === 'auto' ? resolveAutoModel(lastUser?.content ?? '') : opts.model
+      const autoHasImages = (lastUser?.attachments ?? []).some((a) => a.kind === 'image' && a.url)
+      const effModel = opts.model === 'auto' ? resolveAutoModel(lastUser?.content ?? '', autoHasImages) : opts.model
       const model = getModel(effModel)
 
       // Skill install — "install this skill: <url>" fetches + saves a skill.

@@ -296,3 +296,65 @@
 .accent-gradient-bg {
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 0 10px 26px -12px rgb(var(--ink) / 0.6);
 }
+
+/* ---- Liquid Glass Pro: scrollbars, selection, code & motion polish ---- */
+
+/* Translucent pill scrollbars that match the frosted aesthetic. */
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--ink) / 0.18) !important;
+  border-radius: 999px !important;
+  border: 3px solid transparent !important;
+  background-clip: content-box !important;
+}
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--ink) / 0.32) !important; background-clip: content-box !important; }
+.dark ::-webkit-scrollbar-thumb { background: rgb(255 255 255 / 0.16) !important; background-clip: content-box !important; }
+.dark ::-webkit-scrollbar-thumb:hover { background: rgb(255 255 255 / 0.28) !important; background-clip: content-box !important; }
+* { scrollbar-width: thin; scrollbar-color: rgb(var(--ink) / 0.2) transparent; }
+
+/* Smooth in-app scrolling (respects reduced-motion). */
+@media (prefers-reduced-motion: no-preference) {
+  .askai-scroll, [data-chat-scroll], main { scroll-behavior: smooth; }
+}
+
+/* Richer two-tone selection. */
+::selection { background: rgb(var(--accent) / 0.28); text-shadow: none; }
+
+/* Frosted code blocks inside answers. */
+.prose-ripo pre {
+  border: 1px solid rgb(var(--ink) / 0.08);
+  border-radius: 18px !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), 0 10px 30px -20px rgb(var(--ink) / 0.5);
+}
+.dark .prose-ripo pre { box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 12px 30px -20px rgb(0 0 0 / 0.6); }
+.prose-ripo :not(pre) > code {
+  background: rgb(var(--ink) / 0.06);
+  padding: 0.12em 0.4em;
+  border-radius: 7px;
+  font-size: 0.9em;
+}
+
+/* Soft glow on inline links. */
+.prose-ripo a {
+  text-decoration-color: rgb(var(--accent) / 0.45);
+  text-underline-offset: 3px;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+.prose-ripo a:hover { text-decoration-color: rgb(var(--accent)); }
+
+/* Liquid streaming caret — a soft pulsing bar instead of a hard block. */
+.stream-caret::after {
+  content: '';
+  display: inline-block;
+  width: 0.5ch;
+  height: 1.05em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  border-radius: 2px;
+  background: rgb(var(--accent));
+  animation: liquid-caret 1.1s ease-in-out infinite;
+}
+@keyframes liquid-caret {
+  0%, 100% { opacity: 0.25; transform: scaleY(0.8); }
+  50% { opacity: 1; transform: scaleY(1); }
+}
+@media (prefers-reduced-motion: reduce) { .stream-caret::after { animation: none; opacity: 0.8; } }
