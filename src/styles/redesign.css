@@ -90,3 +90,93 @@
   border-color: rgb(var(--accent) / 0.45) !important;
   box-shadow: 0 0 0 4px rgb(var(--accent) / 0.08), 0 18px 40px -22px rgb(var(--ink) / 0.5);
 }
+
+/* ============================================================
+   AskAI — full UI redesign layer (monochrome, loads last)
+   ============================================================ */
+
+/* Subtle dot-grid canvas for a designed surface (very low contrast). */
+.aurora::after {
+  background-image:
+    radial-gradient(rgb(var(--ink) / 0.05) 1px, transparent 1.4px),
+    linear-gradient(120deg, transparent 18%, rgb(var(--orb-2) / calc(var(--orb-alpha) * 0.5)), transparent 68%) !important;
+  background-size: 22px 22px, auto !important;
+  opacity: 0.6 !important;
+}
+
+/* Crisper, deeper glass surfaces. */
+.glass {
+  border: 1px solid rgb(var(--ink) / 0.07) !important;
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.4) inset,
+    0 14px 36px -22px rgb(var(--ink) / 0.4) !important;
+}
+.dark .glass {
+  border-color: rgb(255 255 255 / 0.07) !important;
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.05) inset,
+    0 16px 40px -22px rgb(0 0 0 / 0.65) !important;
+}
+.glass-strong {
+  border: 1px solid rgb(var(--ink) / 0.1) !important;
+  box-shadow: 0 28px 70px -28px rgb(var(--ink) / 0.55) !important;
+}
+
+/* Press feedback unified across buttons. */
+.pressable {
+  transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1), background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+.pressable:active {
+  transform: scale(0.96);
+}
+
+/* Primary action — subtle sheen sweep on hover. */
+.accent-gradient-bg {
+  position: relative;
+  overflow: hidden;
+}
+.accent-gradient-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 30%, rgb(255 255 255 / 0.22) 50%, transparent 70%);
+  transform: translateX(-130%);
+  transition: transform 0.6s ease;
+}
+@media (hover: hover) {
+  .accent-gradient-bg:hover::after { transform: translateX(130%); }
+}
+
+/* Composer — larger, cleaner, more present. */
+.composer-shell {
+  border-radius: 30px !important;
+  background: rgb(var(--glass-bg) / 0.72) !important;
+  border: 1px solid rgb(var(--ink) / 0.1) !important;
+  box-shadow: 0 18px 44px -26px rgb(var(--ink) / 0.55) !important;
+}
+.dark .composer-shell {
+  background: rgb(255 255 255 / 0.05) !important;
+  border-color: rgb(255 255 255 / 0.1) !important;
+}
+
+/* Chat bubbles — refined user bubble + entrance motion. */
+.user-bubble {
+  border-radius: 22px 22px 6px 22px !important;
+  box-shadow: 0 6px 18px -12px rgb(var(--ink) / 0.45);
+}
+.message-row { animation: msg-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes msg-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Section labels — tighter, more editorial. */
+.sidebar-section-label,
+.text-xs.font-bold.uppercase {
+  letter-spacing: 0.08em;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .message-row { animation: none; }
+  .accent-gradient-bg::after { display: none; }
+}
