@@ -68,7 +68,16 @@ type HapticStyle = 'light' | 'medium' | 'heavy' | 'select'
 
 // Fire-and-forget tactile feedback. No-op on web.
 export function haptic(style: HapticStyle = 'light') {
-  if (!isNative) return
+  if (!isNative) {
+    // Web/PWA fallback: vibrate where supported (Android Chrome) so gestures
+    // still feel tactile outside the native shell.
+    try {
+      navigator.vibrate?.(style === 'heavy' ? 18 : style === 'medium' ? 12 : 6)
+    } catch {
+      /* unsupported */
+    }
+    return
+  }
   import('@capacitor/haptics')
     .then(({ Haptics, ImpactStyle }) => {
       if (style === 'select') return Haptics.selectionChanged()
