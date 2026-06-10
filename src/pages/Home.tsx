@@ -1,4 +1,4 @@
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, useEffect, useRef } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import { PanelLeftOpen, PenSquare } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -8,6 +8,7 @@ import Settings from '../components/Settings'
 import CommandPalette from '../components/CommandPalette'
 import Spinner from '../components/ui/Spinner'
 import { useStore } from '../store'
+import { loadPendingRuns } from '../lib/pendingRuns'
 
 // Sandpack is large — only load it when a project is opened.
 const ProjectsView = lazy(() => import('../components/ProjectsView'))
@@ -16,12 +17,24 @@ const TasksPage = lazy(() => import('./TasksPage'))
 const TeamPage = lazy(() => import('./TeamPage'))
 
 export default function Home() {
-  const { sidebarOpen, toggleSidebar } = useStore()
+  const { sidebarOpen, toggleSidebar, user } = useStore()
   const navigate = useNavigate()
   const location = useLocation()
   // ChatView renders its own top bar; only the Projects view needs the
   // floating fallback controls when the sidebar is collapsed.
   const onProject = location.pathname.startsWith('/project')
+
+  // On a fresh open at the root, if a chat/agent task was interrupted by closing
+  // the app, jump back into it so it resumes and finishes (handled in useChat).
+  const checkedResume = useRef(false)
+  useEffect(() => {
+    if (checkedResume.current || !user) return
+    checkedResume.current = true
+    if (location.pathname !== '/') return
+    const pending = loadPendingRuns(user.uid)
+    if (pending.length) navigate(`/c/${pending[0].chatId}`, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user])
 
   return (
     <div className="flex h-full w-full overflow-hidden">

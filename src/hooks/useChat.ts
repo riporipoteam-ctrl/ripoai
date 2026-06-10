@@ -18,6 +18,7 @@ import { searchWebImages, wantsWebImageSearch, webImageQuery } from '../lib/webI
 import { runAgentBrowserTask, type AgentBrowserEvent, type AgentBrowserState } from '../lib/agentBrowser'
 import { extractMemories } from '../lib/memory'
 import { installSkillFromUrl, detectSkillInstall, detectSlashSkill, findSkill, autoPickSkill } from '../lib/skills'
+import { markPending, clearPending, isPending, loadPendingRuns } from '../lib/pendingRuns'
 import { haptic } from './useSpeech'
 import { useStore } from '../store'
 import {
@@ -167,6 +168,12 @@ export function useChat(chatId: string | undefined) {
         createdAt: createdAtRef.current,
       }
       await saveChat(user.uid, chat)
+      // A completed assistant turn means the run finished — drop it from the
+      // resume registry so it isn't re-run on next open.
+      const last = msgs[msgs.length - 1]
+      if (last?.role === 'assistant' && (last.content || last.image || last.steps?.length || last.deck)) {
+        clearPending(user.uid, id)
+      }
     },
     [user],
   )
@@ -175,12 +182,21 @@ export function useChat(chatId: string | undefined) {
     abortRef.current?.abort()
     abortRef.current = null
     setStreaming(false)
-  }, [])
+    // Explicit stop = user no longer wants this run; don't resume it later.
+    if (user && loadedId.current) clearPending(user.uid, loadedId.current)
+  }, [user])
 
   const run = useCallback(
     async (history: StoredMessage[], opts: SendOptions, id: string) => {
       if (!user) return
       const lastUser = [...history].reverse().find((m) => m.role === 'user')
+      // Record this run so it can be resumed if the app is closed mid-flight.
+      markPending(user.uid, {
+        chatId: id,
+        opts,
+        label: (lastUser?.content ?? 'Task').slice(0, 80),
+        startedAt: Date.now(),
+      })
       // Auto mode → pick the best real model for this task.
       const autoHasImages = (lastUser?.attachments ?? []).some((a) => a.kind === 'image' && a.url)
       const effModel = opts.model === 'auto' ? resolveAutoModel(lastUser?.content ?? '', autoHasImages) : opts.model
@@ -1048,6 +1064,43 @@ export function useChat(chatId: string | undefined) {
     },
     [user, chatId, persist],
   )
+
+  // ----- Resume unfinished runs --------------------------------------------
+  // If the user closed AskAI while a chat/agent task was still generating, the
+  // user's turn was saved but no answer followed. On reopening that chat we
+  // pick the run back up and finish it automatically.
+  const resumedRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (!user || !chatId || streaming) return
+    if (resumedRef.current.has(chatId)) return
+    if (!messages.length) return
+    if (!isPending(user.uid, chatId)) return
+
+    const last = messages[messages.length - 1]
+    const lastAssistantEmpty =
+      last?.role === 'assistant' && !last.content && !last.steps?.length && !last.image && !last.deck
+    const needsAnswer = last?.role === 'user' || lastAssistantEmpty
+    if (!needsAnswer) {
+      clearPending(user.uid, chatId)
+      return
+    }
+
+    resumedRef.current.add(chatId)
+    let opts: SendOptions
+    try {
+      opts = loadPendingRuns(user.uid).find((r) => r.chatId === chatId)?.opts ?? {
+        model: modelRef.current,
+        webSearch: false,
+        agent: false,
+      }
+    } catch {
+      opts = { model: modelRef.current, webSearch: false, agent: false }
+    }
+    // Drop a dangling empty assistant turn, then re-run from the last user turn.
+    const base = lastAssistantEmpty ? messages.slice(0, -1) : messages
+    setMessages(base)
+    void run(base, opts, chatId)
+  }, [user, chatId, messages, streaming, run])
 
   return { messages, streaming, steps, send, stop, regenerate, editAndResend, toggleBookmark, loadedModel }
 }
