@@ -1,5 +1,6 @@
+import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { AlertTriangle, ArrowUpRight, Camera, Check, CircleDot, Globe2, Loader2, MousePointerClick, Search, Type, XCircle } from 'lucide-react'
+import { AlertTriangle, ArrowUpRight, Camera, Check, CircleDot, Globe2, Loader2, MousePointer2, MousePointerClick, Search, Type, XCircle } from 'lucide-react'
 import type { AgentBrowserEvent, AgentBrowserState } from '../lib/agentBrowser'
 
 const ICONS = {
@@ -14,12 +15,116 @@ const ICONS = {
   error: XCircle,
 } as const
 
+/** Screenshot that heals itself: mshots returns a blank/black placeholder while
+ * it renders, so we re-poll the same URL a few times, then fall back to thum.io.
+ * object-contain on a fixed stage kills the "zoomed in / cropped" look. */
+function Screenshot({ url, pageUrl, title }: { url: string; pageUrl?: string; title?: string }) {
+  const [src, setSrc] = useState(url)
+  const [tries, setTries] = useState(0)
+  const [fellBack, setFellBack] = useState(false)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    setSrc(url)
+    setTries(0)
+    setFellBack(false)
+  }, [url])
+
+  // mshots renders asynchronously — re-request a few times so the live preview
+  // updates from the gray/black placeholder to the real page.
+  useEffect(() => {
+    if (fellBack || !url.includes('mshots') || tries >= 4) return
+    timer.current = setTimeout(() => {
+      setTries((t) => t + 1)
+      setSrc(`${url}${url.includes('?') ? '&' : '?'}r=${tries + 1}`)
+    }, 2200)
+    return () => {
+      if (timer.current) clearTimeout(timer.current)
+    }
+  }, [url, tries, fellBack])
+
+  return (
+    <img
+      key={src}
+      src={src}
+      alt={title || 'Agent browser page'}
+      onError={() => {
+        if (!fellBack && pageUrl) {
+          setFellBack(true)
+          setSrc(`https://image.thum.io/get/width/1100/crop/720/noanimate/${pageUrl}`)
+        }
+      }}
+      className="absolute inset-0 h-full w-full bg-white object-contain object-top"
+    />
+  )
+}
+
+/** A simulated mouse cursor + click ripple + typing caret driven by the latest
+ * action, so the user SEES the agent clicking and typing on the page. */
+function CursorOverlay({ event }: { event?: AgentBrowserEvent }) {
+  if (!event) return null
+  const type = event.type
+  // Deterministic-ish position per event so the cursor moves believably.
+  const seed = (event.label || '').split('').reduce((a, c) => a + c.charCodeAt(0), 0)
+  const left = type === 'type' ? 30 : 22 + (seed % 56)
+  const top = type === 'type' ? 14 : 28 + (seed % 48)
+  const clicking = type === 'click' || type === 'open'
+  const typing = type === 'type' || type === 'search'
+
+  return (
+    <div className="pointer-events-none absolute inset-0 z-10">
+      {/* typing caret over the (top) address/search area */}
+      <AnimatePresence>
+        {typing && (
+          <motion.div
+            key="caret"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="absolute left-[6%] top-[7%] flex max-w-[80%] items-center gap-1 rounded-lg bg-white/90 px-2 py-1 text-[11px] font-semibold text-black shadow-lg"
+          >
+            <span className="truncate">{event.label.replace(/^Typing\s*/i, '')}</span>
+            <span className="inline-block h-3 w-[2px] animate-pulse bg-black" />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* the cursor itself, animating to the action position */}
+      <motion.div
+        className="absolute"
+        initial={false}
+        animate={{ left: `${left}%`, top: `${top}%` }}
+        transition={{ type: 'spring', stiffness: 120, damping: 18 }}
+        style={{ left: `${left}%`, top: `${top}%` }}
+      >
+        <motion.div
+          animate={clicking ? { scale: [1, 0.8, 1] } : { scale: 1 }}
+          transition={{ duration: 0.4, repeat: clicking ? Infinity : 0, repeatDelay: 0.6 }}
+          className="relative"
+        >
+          <MousePointer2 size={22} className="fill-white text-black drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]" />
+          {clicking && (
+            <motion.span
+              key={event.label}
+              initial={{ scale: 0, opacity: 0.7 }}
+              animate={{ scale: 2.4, opacity: 0 }}
+              transition={{ duration: 0.7, repeat: Infinity, repeatDelay: 0.3 }}
+              className="absolute -left-2 -top-2 h-8 w-8 rounded-full border-2 border-accent"
+            />
+          )}
+        </motion.div>
+      </motion.div>
+    </div>
+  )
+}
+
 export default function AgentBrowserPanel({ browser, live }: { browser?: AgentBrowserState; live?: boolean }) {
   if (!browser) return null
   const running = browser.status === 'running' || live
   const unavailable = browser.status === 'unavailable'
   const errored = browser.status === 'error'
   const events = browser.events?.length ? browser.events : []
+  const lastEvent = events[events.length - 1]
 
   return (
     <motion.div
@@ -52,30 +157,21 @@ export default function AgentBrowserPanel({ browser, live }: { browser?: AgentBr
       </div>
 
       <div className="grid gap-0 md:grid-cols-[minmax(0,1fr)_230px]">
-        <div className="agent-browser-viewport relative min-h-[220px] overflow-hidden">
+        <div className="agent-browser-viewport relative aspect-[16/10] w-full overflow-hidden">
           {browser.liveUrl ? (
             <iframe
               title="Agent browser live view"
               src={browser.liveUrl}
-              className="h-[340px] w-full border-0 bg-white"
+              className="absolute inset-0 h-full w-full border-0 bg-white"
               sandbox="allow-scripts allow-forms allow-same-origin allow-popups"
             />
           ) : browser.screenshot ? (
-            <img
-              src={browser.screenshot}
-              alt={browser.title || 'Agent browser screenshot'}
-              onError={(e) => {
-                // Screenshot service hiccup — swap to the backup renderer.
-                const img = e.currentTarget
-                if (browser.currentUrl && !img.dataset.fallback) {
-                  img.dataset.fallback = '1'
-                  img.src = `https://image.thum.io/get/width/1100/crop/700/noanimate/${browser.currentUrl}`
-                }
-              }}
-              className="h-full min-h-[260px] w-full object-cover object-top"
-            />
+            <>
+              <Screenshot url={browser.screenshot} pageUrl={browser.currentUrl} title={browser.title} />
+              {running && <CursorOverlay event={lastEvent} />}
+            </>
           ) : (
-            <div className="flex min-h-[240px] flex-col items-center justify-center gap-3 px-6 text-center">
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
               {unavailable || errored ? (
                 <AlertTriangle size={30} className="text-amber-400" />
               ) : (
@@ -86,16 +182,16 @@ export default function AgentBrowserPanel({ browser, live }: { browser?: AgentBr
                   ? 'Real browser backend is not connected yet.'
                   : errored
                     ? 'The real browser session failed.'
-                    : 'Opening a real browser session...'}
+                    : 'Opening a browser session…'}
               </div>
               {(browser.error || unavailable) && (
                 <div className="max-w-md text-xs leading-relaxed text-muted">
-                  {browser.error || 'Set VITE_AGENT_BROWSER_URL or the Netlify AGENT_BROWSER_ENDPOINT to a Cloudflare Browser Run worker.'}
+                  {browser.error || 'The agent will browse here.'}
                 </div>
               )}
             </div>
           )}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/20 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/25 to-transparent" />
         </div>
 
         <aside className="agent-browser-actions border-t border-white/10 p-3 md:border-l md:border-t-0">

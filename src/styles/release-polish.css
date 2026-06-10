@@ -406,8 +406,13 @@
 
 .agent-browser-viewport {
   background:
-    radial-gradient(circle at 22% 18%, rgb(var(--accent) / 0.12), transparent 34%),
-    linear-gradient(135deg, rgb(var(--ink) / 0.06), transparent);
+    repeating-linear-gradient(45deg, rgb(0 0 0 / 0.04) 0 10px, transparent 10px 20px),
+    rgb(244 245 247);
+}
+.dark .agent-browser-viewport {
+  background:
+    repeating-linear-gradient(45deg, rgb(255 255 255 / 0.03) 0 10px, transparent 10px 20px),
+    rgb(20 21 23);
 }
 
 @media (max-width: 640px) {
