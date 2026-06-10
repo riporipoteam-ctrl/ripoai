@@ -15,6 +15,7 @@ const ProjectsView = lazy(() => import('../components/ProjectsView'))
 const PlusPage = lazy(() => import('./PlusPage'))
 const TasksPage = lazy(() => import('./TasksPage'))
 const TeamPage = lazy(() => import('./TeamPage'))
+const AdminPage = lazy(() => import('./AdminPage'))
 
 export default function Home() {
   const { sidebarOpen, toggleSidebar, user } = useStore()
@@ -98,6 +99,14 @@ export default function Home() {
             element={
               <Suspense fallback={<div className="flex h-full items-center justify-center"><Spinner /></div>}>
                 <TeamPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <Suspense fallback={<div className="flex h-full items-center justify-center"><Spinner /></div>}>
+                <AdminPage />
               </Suspense>
             }
           />

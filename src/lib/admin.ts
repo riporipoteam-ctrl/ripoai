@@ -25,6 +25,12 @@ export interface Ban {
   at: number
 }
 
+export interface PlusGrant {
+  until: number // epoch ms; 0 = permanent
+  grantedAt: number
+  grantedBy: string
+}
+
 export interface AdminUser {
   uid: string
   email: string
@@ -34,6 +40,7 @@ export interface AdminUser {
   lastSeen: number
   ban?: Ban | null
   msgLimit?: number // 0/undefined = unlimited
+  plusGrant?: PlusGrant | null
 }
 
 const tsMs = (v: unknown): number =>
@@ -72,9 +79,26 @@ export async function listUsers(): Promise<AdminUser[]> {
         lastSeen: tsMs(x.lastSeen),
         ban: x.ban || null,
         msgLimit: x.msgLimit || 0,
+        plusGrant: x.plusGrant
+          ? { until: tsMs(x.plusGrant.until) || x.plusGrant.until || 0, grantedAt: tsMs(x.plusGrant.grantedAt), grantedBy: x.plusGrant.grantedBy || '' }
+          : null,
       } as AdminUser
     })
-    .sort((a, b) => b.createdAt - a.createdAt)
+    .sort((a, b) => (b.createdAt || b.lastSeen) - (a.createdAt || a.lastSeen))
+}
+
+/** Grant AskAI+ to a user remotely. untilMs = expiry (0 = permanent). Their
+ * app reads this on next load and applies it to their local AskAI+ state. */
+export async function grantPlus(uid: string, untilMs: number): Promise<void> {
+  await setDoc(
+    doc(db, 'users', uid),
+    { plusGrant: { until: untilMs, grantedAt: Date.now(), grantedBy: ADMIN_EMAIL } },
+    { merge: true },
+  )
+}
+
+export async function revokePlus(uid: string): Promise<void> {
+  await setDoc(doc(db, 'users', uid), { plusGrant: null }, { merge: true })
 }
 
 export async function banUser(uid: string, durationMs: number, reason: string): Promise<void> {
@@ -97,12 +121,19 @@ export async function setUserMsgLimit(uid: string, limit: number): Promise<void>
 export interface MyStatus {
   ban?: Ban | null
   msgLimit?: number
+  plusGrant?: PlusGrant | null
 }
 export async function getMyStatus(uid: string): Promise<MyStatus> {
   try {
     const s = await getDoc(doc(db, 'users', uid))
     const x = (s.data() as any) || {}
-    return { ban: x.ban || null, msgLimit: x.msgLimit || 0 }
+    return {
+      ban: x.ban || null,
+      msgLimit: x.msgLimit || 0,
+      plusGrant: x.plusGrant
+        ? { until: tsMs(x.plusGrant.until) || x.plusGrant.until || 0, grantedAt: tsMs(x.plusGrant.grantedAt), grantedBy: x.plusGrant.grantedBy || '' }
+        : null,
+    }
   } catch {
     return {}
   }
