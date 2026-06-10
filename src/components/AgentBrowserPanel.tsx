@@ -61,7 +61,19 @@ export default function AgentBrowserPanel({ browser, live }: { browser?: AgentBr
               sandbox="allow-scripts allow-forms allow-same-origin allow-popups"
             />
           ) : browser.screenshot ? (
-            <img src={browser.screenshot} alt={browser.title || 'Agent browser screenshot'} className="h-full min-h-[260px] w-full object-cover" />
+            <img
+              src={browser.screenshot}
+              alt={browser.title || 'Agent browser screenshot'}
+              onError={(e) => {
+                // Screenshot service hiccup — swap to the backup renderer.
+                const img = e.currentTarget
+                if (browser.currentUrl && !img.dataset.fallback) {
+                  img.dataset.fallback = '1'
+                  img.src = `https://image.thum.io/get/width/1100/crop/700/noanimate/${browser.currentUrl}`
+                }
+              }}
+              className="h-full min-h-[260px] w-full object-cover object-top"
+            />
           ) : (
             <div className="flex min-h-[240px] flex-col items-center justify-center gap-3 px-6 text-center">
               {unavailable || errored ? (

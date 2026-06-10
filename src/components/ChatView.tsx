@@ -245,7 +245,9 @@ export default function ChatView() {
             </div>
           </div>
         ) : (
-          <div className="chat-thread mx-auto w-full max-w-3xl space-y-6 px-4 pb-44 pt-6 sm:pb-48">
+          /* Extra top clearance when the floating top bar overlays the scroll
+             area — otherwise the first message + AskAI logo hide under it. */
+          <div className={`chat-thread mx-auto w-full max-w-3xl space-y-6 px-4 pb-44 sm:pb-48 ${sidebarOpen ? 'pt-6' : 'pt-[72px]'}`}>
             <AnimatePresence initial={false}>
               {messages.map((m, i) => {
                 const isLastAssistant =
