@@ -15,47 +15,63 @@ const ICONS = {
   error: XCircle,
 } as const
 
-/** Screenshot that heals itself: mshots returns a blank/black placeholder while
- * it renders, so we re-poll the same URL a few times, then fall back to thum.io.
- * object-contain on a fixed stage kills the "zoomed in / cropped" look. */
-function Screenshot({ url, pageUrl, title }: { url: string; pageUrl?: string; title?: string }) {
-  const [src, setSrc] = useState(url)
-  const [tries, setTries] = useState(0)
-  const [fellBack, setFellBack] = useState(false)
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+/** Live page screenshot with a real loading state and a fallback chain.
+ * Renders nothing-but-spinner until a shot actually loads, so the viewport
+ * never shows a black/placeholder image. object-contain kills the zoom/crop. */
+function Screenshot({ pageUrl, title }: { pageUrl?: string; title?: string }) {
+  const chain = pageUrl
+    ? [
+        `https://image.thum.io/get/width/1200/crop/800/noanimate/${pageUrl}`,
+        `https://s0.wp.com/mshots/v1/${encodeURIComponent(pageUrl)}?w=1200`,
+      ]
+    : []
+  const [idx, setIdx] = useState(0)
+  const [loaded, setLoaded] = useState(false)
+  const [bust, setBust] = useState(0)
+  const retry = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    setSrc(url)
-    setTries(0)
-    setFellBack(false)
-  }, [url])
+    setIdx(0)
+    setLoaded(false)
+    setBust(0)
+  }, [pageUrl])
 
-  // mshots renders asynchronously — re-request a few times so the live preview
-  // updates from the gray/black placeholder to the real page.
+  // If the current source hasn't loaded within a few seconds, re-request it
+  // (on-demand renderers need a moment), then fall through the chain.
   useEffect(() => {
-    if (fellBack || !url.includes('mshots') || tries >= 4) return
-    timer.current = setTimeout(() => {
-      setTries((t) => t + 1)
-      setSrc(`${url}${url.includes('?') ? '&' : '?'}r=${tries + 1}`)
-    }, 2200)
+    if (loaded || !chain.length) return
+    retry.current = setTimeout(() => {
+      if (idx < chain.length - 1) setIdx((i) => i + 1)
+      else setBust((b) => b + 1)
+    }, 4000)
     return () => {
-      if (timer.current) clearTimeout(timer.current)
+      if (retry.current) clearTimeout(retry.current)
     }
-  }, [url, tries, fellBack])
+  }, [idx, loaded, bust, chain.length])
+
+  const src = chain.length ? `${chain[idx]}${chain[idx].includes('?') ? '&' : '?'}b=${bust}` : ''
 
   return (
-    <img
-      key={src}
-      src={src}
-      alt={title || 'Agent browser page'}
-      onError={() => {
-        if (!fellBack && pageUrl) {
-          setFellBack(true)
-          setSrc(`https://image.thum.io/get/width/1100/crop/720/noanimate/${pageUrl}`)
-        }
-      }}
-      className="absolute inset-0 h-full w-full bg-white object-contain object-top"
-    />
+    <>
+      {src && (
+        <img
+          key={src}
+          src={src}
+          alt={title || 'Agent browser page'}
+          onLoad={() => setLoaded(true)}
+          onError={() => {
+            if (idx < chain.length - 1) setIdx((i) => i + 1)
+          }}
+          className={`absolute inset-0 h-full w-full bg-white object-contain object-top transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+        />
+      )}
+      {!loaded && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted">
+          <Loader2 size={26} className="animate-spin text-accent" />
+          <span className="text-xs font-semibold">Capturing live page…</span>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -165,9 +181,9 @@ export default function AgentBrowserPanel({ browser, live }: { browser?: AgentBr
               className="absolute inset-0 h-full w-full border-0 bg-white"
               sandbox="allow-scripts allow-forms allow-same-origin allow-popups"
             />
-          ) : browser.screenshot ? (
+          ) : browser.currentUrl || browser.screenshot ? (
             <>
-              <Screenshot url={browser.screenshot} pageUrl={browser.currentUrl} title={browser.title} />
+              <Screenshot pageUrl={browser.currentUrl} title={browser.title} />
               {running && <CursorOverlay event={lastEvent} />}
             </>
           ) : (
