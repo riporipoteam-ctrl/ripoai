@@ -603,7 +603,15 @@ export function useChat(chatId: string | undefined) {
             signal: ac.signal,
             onEvent: (event) => {
               events.push(event)
-              applyAgentBrowser({ ...(agentBrowser ?? { status: 'running', events: [] }), status: 'running', events: [...events] })
+              // Fold live screenshot / URL / title into the panel as the agent moves.
+              applyAgentBrowser({
+                ...(agentBrowser ?? { status: 'running', events: [] }),
+                status: 'running',
+                events: [...events],
+                screenshot: event.screenshot ?? agentBrowser?.screenshot,
+                currentUrl: event.url ?? agentBrowser?.currentUrl,
+                title: event.title ?? agentBrowser?.title,
+              })
             },
           })
           const finalBrowser = { ...browserResult, events: browserResult.events?.length ? browserResult.events : events }
