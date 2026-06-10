@@ -175,23 +175,27 @@ export default function ChatView() {
       )}
       <div ref={scrollRef} onScroll={onScroll} className="chat-scroll absolute inset-0 overflow-y-auto">
         {empty ? (
-          <div className="empty-state relative flex h-full flex-col items-center justify-center px-4 py-6">
+          <div
+            className={`empty-state relative flex h-full flex-col items-center justify-center px-4 pb-6 ${
+              sidebarOpen ? 'pt-6' : 'pt-[calc(env(safe-area-inset-top,0px)+4.5rem)]'
+            }`}
+          >
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 10 }}
+              initial={{ opacity: 0, scale: 0.88, y: 12 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 18 }}
+              transition={{ type: 'spring', stiffness: 220, damping: 20 }}
               className="home-mark relative"
             >
-              <span className="pointer-events-none absolute inset-0 -z-10 -m-6 rounded-full bg-[rgb(var(--accent)/0.10)] blur-2xl" />
-              <div className="animate-float">
-                <Logo size={72} variant="icon" glow />
+              <span className="pointer-events-none absolute inset-0 -z-10 -m-8 rounded-full bg-[rgb(var(--accent)/0.12)] blur-3xl" />
+              <div className="animate-float rounded-[1.7rem] border border-white/30 bg-white/40 p-2.5 shadow-[0_20px_50px_-22px_rgb(var(--ink)/0.55),inset_0_1px_0_rgb(255_255_255/0.6)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
+                <Logo size={60} variant="icon" glow />
               </div>
             </motion.div>
             <motion.h1
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.08 }}
-              className="mt-6 text-center text-[1.75rem] font-extrabold leading-tight tracking-tight sm:text-4xl"
+              className="mt-5 text-center text-[1.55rem] font-extrabold leading-tight tracking-tight sm:text-4xl"
             >
               {(() => {
                 const name = (settings.displayName || user?.displayName || '').split(' ')[0]
@@ -213,12 +217,12 @@ export default function ChatView() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.16 }}
-              className="mt-2 max-w-md text-center text-sm text-muted"
+              className="mt-2 hidden max-w-md text-center text-sm text-muted sm:block"
             >
               Ask anything, build apps & sites, search the live web, create images, or dispatch a team of agents.
             </motion.p>
 
-            <div className="empty-suggestions mt-7 grid w-full max-w-xl grid-cols-2 gap-2.5 sm:gap-3">
+            <div className="empty-suggestions mt-6 grid w-full max-w-xl grid-cols-2 gap-2 sm:mt-7 sm:gap-3">
               {suggestions.map((s, i) => (
                 <motion.button
                   key={s.title}
@@ -227,18 +231,18 @@ export default function ChatView() {
                   transition={{ delay: 0.1 + 0.06 * i }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => handleSend(s.prompt, [])}
-                  className="suggestion-card lift-card glass pressable group flex items-center gap-3.5 rounded-2xl p-3.5 text-left sm:p-4"
+                  className="suggestion-card lift-card glass pressable group flex items-center gap-2.5 rounded-2xl p-3 text-left sm:gap-3.5 sm:p-4"
                 >
-                  <span className="launch-icon accent-gradient-bg flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl shadow-[0_6px_16px_-8px_rgb(var(--ink)/0.6)]">
-                    <s.icon size={19} strokeWidth={2.4} />
+                  <span className="launch-icon accent-gradient-bg flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-[0_6px_16px_-8px_rgb(var(--ink)/0.6)] sm:h-11 sm:w-11 sm:rounded-2xl">
+                    <s.icon size={17} strokeWidth={2.4} />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <div className="text-[15px] font-extrabold tracking-tight">{s.title}</div>
-                    <div className="mt-0.5 truncate text-xs text-muted sm:text-[13px]">{s.sub}</div>
+                    <div className="text-[14px] font-extrabold tracking-tight sm:text-[15px]">{s.title}</div>
+                    <div className="mt-0.5 truncate text-[11px] text-muted sm:text-[13px]">{s.sub}</div>
                   </span>
                   <ChevronRight
-                    size={18}
-                    className="shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-ink"
+                    size={16}
+                    className="hidden shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-ink sm:block"
                   />
                 </motion.button>
               ))}

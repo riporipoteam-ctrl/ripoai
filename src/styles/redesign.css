@@ -433,3 +433,74 @@ h1, h2, .empty-state h1, .empty-state h2 { font-family: 'Sora', 'Manrope', syste
   .assistant-message-row,
   .chat-stage, .page-enter { animation: none; }
 }
+
+/* ============================================================
+   ✦ UI v4 — whole-app polish pass (all devices)
+   Floating-island top bar, fixed home hero clearance, compact
+   2-col launch grid on mobile, consistent display type.
+   ============================================================ */
+
+/* The mobile top bar becomes a floating glass island instead of an
+   edge-to-edge strip — reads as designed, not default. */
+.mobile-topbar {
+  margin: max(env(safe-area-inset-top), 0.5rem) 0.6rem 0 !important;
+  border-radius: 9999px !important;
+  border: 1px solid rgb(255 255 255 / 0.28) !important;
+  padding-top: 0.4rem !important;
+  padding-bottom: 0.4rem !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.5),
+    0 14px 36px -22px rgb(var(--ink) / 0.55) !important;
+}
+.dark .mobile-topbar {
+  border-color: rgb(255 255 255 / 0.12) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.1),
+    0 14px 36px -20px rgb(0 0 0 / 0.8) !important;
+}
+@media (max-width: 640px) {
+  .top-app-bar {
+    min-height: 0;
+    padding-top: 0.4rem;
+  }
+}
+/* Brand label in the island uses the display face. */
+.mobile-topbar span {
+  font-family: 'Sora', 'Manrope', system-ui, sans-serif;
+  font-weight: 700;
+}
+
+/* Home (empty state): center it and ALWAYS clear the floating bar. The old
+   mobile rules pinned it to the top with 1-2rem padding, clipping the logo. */
+@media (max-width: 640px) {
+  .empty-state {
+    justify-content: center !important;
+    padding-top: calc(env(safe-area-inset-top, 0px) + 4.25rem) !important;
+  }
+  /* Compact 2-col launch grid on phones (was 1 giant column). */
+  .empty-suggestions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .suggestion-card,
+  .launch-card {
+    min-height: 0 !important;
+  }
+}
+
+/* Slightly quieter hero halo so the logo tile reads crisply. */
+.home-mark::after {
+  inset: -1.4rem;
+  background: radial-gradient(circle, rgb(var(--accent) / 0.14), transparent 62%);
+}
+
+/* Cohesive display type on every page heading. */
+.font-display,
+.empty-state h1,
+.prose-ripo h1 {
+  letter-spacing: -0.02em;
+}
+
+/* Composer mic/send cluster: make the send button clearly primary. */
+.composer-shell button[disabled] {
+  opacity: 0.45;
+}
