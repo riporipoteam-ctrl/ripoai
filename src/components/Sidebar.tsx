@@ -24,7 +24,6 @@ import {
 } from 'lucide-react'
 import { signOut } from 'firebase/auth'
 import BookmarksView from './BookmarksView'
-import AdminPanel from './AdminPanel'
 import { isAdmin } from '../lib/admin'
 import { usePlus } from '../hooks/usePlus'
 import { effectivePlan } from '../lib/plus'
@@ -70,7 +69,6 @@ export default function Sidebar() {
   const { user, settings, chats, projects, sidebarOpen, setSidebar, openSettings, unreadChats } = useStore()
   const [search, setSearch] = useState('')
   const [bookmarksOpen, setBookmarksOpen] = useState(false)
-  const [adminOpen, setAdminOpen] = useState(false)
   const [menuFor, setMenuFor] = useState<string | null>(null)
   const [renaming, setRenaming] = useState<string | null>(null)
   const [renameVal, setRenameVal] = useState('')
@@ -426,7 +424,7 @@ export default function Sidebar() {
                 </div>
                 {isAdmin(user) && (
                   <button
-                    onClick={() => setAdminOpen(true)}
+                    onClick={() => navigate('/admin')}
                     className="pressable rounded-xl p-2 text-muted hover:bg-white/10 hover:text-ink"
                     title="Admin"
                   >
@@ -453,7 +451,6 @@ export default function Sidebar() {
         )}
       </AnimatePresence>
       <BookmarksView open={bookmarksOpen} onClose={() => setBookmarksOpen(false)} />
-      <AdminPanel open={adminOpen} onClose={() => setAdminOpen(false)} />
     </>
   )
 }

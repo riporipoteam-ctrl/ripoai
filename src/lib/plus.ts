@@ -185,6 +185,19 @@ export function reconcile(uid: string, s: PlusState): PlusState {
   return s
 }
 
+/** Apply an admin's remote AskAI+ grant to this account. `until` is the expiry
+ * (0 = permanent → far-future). Idempotent: only upgrades, never downgrades. */
+export function applyRemoteGrant(uid: string, until: number): PlusState {
+  const s = loadPlus(uid)
+  const target = until === 0 ? Date.now() + 100 * 365 * 24 * 60 * 60 * 1000 : until
+  if (target > s.plusUntil) {
+    s.plusUntil = target
+    s.plan = 'plus'
+    return savePlus(uid, s)
+  }
+  return s
+}
+
 export function effectivePlan(s: PlusState): Plan {
   return s.plan === 'plus' && s.plusUntil > Date.now() ? 'plus' : 'free'
 }

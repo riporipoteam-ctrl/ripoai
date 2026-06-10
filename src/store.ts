@@ -163,9 +163,18 @@ export const useStore = create<AppState>((set, get) => ({
       sidebarOpen: window.innerWidth >= 768,
     })
 
-    // Load moderation status (ban / message cap) in the background.
+    // Load moderation status (ban / message cap) + any admin AskAI+ grant.
     import('./lib/admin').then(({ getMyStatus }) =>
-      getMyStatus(uid).then((banStatus) => set({ banStatus })).catch(() => {}),
+      getMyStatus(uid)
+        .then((banStatus) => {
+          set({ banStatus })
+          if (banStatus?.plusGrant) {
+            import('./lib/plus').then(({ applyRemoteGrant }) =>
+              applyRemoteGrant(uid, banStatus.plusGrant!.until),
+            )
+          }
+        })
+        .catch(() => {}),
     )
 
     // Push any existing local data to the cloud (one-time), in the background.
