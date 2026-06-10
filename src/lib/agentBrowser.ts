@@ -165,7 +165,9 @@ const MAX_STEPS = 6
 const READER_TIMEOUT = 14000
 
 function shotUrl(url: string): string {
-  return `https://s0.wp.com/mshots/v1/${encodeURIComponent(url)}?w=1100&h=680`
+  // thum.io renders on demand and returns the REAL page image (mshots often
+  // returns a gray/black "Generating preview" placeholder that never resolves).
+  return `https://image.thum.io/get/width/1200/crop/800/noanimate/${url}`
 }
 
 function hostOf(url: string): string {
