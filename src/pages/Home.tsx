@@ -9,6 +9,7 @@ import CommandPalette from '../components/CommandPalette'
 import Spinner from '../components/ui/Spinner'
 import { useStore } from '../store'
 import { loadPendingRuns } from '../lib/pendingRuns'
+import { useSwipeNav } from '../hooks/useSwipeNav'
 
 // Sandpack is large — only load it when a project is opened.
 const ProjectsView = lazy(() => import('../components/ProjectsView'))
@@ -19,6 +20,8 @@ const AdminPage = lazy(() => import('./AdminPage'))
 
 export default function Home() {
   const { sidebarOpen, toggleSidebar, user } = useStore()
+  // Native-style edge-swipe to open/close the sidebar on touch devices.
+  useSwipeNav()
   const navigate = useNavigate()
   const location = useLocation()
   // ChatView renders its own top bar; only the Projects view needs the

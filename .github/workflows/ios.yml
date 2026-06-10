@@ -88,6 +88,31 @@ jobs:
           if [ -z "$APP_DIR" ]; then echo "App.app not found"; exit 1; fi
           ditto -c -k --sequesterRsrc --keepParent "$APP_DIR" "$GITHUB_WORKSPACE/AskAI-iOS-Simulator.zip"
 
+      - name: Build unsigned device .ipa (for sideloading via AltStore/Sideloadly)
+        run: |
+          cd ios/App
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build-device \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+          cd build-device/Build/Products/Release-iphoneos
+          mkdir Payload
+          cp -R App.app Payload/
+          zip -qry "$GITHUB_WORKSPACE/AskAI-unsigned.ipa" Payload
+
+      - name: Upload unsigned device .ipa
+        uses: actions/upload-artifact@v4
+        with:
+          name: AskAI-unsigned-ipa
+          path: AskAI-unsigned.ipa
+
       - name: Package Xcode project (open in Xcode, sign, run on device)
         run: |
           ditto -c -k --sequesterRsrc --keepParent ios "$GITHUB_WORKSPACE/AskAI-iOS-Xcode-project.zip"
@@ -110,22 +135,27 @@ jobs:
           tag_name: ios-latest
           name: AskAI iOS (latest)
           files: |
+            AskAI-unsigned.ipa
             AskAI-iOS-Simulator.zip
             AskAI-iOS-Xcode-project.zip
           body: |
             AskAI iOS build (unsigned).
 
-            **On your iPhone, no Mac needed (easiest):** open the AskAI site in
-            Safari -> Share -> **Add to Home Screen**. It launches full-screen with
-            the app icon, like a native app.
+            **Install on your iPhone with a free Apple ID (no Mac needed):**
+            1. Download `AskAI-unsigned.ipa` to your computer.
+            2. Install [Sideloadly](https://sideloadly.io) (Windows/Mac) or [AltStore](https://altstore.io).
+            3. Plug in your iPhone, drag the .ipa in, sign in with your Apple ID, install.
+            4. On the phone: Settings -> General -> VPN & Device Management -> trust your Apple ID.
 
-            **Run in the iOS Simulator (needs a Mac with Xcode):** download
-            `AskAI-iOS-Simulator.zip`, unzip, then in Terminal:
+            > Free Apple IDs must re-sideload every 7 days (Apple's rule). A paid
+            > Apple Developer account ($99/yr) extends this to 1 year + TestFlight.
+
+            **Zero-setup alternative:** open the AskAI site in Safari -> Share ->
+            **Add to Home Screen** — launches full-screen with the app icon.
+
+            **Run in the iOS Simulator (Mac with Xcode):** download
+            `AskAI-iOS-Simulator.zip`, unzip, then:
             `xcrun simctl install booted App.app && xcrun simctl launch booted io.github.riporipoteam.ripoai`
 
-            **Install on your own device:** download `AskAI-iOS-Xcode-project.zip`,
-            unzip, open `App/App.xcworkspace` in Xcode, select your Signing Team
-            under Signing & Capabilities, plug in your iPhone, and press Run.
-
-            > Apple does not allow installing unsigned apps on a physical device -
-            > device install requires an Apple Developer account and code signing.
+            **Xcode route:** download `AskAI-iOS-Xcode-project.zip`, open
+            `App/App.xcworkspace`, set your Signing Team, plug in your iPhone, Run.
