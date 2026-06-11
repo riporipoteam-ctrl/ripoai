@@ -18,7 +18,11 @@ const config: CapacitorConfig = {
   },
   ios: {
     backgroundColor: '#1e1d1b',
-    contentInset: 'always',
+    // 'never' lets the web content draw edge-to-edge (under the status bar and
+    // home indicator). 'always' was insetting the content and exposing the dark
+    // native background as black bars. Safe areas are handled in CSS via
+    // env(safe-area-inset-*).
+    contentInset: 'never',
   },
   plugins: {
     SplashScreen: {
