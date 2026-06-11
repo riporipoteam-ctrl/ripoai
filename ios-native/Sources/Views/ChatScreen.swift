@@ -21,7 +21,8 @@ struct ChatScreen: View {
                         LazyVStack(spacing: 14) {
                             ForEach(messages) { msg in
                                 MessageBubble(message: msg,
-                                              streaming: store.isStreaming && msg.id == messages.last?.id && msg.role == .assistant)
+                                              streaming: store.isStreaming && msg.id == messages.last?.id && msg.role == .assistant,
+                                              isLast: msg.id == messages.last?.id && msg.role == .assistant)
                                     .id(msg.id)
                                     .transition(.move(edge: .bottom).combined(with: .opacity))
                             }

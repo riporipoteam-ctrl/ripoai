@@ -1,8 +1,11 @@
 import SwiftUI
 
 struct MessageBubble: View {
+    @EnvironmentObject var store: AppStore
     let message: Message
     var streaming: Bool = false
+    var isLast: Bool = false
+    @State private var copied = false
 
     var body: some View {
         HStack {
@@ -25,6 +28,29 @@ struct MessageBubble: View {
                 .padding(.horizontal, 15).padding(.vertical, 11)
                 .foregroundStyle(message.role == .user ? Color.white : Color.primary)
                 .background(bubbleBackground)
+
+                if message.role == .assistant && !streaming && !message.text.isEmpty {
+                    HStack(spacing: 14) {
+                        Button {
+                            UIPasteboard.general.string = message.text
+                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                            copied = true
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) { copied = false }
+                        } label: {
+                            Label(copied ? "Copied" : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc")
+                        }
+                        if isLast {
+                            Button {
+                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                                store.regenerate()
+                            } label: { Label("Regenerate", systemImage: "arrow.clockwise") }
+                        }
+                    }
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .buttonStyle(.plain)
+                    .padding(.top, 2)
+                }
             }
             if message.role == .assistant { Spacer(minLength: 40) }
         }

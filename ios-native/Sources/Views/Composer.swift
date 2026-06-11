@@ -12,12 +12,24 @@ struct Composer: View {
                 Text(err).font(.caption).foregroundStyle(.secondary)
                     .padding(.horizontal, 18)
             }
-            HStack(alignment: .bottom, spacing: 10) {
-                TextField("Message AskAI…", text: $draft, axis: .vertical)
+            HStack(alignment: .bottom, spacing: 8) {
+                Button {
+                    store.webSearch.toggle()
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                } label: {
+                    Image(systemName: "globe")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(store.webSearch ? Color.accentColor : Color.secondary)
+                        .frame(width: 34, height: 34)
+                }
+                .buttonStyle(.plain)
+                .padding(.leading, 8).padding(.bottom, 8)
+
+                TextField(store.webSearch ? "Search the web…" : "Message AskAI…", text: $draft, axis: .vertical)
                     .focused(focused)
                     .font(.system(size: 16))
                     .lineLimit(1...6)
-                    .padding(.leading, 18).padding(.vertical, 13)
+                    .padding(.vertical, 13)
 
                 Button {
                     if store.isStreaming { store.stop() } else { send(draft) }
