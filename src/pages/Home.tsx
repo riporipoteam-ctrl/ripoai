@@ -10,6 +10,7 @@ import Spinner from '../components/ui/Spinner'
 import { useStore } from '../store'
 import { loadPendingRuns } from '../lib/pendingRuns'
 import { useSwipeNav } from '../hooks/useSwipeNav'
+import NativeTabBar from '../components/native/NativeTabBar'
 
 // Sandpack is large — only load it when a project is opened.
 const ProjectsView = lazy(() => import('../components/ProjectsView'))
@@ -118,6 +119,7 @@ export default function Home() {
       </main>
       <Settings />
       <CommandPalette />
+      <NativeTabBar />
     </div>
   )
 }
