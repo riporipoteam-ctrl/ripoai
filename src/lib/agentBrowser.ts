@@ -161,7 +161,7 @@ export async function runAgentBrowserTask(
 // page the agent lands on. No backend required.
 // ============================================================================
 
-const MAX_STEPS = 6
+const MAX_STEPS = 12
 const READER_TIMEOUT = 14000
 
 function shotUrl(url: string): string {
@@ -301,7 +301,7 @@ Decide the SINGLE next browser action. Reply with ONLY compact JSON, no prose:
 {"action":"search","query":"...","thought":"short reason"} — type a query into the search engine
 {"action":"open","url":"https://...","thought":"short reason"} — click/open one of the available links or a URL you know
 {"action":"done","answer":"...full answer for the user, with concrete findings and source URLs...","thought":"why done"}
-Rules: prefer opening the most promising real page over endless searching. After you have read enough to answer, choose "done" with a thorough answer including specifics (names, numbers, prices) and the URLs you used. If a page failed to load, try a different one.`
+Rules: BE THOROUGH — real tasks need several pages, comparisons and cross-checking, not one quick look. Open the most promising pages, read them, refine your search, and verify facts across at least 2-3 different sources before finishing. Only choose "done" when you genuinely have everything needed for a complete, specific answer (names, numbers, prices, steps) with the URLs you used. If a page failed to load or was useless, try a different one. Never give up early.`
 
   for (let step = 0; step < MAX_STEPS; step++) {
     aborted()
@@ -314,7 +314,9 @@ Rules: prefer opening the most promising real page over endless searching. After
         ? `LINKS AVAILABLE TO OPEN:\n${searchLinks.map((l, i) => `${i + 1}. ${l.title} — ${l.url}`).join('\n')}`
         : '',
       currentUrl ? `CURRENT PAGE: ${currentTitle} (${currentUrl})\n${pageText.slice(0, 2500)}` : '',
-      `This is browser step ${step + 1} of ${MAX_STEPS}. If you already have enough to answer well, action must be "done".`,
+      step >= MAX_STEPS - 3
+        ? `This is browser step ${step + 1} of ${MAX_STEPS} — the budget is nearly used. Wrap up: if you can answer, action must be "done" with your complete findings.`
+        : `This is browser step ${step + 1} of ${MAX_STEPS}. Keep working until the task is properly researched — do not rush to "done" with thin findings.`,
     ]
       .filter(Boolean)
       .join('\n\n')
@@ -343,6 +345,14 @@ Rules: prefer opening the most promising real page over endless searching. After
             ? { action: 'open', url: directUrl }
             : { action: 'search', query: prompt.slice(0, 120) }
           : { action: 'done' }
+    }
+
+    if (decision.action === 'done' && visited.length < 2 && step < MAX_STEPS - 2) {
+      // Too hasty — it hasn't actually read enough. Force more research.
+      decision = visited.length || searchLinks.length
+        ? { action: 'open', url: (searchLinks[0]?.url ?? visited[0]?.url) as string }
+        : { action: 'search', query: prompt.slice(0, 120) }
+      if (!decision.url && decision.action === 'open') decision = { action: 'search', query: prompt.slice(0, 120) }
     }
 
     if (decision.action === 'done') {
