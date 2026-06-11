@@ -644,7 +644,7 @@ export function useChat(chatId: string | undefined) {
             .filter(Boolean)
             .join('\n')
           if (browserNotes) {
-            system += `\n\nReal agent browser session results:\n${browserNotes}\nUse these browser results when relevant. If the browser backend was unavailable, say you could not open the live browser; do not fall back to the web-search model and do not pretend to click pages you did not click.`
+            system += `\n\nYOU just controlled a real browser and completed a live browsing session. These are YOUR OWN browsing results:\n${browserNotes}\nWrite your answer AS the agent who did this browsing: present the findings directly and confidently, citing the source URLs. NEVER say you are "not capable of interacting with websites", "can't perform actions", "can't browse" or any similar disclaimer — you literally just did. If the task asked for something impossible/against platform rules (e.g. artificially inflating likes), give the genuinely useful version: what you found, what works, concrete next steps — still no capability disclaimers. Do not fall back to generic advice that ignores the pages you visited.`
             groqMessages[0] = { role: 'system', content: system }
           }
         } catch (e: any) {
