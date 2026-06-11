@@ -3,7 +3,7 @@
 // native app drawer. Haptics fire on trigger. Desktop/mouse is untouched.
 import { useEffect } from 'react'
 import { useStore } from '../store'
-import { haptic } from '../lib/native'
+import { haptic, isNative } from '../lib/native'
 
 const EDGE = 32 // px from the left edge that starts an "open" gesture
 const THRESHOLD = 56 // horizontal px to commit the gesture
@@ -51,11 +51,22 @@ export function useSwipeNav() {
       mode = null
     }
 
+    // Global tap-haptics in the native shell: every button/tappable press
+    // gives a light tick, like a real app. (No-op on the website.)
+    function onTapHaptic(e: Event) {
+      const el = (e.target as HTMLElement)?.closest?.(
+        'button, a, [role="button"], .pressable, .suggestion-card',
+      )
+      if (el) haptic('light')
+    }
+    if (isNative) window.addEventListener('pointerdown', onTapHaptic, { passive: true })
+
     window.addEventListener('touchstart', onStart, { passive: true })
     window.addEventListener('touchend', onEnd, { passive: true })
     return () => {
       window.removeEventListener('touchstart', onStart)
       window.removeEventListener('touchend', onEnd)
+      window.removeEventListener('pointerdown', onTapHaptic)
     }
   }, [])
 }

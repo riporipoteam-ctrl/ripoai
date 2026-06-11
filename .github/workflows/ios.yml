@@ -67,6 +67,18 @@ jobs:
           npx cap add ios
           npx cap sync ios
 
+      - name: Generate AskAI app icon & splash
+        run: |
+          npm install @capacitor/assets --no-save
+          npx @capacitor/assets generate \
+            --assetPath capacitor-assets \
+            --ios \
+            --iconBackgroundColor '#ffffff' \
+            --iconBackgroundColorDark '#1e1d1b' \
+            --splashBackgroundColor '#ffffff' \
+            --splashBackgroundColorDark '#1e1d1b'
+          npx cap sync ios
+
       - name: Build unsigned app for the iOS Simulator
         run: |
           cd ios/App

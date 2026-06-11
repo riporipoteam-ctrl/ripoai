@@ -1,69 +1,130 @@
 /* ============================================================
-   ✦ NATIVE APP SKIN — Android & iOS only (html.native)
-   A clean, modern, Gemini-inspired app look. The website never
-   carries the `.native` class, so the web UI is 100% unchanged.
-   Loads LAST so it wins over the Liquid Glass web theme.
+   ✦ ASKAI NATIVE — Liquid Glass app skin (html.native ONLY)
+   A bright, glossy, translucent app UI inspired by Apple's
+   Liquid Glass + Gemini/ChatGPT apps. The website never carries
+   the `.native` class, so the web UI is 100% untouched.
+   Loads LAST so it wins. Built for iOS + Android shells.
    ============================================================ */
 
 html.native {
-  /* Soft, airy app palette — distinct from the web's deep glass. */
-  --app-bg-1: 247 249 252;
-  --app-bg-2: 232 238 250;
-  --app-bg-3: 240 236 250;
-  --app-card: 255 255 255;
-  --app-bubble: 240 242 245;
+  /* App-only palette — soft, luminous, distinct from the web's dark glass. */
+  --na-bg-1: 236 242 255;
+  --na-bg-2: 245 238 255;
+  --na-bg-3: 232 250 248;
+  --na-tint-a: 120 150 255;   /* periwinkle */
+  --na-tint-b: 190 140 255;   /* lilac */
+  --na-tint-c: 120 220 210;   /* mint */
+  --na-glass: 255 255 255;
+  --na-glass-op: 0.55;
+  --na-stroke: 255 255 255;
+  --na-ink: 17 19 28;
+  --na-blur: 26px;
 }
 html.native.dark {
-  --app-bg-1: 18 19 21;
-  --app-bg-2: 22 24 30;
-  --app-bg-3: 24 22 30;
-  --app-card: 32 33 36;
-  --app-bubble: 41 43 48;
+  --na-bg-1: 14 16 22;
+  --na-bg-2: 18 16 26;
+  --na-bg-3: 12 20 22;
+  --na-tint-a: 90 120 230;
+  --na-tint-b: 150 110 230;
+  --na-tint-c: 80 180 175;
+  --na-glass: 40 44 58;
+  --na-glass-op: 0.42;
+  --na-stroke: 255 255 255;
+  --na-ink: 240 243 255;
 }
 
-/* ---- Background: soft pastel wash instead of the glass aurora ---------- */
-html.native .aurora {
-  background:
-    linear-gradient(180deg, rgb(var(--app-bg-1)) 0%, rgb(var(--app-bg-2)) 60%, rgb(var(--app-bg-3)) 100%) !important;
-  filter: none !important;
-}
-html.native .aurora::after { display: none !important; }
+/* ---- Full-bleed animated background — fixes black safe-area bars ------ */
 html.native,
-html.native body { background: rgb(var(--app-bg-1)) !important; }
+html.native body {
+  background: rgb(var(--na-bg-1)) !important;
+}
+html.native .aurora {
+  position: fixed !important;
+  inset: 0 !important;
+  background:
+    radial-gradient(120% 80% at 12% 4%, rgb(var(--na-tint-a) / 0.30), transparent 50%),
+    radial-gradient(120% 80% at 90% 12%, rgb(var(--na-tint-b) / 0.28), transparent 52%),
+    radial-gradient(140% 90% at 70% 100%, rgb(var(--na-tint-c) / 0.26), transparent 55%),
+    linear-gradient(180deg, rgb(var(--na-bg-1)), rgb(var(--na-bg-2)) 55%, rgb(var(--na-bg-3))) !important;
+  background-size: 200% 200%, 200% 200%, 200% 200%, 100% 100% !important;
+  filter: none !important;
+  animation: na-bg-drift 26s ease-in-out infinite !important;
+}
+html.native .aurora::before,
+html.native .aurora::after { display: none !important; }
+@keyframes na-bg-drift {
+  0%, 100% { background-position: 0% 0%, 100% 0%, 50% 100%, 0 0; }
+  50%      { background-position: 30% 20%, 70% 30%, 40% 80%, 0 0; }
+}
 
-/* ---- Flatten the heavy web glass into clean app cards ----------------- */
+/* The status bar overlays the webview → push UI below the notch, no black. */
+html.native #root {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* ============================================================
+   LIQUID GLASS SURFACES
+   ============================================================ */
 html.native .glass,
 html.native .glass-strong {
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
-  background: rgb(var(--app-card)) !important;
-  border: 1px solid rgb(var(--ink) / 0.07) !important;
-  box-shadow: 0 2px 10px -4px rgb(var(--ink) / 0.12) !important;
+  position: relative;
+  background: rgb(var(--na-glass) / var(--na-glass-op)) !important;
+  -webkit-backdrop-filter: blur(var(--na-blur)) saturate(200%) brightness(1.06) !important;
+  backdrop-filter: blur(var(--na-blur)) saturate(200%) brightness(1.06) !important;
+  border: 1px solid rgb(var(--na-stroke) / 0.5) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.7),
+    inset 0 -8px 24px -12px rgb(var(--na-tint-b) / 0.25),
+    0 18px 50px -22px rgb(20 24 50 / 0.5) !important;
 }
+html.native.dark .glass,
+html.native.dark .glass-strong {
+  border-color: rgb(255 255 255 / 0.14) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.16),
+    0 18px 50px -20px rgb(0 0 0 / 0.7) !important;
+}
+/* Glossy specular sweep across the top of every glass surface. */
 html.native .glass::before,
-html.native .glass-strong::before { display: none !important; }
+html.native .glass-strong::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(150deg, rgb(255 255 255 / 0.45), transparent 38%);
+  opacity: 0.9;
+}
+html.native.dark .glass::before,
+html.native.dark .glass-strong::before {
+  background: linear-gradient(150deg, rgb(255 255 255 / 0.14), transparent 40%);
+}
 
-/* ---- Top bar: minimal, circular icon buttons, centered title --------- */
+/* ============================================================
+   TOP BAR — floating glass, circular buttons
+   ============================================================ */
 html.native .mobile-topbar {
   margin: 0 !important;
-  border-radius: 0 !important;
   border: none !important;
+  border-radius: 0 !important;
   background: transparent !important;
   -webkit-backdrop-filter: none !important;
   backdrop-filter: none !important;
   box-shadow: none !important;
-  padding: max(env(safe-area-inset-top), 0.6rem) 0.75rem 0.5rem !important;
+  padding: calc(env(safe-area-inset-top, 0px) + 0.4rem) 0.85rem 0.5rem !important;
 }
 html.native .mobile-topbar .glass-control {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.6rem;
+  height: 2.6rem;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 9999px !important;
-  background: rgb(var(--app-card)) !important;
-  border: 1px solid rgb(var(--ink) / 0.06) !important;
-  box-shadow: 0 1px 4px -2px rgb(var(--ink) / 0.2) !important;
+  background: rgb(var(--na-glass) / 0.6) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
+  backdrop-filter: blur(18px) saturate(180%) !important;
+  border: 1px solid rgb(var(--na-stroke) / 0.55) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.6), 0 6px 16px -8px rgb(20 24 50 / 0.5) !important;
 }
 html.native .mobile-topbar span {
   font-family: 'Sora', 'Manrope', system-ui, sans-serif;
@@ -71,100 +132,146 @@ html.native .mobile-topbar span {
   font-size: 1.15rem;
 }
 
-/* ---- Empty state: clean, centered, Gemini-style ---------------------- */
+/* ============================================================
+   HOME / EMPTY STATE — centered, glossy
+   ============================================================ */
 html.native .empty-state {
   justify-content: center !important;
   padding-top: 0 !important;
 }
-/* Smaller, cleaner mark (no heavy glass tile/halo). */
 html.native .home-mark > .animate-float {
-  border: none !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  padding: 0 !important;
+  border-radius: 1.7rem !important;
+  border: 1px solid rgb(var(--na-stroke) / 0.6) !important;
+  background: rgb(var(--na-glass) / 0.7) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
+  backdrop-filter: blur(20px) saturate(190%) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.7),
+    0 22px 50px -20px rgb(var(--na-tint-a) / 0.5) !important;
+  padding: 0.85rem !important;
+  animation: na-float 5.5s ease-in-out infinite !important;
 }
 html.native .home-mark::after {
-  inset: -1rem !important;
-  background: radial-gradient(circle, rgb(var(--accent) / 0.1), transparent 60%) !important;
+  inset: -1.6rem !important;
+  background: radial-gradient(circle, rgb(var(--na-tint-b) / 0.3), transparent 62%) !important;
+  animation: na-halo 5s ease-in-out infinite !important;
 }
-html.native .empty-state h1 {
-  font-size: 1.9rem !important;
-  font-weight: 700 !important;
-}
+html.native .empty-state h1 { font-weight: 700 !important; }
 
-/* ---- Launch suggestion cards: flat, soft, tappable ------------------- */
+/* Launch suggestion cards — glossy glass tiles with staggered entrance. */
 html.native .suggestion-card {
-  background: rgb(var(--app-card)) !important;
-  border: 1px solid rgb(var(--ink) / 0.06) !important;
-  box-shadow: 0 2px 8px -4px rgb(var(--ink) / 0.12) !important;
-  border-radius: 1.25rem !important;
+  background: rgb(var(--na-glass) / 0.5) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(180%) !important;
+  backdrop-filter: blur(18px) saturate(180%) !important;
+  border: 1px solid rgb(var(--na-stroke) / 0.5) !important;
+  border-radius: 1.4rem !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), 0 12px 30px -18px rgb(20 24 50 / 0.45) !important;
+  animation: na-rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
+html.native .empty-suggestions > *:nth-child(1) { animation-delay: 0.04s; }
+html.native .empty-suggestions > *:nth-child(2) { animation-delay: 0.10s; }
+html.native .empty-suggestions > *:nth-child(3) { animation-delay: 0.16s; }
+html.native .empty-suggestions > *:nth-child(4) { animation-delay: 0.22s; }
 
-/* ---- Composer: clean white pill, soft shadow, no glass --------------- */
+/* ============================================================
+   COMPOSER — translucent glass pill
+   ============================================================ */
 html.native .composer-dock {
   background: transparent !important;
   padding-bottom: max(env(safe-area-inset-bottom), 0.6rem) !important;
 }
 html.native .composer-shell {
-  background: rgb(var(--app-card)) !important;
-  border: 1px solid rgb(var(--ink) / 0.08) !important;
-  border-radius: 1.75rem !important;
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
+  background: rgb(var(--na-glass) / 0.62) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(200%) brightness(1.05) !important;
+  backdrop-filter: blur(28px) saturate(200%) brightness(1.05) !important;
+  border: 1px solid rgb(var(--na-stroke) / 0.55) !important;
+  border-radius: 1.9rem !important;
   box-shadow:
-    0 4px 18px -6px rgb(var(--ink) / 0.18),
-    0 1px 3px rgb(var(--ink) / 0.06) !important;
+    inset 0 1px 0 rgb(255 255 255 / 0.65),
+    0 16px 40px -18px rgb(20 24 50 / 0.5) !important;
 }
 html.native .composer-shell:focus-within {
-  border-color: rgb(var(--accent) / 0.3) !important;
+  border-color: rgb(var(--na-tint-a) / 0.6) !important;
   box-shadow:
-    0 6px 22px -6px rgb(var(--ink) / 0.22),
-    0 0 0 3px rgb(var(--accent) / 0.06) !important;
+    inset 0 1px 0 rgb(255 255 255 / 0.7),
+    0 0 0 3px rgb(var(--na-tint-a) / 0.18),
+    0 18px 44px -16px rgb(var(--na-tint-a) / 0.5) !important;
 }
 
-/* ---- Chat bubbles: Gemini-style soft gray user bubble ---------------- */
+/* ============================================================
+   CHAT BUBBLES — frosted glass
+   ============================================================ */
 html.native .user-bubble {
-  background: rgb(var(--app-bubble)) !important;
-  color: rgb(var(--ink)) !important;
-  border-radius: 1.5rem 1.5rem 0.5rem 1.5rem !important;
-  box-shadow: none !important;
+  background: linear-gradient(135deg, rgb(var(--na-tint-a) / 0.9), rgb(var(--na-tint-b) / 0.85)) !important;
+  color: #fff !important;
+  border-radius: 1.5rem 1.5rem 0.45rem 1.5rem !important;
+  border: 1px solid rgb(255 255 255 / 0.3) !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.4), 0 10px 26px -14px rgb(var(--na-tint-a) / 0.8) !important;
 }
 html.native .user-bubble::after { display: none !important; }
-
-/* Assistant action pill: borderless, flat icons. */
 html.native .action-pill {
-  background: transparent !important;
-  border: none !important;
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
-  padding-left: 0 !important;
+  background: rgb(var(--na-glass) / 0.4) !important;
+  border: 1px solid rgb(var(--na-stroke) / 0.4) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  backdrop-filter: blur(14px) !important;
 }
 
-/* ---- Sidebar drawer: clean app drawer, not frosted glass ------------- */
+/* ============================================================
+   SIDEBAR DRAWER — frosted glass panel
+   ============================================================ */
 html.native .askai-sidebar {
   margin: 0 !important;
   height: 100% !important;
-  border-radius: 0 24px 24px 0 !important;
-  background: rgb(var(--app-card)) !important;
+  border-radius: 0 1.75rem 1.75rem 0 !important;
+  background: rgb(var(--na-glass) / 0.78) !important;
+  -webkit-backdrop-filter: blur(34px) saturate(190%) !important;
+  backdrop-filter: blur(34px) saturate(190%) !important;
   border: none !important;
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
-  box-shadow: 12px 0 40px -16px rgb(var(--ink) / 0.3) !important;
+  border-right: 1px solid rgb(var(--na-stroke) / 0.4) !important;
+  box-shadow: 16px 0 50px -18px rgb(20 24 50 / 0.5) !important;
 }
 html.native .askai-sidebar .glass {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
 }
+html.native .askai-sidebar .glass::before { display: none !important; }
 
-/* ---- Scrollbars: invisible like a real app --------------------------- */
+/* ============================================================
+   MOTION LIBRARY — app-grade micro-animations
+   ============================================================ */
+@keyframes na-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+@keyframes na-halo { 0%,100% { opacity: 0.55; transform: scale(1); } 50% { opacity: 0.95; transform: scale(1.07); } }
+@keyframes na-rise { from { opacity: 0; transform: translateY(16px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes na-pop { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: none; } }
+
+/* Springier press feedback everywhere. */
+html.native .pressable:active,
+html.native button:active {
+  transform: scale(0.93);
+  transition: transform 0.08s ease;
+}
+/* Messages glide in with a soft blur. */
+html.native .message-row {
+  animation: na-msg-in 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes na-msg-in {
+  from { opacity: 0; transform: translateY(14px); filter: blur(4px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+/* Modal/sheet content pops in. */
+html.native .glass-strong { animation: na-pop 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Hide scrollbars for a real-app feel. */
 html.native ::-webkit-scrollbar { width: 0 !important; height: 0 !important; }
 
-/* ---- Snappier, app-grade press feedback ------------------------------ */
-html.native .pressable:active { transform: scale(0.94); }
-
-/* Respect reduced motion. */
 @media (prefers-reduced-motion: reduce) {
-  html.native .home-mark::after { animation: none; }
+  html.native .aurora,
+  html.native .home-mark > .animate-float,
+  html.native .home-mark::after,
+  html.native .suggestion-card,
+  html.native .message-row,
+  html.native .glass-strong { animation: none !important; }
 }

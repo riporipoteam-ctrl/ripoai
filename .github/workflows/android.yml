@@ -57,10 +57,17 @@ jobs:
           npx cap add android
           npx cap sync android
 
-      - name: Apply AskAI launcher icon
+      - name: Apply AskAI launcher icon & splash
         run: |
-          python3 -m pip install --quiet Pillow
-          python3 scripts/gen-android-icons.py
+          npm install @capacitor/assets --no-save
+          npx @capacitor/assets generate \
+            --assetPath capacitor-assets \
+            --android \
+            --iconBackgroundColor '#ffffff' \
+            --iconBackgroundColorDark '#1e1d1b' \
+            --splashBackgroundColor '#ffffff' \
+            --splashBackgroundColorDark '#1e1d1b'
+          npx cap sync android
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
