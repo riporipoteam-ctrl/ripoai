@@ -148,7 +148,15 @@ export default function Composer({
       })
     }
     window.addEventListener('ripoai-ask', onAsk as EventListener)
-    return () => window.removeEventListener('ripoai-ask', onAsk as EventListener)
+    // Native tab-bar "+" button asks the composer to focus.
+    function onFocusComposer() {
+      requestAnimationFrame(() => taRef.current?.focus())
+    }
+    window.addEventListener('askai-focus-composer', onFocusComposer)
+    return () => {
+      window.removeEventListener('ripoai-ask', onAsk as EventListener)
+      window.removeEventListener('askai-focus-composer', onFocusComposer)
+    }
   }, [])
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
