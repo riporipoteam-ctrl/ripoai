@@ -1,0 +1,95 @@
+name: Build native SwiftUI iOS app
+
+# Builds the REAL native SwiftUI AskAI app (Apple Liquid Glass) into an
+# unsigned .ipa you can sideload with AltStore/Sideloadly. Liquid Glass needs
+# the iOS 26 SDK, so this selects the latest Xcode on a macOS 15 runner.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/askai-redesign-features-c73ka5', 'claude/ripoai-web-app-U0rvk']
+    paths:
+      - 'ios-native/**'
+      - '.github/workflows/ios-native.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Select latest Xcode (for the iOS 26 Liquid Glass SDK)
+        run: |
+          ls /Applications | grep -i Xcode || true
+          LATEST=$(ls -d /Applications/Xcode*.app | sort -V | tail -n 1)
+          echo "Using $LATEST"
+          sudo xcode-select -s "$LATEST/Contents/Developer"
+          xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Inject Groq API key from secret
+        env:
+          GROQ_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
+        run: |
+          cat > ios-native/Sources/Services/Secrets.swift <<EOF
+          import Foundation
+          enum Secrets {
+              static let groqKey = "${GROQ_KEY}"
+          }
+          EOF
+
+      - name: Generate Xcode project
+        working-directory: ios-native
+        run: xcodegen generate
+
+      - name: Build unsigned device app
+        working-directory: ios-native
+        run: |
+          xcodebuild \
+            -project AskAI.xcodeproj \
+            -scheme AskAI \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package .ipa
+        working-directory: ios-native
+        run: |
+          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name '*.app' | head -n 1)
+          echo "App: $APP"
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          zip -qry "$GITHUB_WORKSPACE/AskAI-native.ipa" Payload
+
+      - name: Upload .ipa artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AskAI-native-ipa
+          path: AskAI-native.ipa
+
+      - name: Publish to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ios-native-latest
+          name: AskAI — Native SwiftUI (Liquid Glass)
+          files: AskAI-native.ipa
+          body: |
+            The **real native SwiftUI** AskAI app with Apple Liquid Glass.
+
+            Install with **Sideloadly/AltStore** (same steps as before):
+            download `AskAI-native.ipa`, sign with your Apple ID, install,
+            then trust it in Settings → General → VPN & Device Management.
+
+            Note: Liquid Glass renders its full effect on **iOS 26+**; older iOS
+            shows a frosted-material fallback. This is v1 (core chat) — more
+            screens are being ported from the web app.
