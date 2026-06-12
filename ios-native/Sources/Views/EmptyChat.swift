@@ -41,6 +41,25 @@ struct EmptyChat: View {
             .multilineTextAlignment(.center)
             .opacity(appear ? 1 : 0)
 
+            // Quick actions — surface the new tools right from the home screen.
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    quickChip("pawprint.fill", "Agent", .orange) {
+                        store.agentMode = true; store.webSearch = false; store.imageMode = false
+                    }
+                    quickChip("paintbrush.fill", "Image", .pink) {
+                        store.imageMode = true; store.agentMode = false; store.webSearch = false
+                    }
+                    quickChip("globe", "Web", .cyan) {
+                        store.webSearch = true; store.agentMode = false; store.imageMode = false
+                    }
+                    quickChip("eye.fill", "Live camera", .purple) { store.requestLiveCamera = true }
+                    quickChip("waveform", "Voice", .indigo) { store.requestVoiceCall = true }
+                }
+                .padding(.horizontal, 18)
+            }
+            .opacity(appear ? 1 : 0)
+
             VStack(spacing: 10) {
                 ForEach(Array(prompts.enumerated()), id: \.offset) { i, p in
                     Button { send(p) } label: {
@@ -65,5 +84,20 @@ struct EmptyChat: View {
             Spacer()
         }
         .onAppear { withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) { appear = true } }
+    }
+
+    private func quickChip(_ icon: String, _ label: String, _ tint: Color, _ action: @escaping () -> Void) -> some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            action()
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: icon).font(.system(size: 12, weight: .bold)).foregroundStyle(tint)
+                Text(label).font(.system(size: 13, weight: .semibold)).foregroundStyle(.primary)
+            }
+            .padding(.horizontal, 13).padding(.vertical, 9)
+            .liquidGlass(cornerRadius: 16, interactive: true)
+        }
+        .buttonStyle(.plain)
     }
 }

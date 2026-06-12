@@ -36,6 +36,7 @@ struct ChatScreen: View {
                         .padding(.horizontal, 16)
                         .padding(.top, 8)
                         .padding(.bottom, 8)
+                        .animation(.spring(response: 0.4, dampingFraction: 0.82), value: messages.count)
                     }
                     .scrollDismissesKeyboard(.interactively)
                     .onChange(of: messages.last?.text) { _, _ in scrollDown(proxy) }
