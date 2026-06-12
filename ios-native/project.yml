@@ -20,14 +20,34 @@ targets:
       - path: Resources
         excludes:
           - "Info.plist"
+    dependencies:
+      - target: AskAIWidget
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.github.riporipoteam.ripoai
         PRODUCT_NAME: AskAI
-        MARKETING_VERSION: "1.6"
-        CURRENT_PROJECT_VERSION: "7"
+        MARKETING_VERSION: "1.7"
+        CURRENT_PROJECT_VERSION: "8"
         INFOPLIST_FILE: Resources/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         TARGETED_DEVICE_FAMILY: "1"
         ENABLE_BITCODE: "NO"
+
+  AskAIWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widget
+      - path: Sources/Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.riporipoteam.ripoai.widget
+        PRODUCT_NAME: AskAIWidget
+        MARKETING_VERSION: "1.7"
+        CURRENT_PROJECT_VERSION: "8"
+        INFOPLIST_FILE: Widget/Info.plist
+        TARGETED_DEVICE_FAMILY: "1"
+        ENABLE_BITCODE: "NO"
+        SKIP_INSTALL: "YES"

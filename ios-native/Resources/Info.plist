@@ -12,6 +12,8 @@
   <key>CFBundleShortVersionString</key><string>$(MARKETING_VERSION)</string>
   <key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
   <key>LSRequiresIPhoneOS</key><true/>
+  <key>NSSupportsLiveActivities</key><true/>
+  <key>NSSupportsLiveActivitiesFrequentUpdates</key><true/>
   <key>NSCameraUsageDescription</key>
   <string>AskAI uses the camera so you can take a photo or let the AI see what you're showing it.</string>
   <key>NSPhotoLibraryAddUsageDescription</key>

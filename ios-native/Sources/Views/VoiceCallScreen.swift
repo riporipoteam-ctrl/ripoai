@@ -59,7 +59,9 @@ struct VoiceCallScreen: View {
                             .frame(width: 64, height: 64).background(.white.opacity(0.12), in: Circle())
                     }
                     Button {
-                        speech.stop(); voice.stop(); dismiss()
+                        speech.stop(); voice.stop()
+                        LiveActivityManager.shared.end()
+                        dismiss()
                     } label: {
                         Image(systemName: "phone.down.fill")
                             .font(.system(size: 24, weight: .bold)).foregroundStyle(.white)
@@ -72,6 +74,12 @@ struct VoiceCallScreen: View {
         .onAppear {
             animate = true
             speech.start()
+            LiveActivityManager.shared.start(title: "Voice call", status: "Listening…",
+                                             isVoiceCall: true)
+        }
+        .onDisappear { LiveActivityManager.shared.end() }
+        .onChange(of: state) { _, s in
+            LiveActivityManager.shared.update(status: stateLabel, isVoiceCall: true)
         }
         .onChange(of: speech.isRecording) { _, recording in
             // When the user stops talking (recognizer ends), send what we heard.

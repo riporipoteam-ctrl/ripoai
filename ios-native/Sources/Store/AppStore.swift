@@ -208,6 +208,9 @@ final class AppStore: ObservableObject {
         save()
         isStreaming = true
         phase = .generating
+        let liveTitle = sessions.first(where: { $0.id == id })?.title ?? "AskAI"
+        LiveActivityManager.shared.start(title: liveTitle, status: "Creating image",
+                                         detail: String(clean.prefix(60)), progress: 0.15)
         streamTask = Task {
             let url = await ImageGen.generate(prompt: clean)
             if let sIdx = self.sessions.firstIndex(where: { $0.id == id }),
@@ -216,6 +219,7 @@ final class AppStore: ObservableObject {
             }
             self.isStreaming = false
             self.phase = .idle
+            LiveActivityManager.shared.end()
             self.save()
             self.syncPush(id)
             UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -275,6 +279,10 @@ final class AppStore: ObservableObject {
         let backend = (agentMode || webSearch) && !hasImages ? "groq/compound" : m.backend
         let provider: Provider = (agentMode || webSearch) && !hasImages ? .groq : m.provider
 
+        let liveTitle = sessions.first(where: { $0.id == id })?.title ?? "AskAI"
+        let startStatus = (agentMode || webSearch) ? "Searching the web" : "Thinking"
+        LiveActivityManager.shared.start(title: liveTitle, status: startStatus, progress: 0.1)
+
         streamTask = Task {
             // Keep the request alive briefly if the app gets backgrounded mid-stream.
             let bg = UIApplication.shared.beginBackgroundTask(withName: "askai.stream")
@@ -290,6 +298,7 @@ final class AppStore: ObservableObject {
             }
             self.isStreaming = false
             self.phase = .idle
+            LiveActivityManager.shared.end()
             self.save()
             self.syncPush(id)
             UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -301,6 +310,7 @@ final class AppStore: ObservableObject {
         streamTask?.cancel()
         isStreaming = false
         phase = .idle
+        LiveActivityManager.shared.end()
         save()
     }
 
@@ -308,7 +318,10 @@ final class AppStore: ObservableObject {
         guard let sIdx = sessions.firstIndex(where: { $0.id == id }),
               let mIdx = sessions[sIdx].messages.lastIndex(where: { $0.role == .assistant })
         else { return }
-        if phase != .writing { phase = .writing }
+        if phase != .writing {
+            phase = .writing
+            LiveActivityManager.shared.update(status: "Writing the answer", progress: 0.6)
+        }
         sessions[sIdx].messages[mIdx].text += token
     }
 
