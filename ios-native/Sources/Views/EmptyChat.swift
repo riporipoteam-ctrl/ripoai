@@ -21,21 +21,21 @@ struct EmptyChat: View {
     }
 
     var body: some View {
-        VStack(spacing: 18) {
-            Spacer()
+        VStack(spacing: 13) {
+            Spacer(minLength: 8)
             Image(systemName: "circle.hexagongrid.fill")
-                .font(.system(size: 36, weight: .bold))
+                .font(.system(size: 28, weight: .bold))
                 .foregroundStyle(.primary)
-                .frame(width: 88, height: 88)
-                .liquidGlass(cornerRadius: 28)
+                .frame(width: 66, height: 66)
+                .liquidGlass(cornerRadius: 22)
                 .scaleEffect(appear ? 1 : 0.8)
                 .opacity(appear ? 1 : 0)
 
             VStack(spacing: 2) {
                 Text(greeting)
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
                 Text("What are we making?")
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                    .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundStyle(.secondary)
             }
             .multilineTextAlignment(.center)
@@ -64,14 +64,14 @@ struct EmptyChat: View {
                 ForEach(Array(prompts.enumerated()), id: \.offset) { i, p in
                     Button { send(p) } label: {
                         HStack {
-                            Text(p).font(.system(size: 15, weight: .medium))
+                            Text(p).font(.system(size: 14.5, weight: .medium))
                                 .multilineTextAlignment(.leading)
                             Spacer()
-                            Image(systemName: "arrow.up.right").font(.system(size: 13, weight: .bold)).opacity(0.4)
+                            Image(systemName: "arrow.up.right").font(.system(size: 12, weight: .bold)).opacity(0.4)
                         }
-                        .padding(.horizontal, 16).padding(.vertical, 14)
+                        .padding(.horizontal, 15).padding(.vertical, 11)
                         .frame(maxWidth: .infinity)
-                        .liquidGlass(cornerRadius: 20, interactive: true)
+                        .liquidGlass(cornerRadius: 18, interactive: true)
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(.primary)

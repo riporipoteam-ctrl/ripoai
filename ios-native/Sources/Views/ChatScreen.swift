@@ -5,6 +5,7 @@ struct ChatScreen: View {
     @Binding var showMenu: Bool
     @State private var draft = ""
     @FocusState private var composerFocused: Bool
+    @StateObject private var keyboard = KeyboardObserver()
 
     private var messages: [Message] { store.current?.messages ?? [] }
 
@@ -44,10 +45,13 @@ struct ChatScreen: View {
                 }
             }
         }
-        // safeAreaInset keeps the composer ABOVE the keyboard, always.
+        // Composer is lifted manually by the real keyboard height (auto safe-area
+        // avoidance is turned off below so the two never fight or cancel out).
         .safeAreaInset(edge: .bottom, spacing: 0) {
             Composer(draft: $draft, focused: $composerFocused, send: send)
+                .padding(.bottom, keyboard.height)
         }
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         // Swipe in from the left edge to open the sidebar (ChatGPT/Gemini style).
         .overlay(alignment: .leading) {
             Color.clear
