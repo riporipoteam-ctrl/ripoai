@@ -11,6 +11,7 @@ struct Composer: View {
     @State private var photoItems: [PhotosPickerItem] = []
     @State private var showPhotoPicker = false
     @State private var showCamera = false
+    @State private var showModeSheet = false
 
     private var placeholder: String {
         if store.imageMode { return "Describe an image…" }
@@ -56,26 +57,17 @@ struct Composer: View {
             }
 
             HStack(alignment: .bottom, spacing: 8) {
-                // + menu
-                Menu {
-                    Button { showCamera = true } label: { Label("Take photo", systemImage: "camera") }
-                    Button { showPhotoPicker = true } label: { Label("Photo library", systemImage: "photo.on.rectangle") }
-                    Divider()
-                    Button { store.imageMode.toggle(); store.webSearch = false; store.agentMode = false } label: {
-                        Label(store.imageMode ? "Create image ✓" : "Create image", systemImage: "paintbrush")
-                    }
-                    Button { store.webSearch.toggle(); store.imageMode = false; store.agentMode = false } label: {
-                        Label(store.webSearch ? "Web search ✓" : "Web search", systemImage: "globe")
-                    }
-                    Button { store.agentMode.toggle(); store.imageMode = false; store.webSearch = false } label: {
-                        Label(store.agentMode ? "Agent mode ✓" : "Agent mode", systemImage: "sparkles")
-                    }
+                // + categorized tools sheet
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    showModeSheet = true
                 } label: {
                     Image(systemName: "plus")
                         .font(.system(size: 19, weight: .semibold))
                         .foregroundStyle(.primary)
                         .frame(width: 38, height: 38)
                 }
+                .buttonStyle(.plain)
                 .padding(.leading, 6).padding(.bottom, 5)
 
                 TextField(placeholder, text: $draft, axis: .vertical)
@@ -121,6 +113,15 @@ struct Composer: View {
             .liquidGlass(cornerRadius: 26, interactive: true)
             .padding(.horizontal, 12)
             .padding(.bottom, 6)
+        }
+        .sheet(isPresented: $showModeSheet) {
+            ModePickerSheet(
+                onCamera: { showCamera = true },
+                onPhotos: { showPhotoPicker = true },
+                onLiveCamera: { store.requestLiveCamera = true },
+                onVoiceCall: { store.requestVoiceCall = true }
+            )
+            .environmentObject(store)
         }
         .photosPicker(isPresented: $showPhotoPicker, selection: $photoItems, maxSelectionCount: 5, matching: .images)
         .fullScreenCover(isPresented: $showCamera) {

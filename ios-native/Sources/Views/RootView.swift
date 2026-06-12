@@ -41,6 +41,12 @@ struct RootView: View {
         .fullScreenCover(isPresented: $showVoiceCall) {
             VoiceCallScreen().environmentObject(store)
         }
+        .fullScreenCover(isPresented: $store.requestVoiceCall) {
+            VoiceCallScreen().environmentObject(store)
+        }
+        .fullScreenCover(isPresented: $store.requestLiveCamera) {
+            CameraVisionView()
+        }
         .preferredColorScheme(store.colorScheme)
     }
 }

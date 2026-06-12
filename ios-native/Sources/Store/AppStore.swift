@@ -15,6 +15,8 @@ final class AppStore: ObservableObject {
     @Published var isStreaming = false
     @Published var phase: StreamPhase = .idle
     @Published var errorText: String?
+    @Published var requestVoiceCall = false            // present voice-call full screen
+    @Published var requestLiveCamera = false           // present live camera vision full screen
     @Published var appearance = "system"               // system | light | dark
     @Published var notifyOnComplete = false
     @Published var aiCheckins = "off"                   // off | daily | weekly | monthly
