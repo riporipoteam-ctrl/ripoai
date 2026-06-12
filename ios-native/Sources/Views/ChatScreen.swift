@@ -13,8 +13,24 @@ struct ChatScreen: View {
         VStack(spacing: 0) {
             TopBar(showMenu: $showMenu)
 
+            // In-app task pill (Dynamic-Island-style) — always visible during a task.
+            if store.isStreaming {
+                TaskPill()
+                    .padding(.horizontal, 12)
+                    .padding(.bottom, 4)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+
             if messages.isEmpty {
-                EmptyChat(send: send)
+                // Scrollable so the top bar stays reachable on any screen size /
+                // when the keyboard is up — centers when there's room, scrolls when not.
+                GeometryReader { geo in
+                    ScrollView {
+                        EmptyChat(send: send)
+                            .frame(minHeight: geo.size.height)
+                    }
+                    .scrollDismissesKeyboard(.interactively)
+                }
             } else {
                 ScrollViewReader { proxy in
                     ScrollView {
@@ -52,6 +68,7 @@ struct ChatScreen: View {
                 .padding(.bottom, keyboard.height)
         }
         .ignoresSafeArea(.keyboard, edges: .bottom)
+        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: store.isStreaming)
         // Swipe in from the left edge to open the sidebar (ChatGPT/Gemini style).
         .overlay(alignment: .leading) {
             Color.clear
@@ -86,6 +103,56 @@ struct ChatScreen: View {
         draft = ""
         composerFocused = false
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    }
+}
+
+/// In-app "Dynamic Island" task pill — a live status banner pinned under the top
+/// bar while a task runs (works regardless of OS Live Activity availability).
+struct TaskPill: View {
+    @EnvironmentObject var store: AppStore
+
+    private var label: String {
+        if let a = store.agent, a.running { return a.statusLine }
+        switch store.phase {
+        case .searching: return "Searching the web"
+        case .generating: return "Creating image"
+        case .writing: return "Writing the answer"
+        case .thinking: return "Thinking"
+        default: return "Working"
+        }
+    }
+    private var icon: String {
+        if store.agent?.running == true { return "pawprint.fill" }
+        switch store.phase {
+        case .searching: return "globe"
+        case .generating: return "photo"
+        default: return "sparkles"
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(.primary)
+                .symbolEffect(.pulse, options: .repeating)
+            Text(label)
+                .font(.system(size: 13.5, weight: .semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
+            Spacer(minLength: 6)
+            ProgressView().scaleEffect(0.72)
+            Button { store.stop() } label: {
+                Image(systemName: "stop.fill").font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.secondary).frame(width: 24, height: 24)
+                    .background(Color.primary.opacity(0.08), in: Circle())
+            }.buttonStyle(.plain)
+        }
+        .padding(.horizontal, 14).padding(.vertical, 8)
+        .frame(maxWidth: .infinity)
+        .background(.ultraThinMaterial, in: Capsule())
+        .overlay(Capsule().strokeBorder(Color.primary.opacity(0.08), lineWidth: 1))
+        .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
     }
 }
 
