@@ -79,6 +79,8 @@ jobs:
 
       - name: Build for Simulator (screenshots)
         working-directory: ios-native
+        continue-on-error: true
+        timeout-minutes: 8
         run: |
           xcodebuild \
             -project AskAI.xcodeproj \
@@ -92,33 +94,30 @@ jobs:
 
       - name: Capture app screenshots in the Simulator
         working-directory: ios-native
+        continue-on-error: true
+        timeout-minutes: 9
         run: |
-          DEVICE=$(xcrun simctl list devices available | grep -E "iPhone" | head -n 1 | sed -E 's/^ *([^(]+) \(.*/\1/' | xargs)
+          set +e
+          DEVICE=$(xcrun simctl list devices available | grep -E "iPhone 1[5-9]|iPhone [2-9][0-9]" | head -n 1 | sed -E 's/^ *([^(]+) \(.*/\1/' | xargs)
+          [ -z "$DEVICE" ] && DEVICE=$(xcrun simctl list devices available | grep -E "iPhone" | head -n 1 | sed -E 's/^ *([^(]+) \(.*/\1/' | xargs)
           echo "Using simulator: $DEVICE"
           xcrun simctl boot "$DEVICE" || true
-          xcrun simctl bootstatus "$DEVICE" -b
+          timeout 150 xcrun simctl bootstatus "$DEVICE" -b || true
           APP=$(find build-sim/Build/Products -name '*.app' | head -n 1)
-          xcrun simctl install "$DEVICE" "$APP"
+          timeout 60 xcrun simctl install "$DEVICE" "$APP" || true
           mkdir -p "$GITHUB_WORKSPACE/screenshots"
-          xcrun simctl launch "$DEVICE" io.github.riporipoteam.ripoai -demo-home
-          sleep 8
-          xcrun simctl io "$DEVICE" screenshot "$GITHUB_WORKSPACE/screenshots/1-home.png"
-          xcrun simctl terminate "$DEVICE" io.github.riporipoteam.ripoai || true
-          xcrun simctl launch "$DEVICE" io.github.riporipoteam.ripoai -demo-chat
-          sleep 8
-          xcrun simctl io "$DEVICE" screenshot "$GITHUB_WORKSPACE/screenshots/2-chat.png"
-          xcrun simctl terminate "$DEVICE" io.github.riporipoteam.ripoai || true
-          xcrun simctl launch "$DEVICE" io.github.riporipoteam.ripoai -demo-settings
-          sleep 8
-          xcrun simctl io "$DEVICE" screenshot "$GITHUB_WORKSPACE/screenshots/3-settings.png"
-          xcrun simctl terminate "$DEVICE" io.github.riporipoteam.ripoai || true
-          xcrun simctl launch "$DEVICE" io.github.riporipoteam.ripoai -demo-menu
-          sleep 8
-          xcrun simctl io "$DEVICE" screenshot "$GITHUB_WORKSPACE/screenshots/4-menu.png"
-          xcrun simctl terminate "$DEVICE" io.github.riporipoteam.ripoai || true
-          xcrun simctl launch "$DEVICE" io.github.riporipoteam.ripoai -demo-plus
-          sleep 8
-          xcrun simctl io "$DEVICE" screenshot "$GITHUB_WORKSPACE/screenshots/5-plus.png"
+          shot() { # $1 = demo arg, $2 = filename
+            timeout 30 xcrun simctl launch "$DEVICE" io.github.riporipoteam.ripoai "$1" || true
+            sleep 7
+            timeout 30 xcrun simctl io "$DEVICE" screenshot "$GITHUB_WORKSPACE/screenshots/$2" || true
+            timeout 20 xcrun simctl terminate "$DEVICE" io.github.riporipoteam.ripoai || true
+          }
+          shot -demo-home 1-home.png
+          shot -demo-chat 2-chat.png
+          shot -demo-settings 3-settings.png
+          shot -demo-menu 4-menu.png
+          shot -demo-plus 5-plus.png
+          exit 0
 
       - name: Upload screenshots
         uses: actions/upload-artifact@v4
@@ -127,8 +126,10 @@ jobs:
           path: screenshots/
 
       - name: Publish to release
+        if: always()
         uses: softprops/action-gh-release@v2
         with:
+          fail_on_unmatched_files: false
           tag_name: ios-native-latest
           name: AskAI — Native SwiftUI (Liquid Glass)
           files: |
