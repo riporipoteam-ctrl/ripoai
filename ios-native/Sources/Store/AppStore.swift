@@ -27,6 +27,8 @@ final class AppStore: ObservableObject {
     @Published var verbosity = "balanced"               // concise | balanced | detailed
     @Published var tone = "friendly"                    // professional | friendly | playful | direct
     @Published var customInstructions = ""
+    @Published var language = "auto"                    // "auto" or ISO code
+    @Published var autoWebSearch = true                 // auto-search when a query needs fresh info
 
     // Account / cloud sync
     @Published var user: AuthUser?
@@ -44,6 +46,8 @@ final class AppStore: ObservableObject {
     private let notifyKey = "askai.notify"
     private let checkinKey = "askai.checkins"
     private let locKey = "askai.location"
+    private let langKey = "askai.language"
+    private let autoSearchKey = "askai.autosearch"
     private var streamTask: Task<Void, Never>?
 
     var colorScheme: ColorScheme? {
@@ -60,6 +64,8 @@ final class AppStore: ObservableObject {
         notifyOnComplete = UserDefaults.standard.bool(forKey: notifyKey)
         aiCheckins = UserDefaults.standard.string(forKey: checkinKey) ?? "off"
         locationEnabled = UserDefaults.standard.bool(forKey: locKey)
+        language = UserDefaults.standard.string(forKey: langKey) ?? "auto"
+        autoWebSearch = UserDefaults.standard.object(forKey: autoSearchKey) as? Bool ?? true
         // Screenshot/demo mode for CI: seed content, skip auth.
         let args = ProcessInfo.processInfo.arguments
         if args.contains("-demo-chat") || args.contains("-demo-home") || args.contains("-demo-settings") || args.contains("-demo-menu") || args.contains("-demo-plus") {
@@ -123,6 +129,27 @@ final class AppStore: ObservableObject {
     func setCustomInstructions(_ v: String) {
         customInstructions = v
         UserDefaults.standard.set(v, forKey: customKey)
+    }
+
+    func setLanguage(_ v: String) {
+        language = v
+        UserDefaults.standard.set(v, forKey: langKey)
+    }
+
+    func setAutoWebSearch(_ v: Bool) {
+        autoWebSearch = v
+        UserDefaults.standard.set(v, forKey: autoSearchKey)
+    }
+
+    /// True when a question likely needs current/real-time info → auto web search.
+    func needsFreshInfo(_ t: String) -> Bool {
+        let l = t.lowercased()
+        let kws = ["latest", "today", "tonight", "current", "currently", "right now",
+                   "this week", "this month", "this year", "2024", "2025", "2026",
+                   "news", "weather", "price", "stock", "score", "who won", "release date",
+                   "schedule", "when is", "when does", "how much is", "near me", "open now",
+                   "trending", "live", "update", "recent", "yesterday", "tomorrow"]
+        return kws.contains { l.contains($0) }
     }
 
     func setModel(_ m: AIModel) {
@@ -299,6 +326,12 @@ final class AppStore: ObservableObject {
         }
         if agentMode { persona += " You are in Agent mode with live web access: work in visible steps, search the web as needed, and cite source links inline." }
         else if webSearch { persona += " You can search the live web; cite sources inline when you use them." }
+        // Language: force the chosen language, or mirror the user's language on Auto.
+        if let lang = Languages.instructionName(language) {
+            persona += " ALWAYS write your entire reply in \(lang), regardless of the language of the question, unless the user explicitly asks for another language."
+        } else {
+            persona += " Reply in the same language the user is writing in."
+        }
         let system = Message(role: .system, text: persona)
 
         var convo = sessions.first(where: { $0.id == id })?.messages ?? []
@@ -314,13 +347,16 @@ final class AppStore: ObservableObject {
             m = AIModel.resolveAuto(lastUser, hasImages: hasImages)
         }
         if hasImages { m = .visionModel }
-        let useCompound = (agentMode || webSearch) && !hasImages
+        let lastUserText = convo.last(where: { $0.role == .user })?.text ?? ""
+        let autoSearch = autoWebSearch && needsFreshInfo(lastUserText)
+        let useCompound = (agentMode || webSearch || autoSearch) && !hasImages
+        if autoSearch && !webSearch && !agentMode { phase = .searching }
         let backend = useCompound ? "groq/compound" : m.backend
         let provider: Provider = useCompound ? .groq : m.provider
         let fallbackModel = m.provider == .groq ? m.backend : "llama-3.3-70b-versatile"
 
         let liveTitle = sessions.first(where: { $0.id == id })?.title ?? "AskAI"
-        let startStatus = (agentMode || webSearch) ? "Searching the web" : "Thinking"
+        let startStatus = useCompound ? "Searching the web" : "Thinking"
         LiveActivityManager.shared.start(title: liveTitle, status: startStatus, progress: 0.1)
 
         streamTask = Task {

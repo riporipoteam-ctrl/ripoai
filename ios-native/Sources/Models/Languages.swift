@@ -1,0 +1,165 @@
+import Foundation
+
+/// A selectable interface/response language.
+struct AppLanguage: Identifiable, Hashable {
+    let code: String    // ISO 639-1 (or BCP-47-ish)
+    let name: String    // English name (used to instruct the AI)
+    let native: String  // endonym (shown in the picker)
+    var id: String { code }
+}
+
+enum Languages {
+    /// A broad list of world languages (auto + 180+ choices).
+    static let all: [AppLanguage] = [
+        .init(code: "en", name: "English", native: "English"),
+        .init(code: "es", name: "Spanish", native: "Español"),
+        .init(code: "zh", name: "Chinese (Simplified)", native: "简体中文"),
+        .init(code: "zh-Hant", name: "Chinese (Traditional)", native: "繁體中文"),
+        .init(code: "hi", name: "Hindi", native: "हिन्दी"),
+        .init(code: "ar", name: "Arabic", native: "العربية"),
+        .init(code: "bn", name: "Bengali", native: "বাংলা"),
+        .init(code: "pt", name: "Portuguese", native: "Português"),
+        .init(code: "ru", name: "Russian", native: "Русский"),
+        .init(code: "ja", name: "Japanese", native: "日本語"),
+        .init(code: "de", name: "German", native: "Deutsch"),
+        .init(code: "fr", name: "French", native: "Français"),
+        .init(code: "ur", name: "Urdu", native: "اردو"),
+        .init(code: "id", name: "Indonesian", native: "Bahasa Indonesia"),
+        .init(code: "tr", name: "Turkish", native: "Türkçe"),
+        .init(code: "it", name: "Italian", native: "Italiano"),
+        .init(code: "ko", name: "Korean", native: "한국어"),
+        .init(code: "vi", name: "Vietnamese", native: "Tiếng Việt"),
+        .init(code: "fa", name: "Persian", native: "فارسی"),
+        .init(code: "pl", name: "Polish", native: "Polski"),
+        .init(code: "uk", name: "Ukrainian", native: "Українська"),
+        .init(code: "ro", name: "Romanian", native: "Română"),
+        .init(code: "nl", name: "Dutch", native: "Nederlands"),
+        .init(code: "th", name: "Thai", native: "ไทย"),
+        .init(code: "ta", name: "Tamil", native: "தமிழ்"),
+        .init(code: "te", name: "Telugu", native: "తెలుగు"),
+        .init(code: "mr", name: "Marathi", native: "मराठी"),
+        .init(code: "gu", name: "Gujarati", native: "ગુજરાતી"),
+        .init(code: "kn", name: "Kannada", native: "ಕನ್ನಡ"),
+        .init(code: "ml", name: "Malayalam", native: "മലയാളം"),
+        .init(code: "pa", name: "Punjabi", native: "ਪੰਜਾਬੀ"),
+        .init(code: "el", name: "Greek", native: "Ελληνικά"),
+        .init(code: "cs", name: "Czech", native: "Čeština"),
+        .init(code: "sv", name: "Swedish", native: "Svenska"),
+        .init(code: "hu", name: "Hungarian", native: "Magyar"),
+        .init(code: "he", name: "Hebrew", native: "עברית"),
+        .init(code: "da", name: "Danish", native: "Dansk"),
+        .init(code: "fi", name: "Finnish", native: "Suomi"),
+        .init(code: "no", name: "Norwegian", native: "Norsk"),
+        .init(code: "sk", name: "Slovak", native: "Slovenčina"),
+        .init(code: "bg", name: "Bulgarian", native: "Български"),
+        .init(code: "hr", name: "Croatian", native: "Hrvatski"),
+        .init(code: "sr", name: "Serbian", native: "Српски"),
+        .init(code: "lt", name: "Lithuanian", native: "Lietuvių"),
+        .init(code: "sl", name: "Slovenian", native: "Slovenščina"),
+        .init(code: "lv", name: "Latvian", native: "Latviešu"),
+        .init(code: "et", name: "Estonian", native: "Eesti"),
+        .init(code: "ms", name: "Malay", native: "Bahasa Melayu"),
+        .init(code: "fil", name: "Filipino", native: "Filipino"),
+        .init(code: "sw", name: "Swahili", native: "Kiswahili"),
+        .init(code: "af", name: "Afrikaans", native: "Afrikaans"),
+        .init(code: "sq", name: "Albanian", native: "Shqip"),
+        .init(code: "am", name: "Amharic", native: "አማርኛ"),
+        .init(code: "hy", name: "Armenian", native: "Հայերեն"),
+        .init(code: "az", name: "Azerbaijani", native: "Azərbaycan"),
+        .init(code: "eu", name: "Basque", native: "Euskara"),
+        .init(code: "be", name: "Belarusian", native: "Беларуская"),
+        .init(code: "bs", name: "Bosnian", native: "Bosanski"),
+        .init(code: "my", name: "Burmese", native: "မြန်မာ"),
+        .init(code: "ca", name: "Catalan", native: "Català"),
+        .init(code: "ceb", name: "Cebuano", native: "Cebuano"),
+        .init(code: "ny", name: "Chichewa", native: "Chichewa"),
+        .init(code: "co", name: "Corsican", native: "Corsu"),
+        .init(code: "eo", name: "Esperanto", native: "Esperanto"),
+        .init(code: "fy", name: "Frisian", native: "Frysk"),
+        .init(code: "gl", name: "Galician", native: "Galego"),
+        .init(code: "ka", name: "Georgian", native: "ქართული"),
+        .init(code: "ht", name: "Haitian Creole", native: "Kreyòl Ayisyen"),
+        .init(code: "ha", name: "Hausa", native: "Hausa"),
+        .init(code: "haw", name: "Hawaiian", native: "ʻŌlelo Hawaiʻi"),
+        .init(code: "hmn", name: "Hmong", native: "Hmoob"),
+        .init(code: "is", name: "Icelandic", native: "Íslenska"),
+        .init(code: "ig", name: "Igbo", native: "Igbo"),
+        .init(code: "ga", name: "Irish", native: "Gaeilge"),
+        .init(code: "jw", name: "Javanese", native: "Basa Jawa"),
+        .init(code: "kk", name: "Kazakh", native: "Қазақ"),
+        .init(code: "km", name: "Khmer", native: "ខ្មែរ"),
+        .init(code: "rw", name: "Kinyarwanda", native: "Kinyarwanda"),
+        .init(code: "ku", name: "Kurdish", native: "Kurdî"),
+        .init(code: "ky", name: "Kyrgyz", native: "Кыргызча"),
+        .init(code: "lo", name: "Lao", native: "ລາວ"),
+        .init(code: "la", name: "Latin", native: "Latina"),
+        .init(code: "lb", name: "Luxembourgish", native: "Lëtzebuergesch"),
+        .init(code: "mk", name: "Macedonian", native: "Македонски"),
+        .init(code: "mg", name: "Malagasy", native: "Malagasy"),
+        .init(code: "mt", name: "Maltese", native: "Malti"),
+        .init(code: "mi", name: "Maori", native: "Māori"),
+        .init(code: "mn", name: "Mongolian", native: "Монгол"),
+        .init(code: "ne", name: "Nepali", native: "नेपाली"),
+        .init(code: "or", name: "Odia", native: "ଓଡ଼ିଆ"),
+        .init(code: "ps", name: "Pashto", native: "پښتو"),
+        .init(code: "sm", name: "Samoan", native: "Gagana Samoa"),
+        .init(code: "gd", name: "Scots Gaelic", native: "Gàidhlig"),
+        .init(code: "st", name: "Sesotho", native: "Sesotho"),
+        .init(code: "sn", name: "Shona", native: "Shona"),
+        .init(code: "sd", name: "Sindhi", native: "سنڌي"),
+        .init(code: "si", name: "Sinhala", native: "සිංහල"),
+        .init(code: "so", name: "Somali", native: "Soomaali"),
+        .init(code: "su", name: "Sundanese", native: "Basa Sunda"),
+        .init(code: "tg", name: "Tajik", native: "Тоҷикӣ"),
+        .init(code: "tt", name: "Tatar", native: "Татар"),
+        .init(code: "tk", name: "Turkmen", native: "Türkmen"),
+        .init(code: "ug", name: "Uyghur", native: "ئۇيغۇرچە"),
+        .init(code: "uz", name: "Uzbek", native: "Oʻzbek"),
+        .init(code: "cy", name: "Welsh", native: "Cymraeg"),
+        .init(code: "xh", name: "Xhosa", native: "isiXhosa"),
+        .init(code: "yi", name: "Yiddish", native: "ייִדיש"),
+        .init(code: "yo", name: "Yoruba", native: "Yorùbá"),
+        .init(code: "zu", name: "Zulu", native: "isiZulu"),
+        .init(code: "ace", name: "Acehnese", native: "Bahsa Acèh"),
+        .init(code: "as", name: "Assamese", native: "অসমীয়া"),
+        .init(code: "ay", name: "Aymara", native: "Aymar"),
+        .init(code: "bm", name: "Bambara", native: "Bamanankan"),
+        .init(code: "bho", name: "Bhojpuri", native: "भोजपुरी"),
+        .init(code: "dv", name: "Dhivehi", native: "ދިވެހި"),
+        .init(code: "doi", name: "Dogri", native: "डोगरी"),
+        .init(code: "ee", name: "Ewe", native: "Eʋegbe"),
+        .init(code: "gn", name: "Guarani", native: "Avañeʼẽ"),
+        .init(code: "ilo", name: "Ilocano", native: "Ilokano"),
+        .init(code: "kri", name: "Krio", native: "Krio"),
+        .init(code: "gom", name: "Konkani", native: "कोंकणी"),
+        .init(code: "lg", name: "Luganda", native: "Luganda"),
+        .init(code: "mai", name: "Maithili", native: "मैथिली"),
+        .init(code: "mni", name: "Meiteilon", native: "ꯃꯩꯇꯩꯂꯣꯟ"),
+        .init(code: "lus", name: "Mizo", native: "Mizo"),
+        .init(code: "nso", name: "Sepedi", native: "Sepedi"),
+        .init(code: "qu", name: "Quechua", native: "Runa Simi"),
+        .init(code: "sa", name: "Sanskrit", native: "संस्कृतम्"),
+        .init(code: "ts", name: "Tsonga", native: "Xitsonga"),
+        .init(code: "ti", name: "Tigrinya", native: "ትግርኛ"),
+        .init(code: "tn", name: "Tswana", native: "Setswana"),
+        .init(code: "ak", name: "Twi", native: "Twi"),
+        .init(code: "wo", name: "Wolof", native: "Wolof"),
+    ]
+
+    static func device() -> AppLanguage {
+        let code = Locale.preferredLanguages.first.flatMap {
+            Locale(identifier: $0).language.languageCode?.identifier
+        } ?? "en"
+        return all.first { $0.code == code } ?? all[0]
+    }
+
+    /// English name to instruct the AI with, or nil for auto (mirror the user).
+    static func instructionName(_ selection: String) -> String? {
+        selection == "auto" ? nil : all.first { $0.code == selection }?.name
+    }
+
+    static func displayName(_ selection: String) -> String {
+        if selection == "auto" { return "Auto · \(device().native)" }
+        return all.first { $0.code == selection }.map { "\($0.native) — \($0.name)" } ?? "Auto"
+    }
+}

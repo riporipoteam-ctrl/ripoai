@@ -102,6 +102,9 @@ struct VoiceCallScreen: View {
         .onAppear {
             animate = true
             speech.start()
+            if let lang = Languages.instructionName(store.language), !convo.isEmpty {
+                convo[0] = Message(role: .system, text: convo[0].text + " Always respond in \(lang).")
+            }
             LiveActivityManager.shared.start(title: "Voice call", status: "Listening…",
                                              isVoiceCall: true)
         }

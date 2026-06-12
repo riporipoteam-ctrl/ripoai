@@ -5,13 +5,6 @@ struct EmptyChat: View {
     let send: (String) -> Void
     @State private var appear = false
 
-    private let prompts = [
-        "Plan a 5-day trip to Tokyo on a budget",
-        "Explain quantum entanglement simply",
-        "Generate an image of a sunset over mountains",
-        "Give me 10 startup ideas for 2026",
-    ]
-
     private var greeting: String {
         let h = Calendar.current.component(.hour, from: Date())
         if h < 5 { return "Up late?" }
@@ -60,27 +53,6 @@ struct EmptyChat: View {
             }
             .opacity(appear ? 1 : 0)
 
-            VStack(spacing: 10) {
-                ForEach(Array(prompts.enumerated()), id: \.offset) { i, p in
-                    Button { send(p) } label: {
-                        HStack {
-                            Text(p).font(.system(size: 14.5, weight: .medium))
-                                .multilineTextAlignment(.leading)
-                            Spacer()
-                            Image(systemName: "arrow.up.right").font(.system(size: 12, weight: .bold)).opacity(0.4)
-                        }
-                        .padding(.horizontal, 15).padding(.vertical, 11)
-                        .frame(maxWidth: .infinity)
-                        .liquidGlass(cornerRadius: 18, interactive: true)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.primary)
-                    .opacity(appear ? 1 : 0)
-                    .offset(y: appear ? 0 : 14)
-                    .animation(.spring(response: 0.5, dampingFraction: 0.8).delay(Double(i) * 0.06), value: appear)
-                }
-            }
-            .padding(.horizontal, 18)
             Spacer()
         }
         .onAppear { withAnimation(.spring(response: 0.6, dampingFraction: 0.7)) { appear = true } }

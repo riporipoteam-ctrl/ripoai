@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsScreen: View {
     @EnvironmentObject var store: AppStore
     let back: () -> Void
+    @State private var showLanguagePicker = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -62,6 +63,41 @@ struct SettingsScreen: View {
                     }
                     .padding(14)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .liquidGlass(cornerRadius: 20)
+
+                    // Language
+                    SectionLabel("Language")
+                    VStack(spacing: 12) {
+                        Button { showLanguagePicker = true } label: {
+                            HStack {
+                                Image(systemName: "globe").foregroundStyle(.secondary)
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text("App language").font(.system(size: 15, weight: .semibold))
+                                    Text(Languages.displayName(store.language))
+                                        .font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right").font(.system(size: 12)).foregroundStyle(.secondary)
+                            }
+                        }.buttonStyle(.plain).foregroundStyle(.primary)
+                        Text("AskAI replies in this language. “Auto” follows your device language.")
+                            .font(.system(size: 11)).foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                    .liquidGlass(cornerRadius: 20)
+
+                    // Web access
+                    SectionLabel("Web access")
+                    VStack(spacing: 12) {
+                        Toggle("Auto web search", isOn: Binding(
+                            get: { store.autoWebSearch }, set: { store.setAutoWebSearch($0) }))
+                        Text("AskAI automatically searches the live web when a question needs current info (news, prices, weather, scores…).")
+                            .font(.system(size: 11)).foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .tint(Color.accentColor)
+                    .padding(14).frame(maxWidth: .infinity, alignment: .leading)
                     .liquidGlass(cornerRadius: 20)
 
                     // Notifications & personalization
@@ -140,6 +176,67 @@ struct SettingsScreen: View {
                         .frame(maxWidth: .infinity).padding(.top, 8)
                 }
                 .padding(.horizontal, 16).padding(.bottom, 30)
+            }
+        }
+        .sheet(isPresented: $showLanguagePicker) {
+            LanguagePicker(selected: store.language) { store.setLanguage($0) }
+                .presentationDetents([.large])
+        }
+    }
+}
+
+/// Searchable language picker with an Auto (device) option + 180+ languages.
+struct LanguagePicker: View {
+    let selected: String
+    let pick: (String) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var query = ""
+
+    private var filtered: [AppLanguage] {
+        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
+        if q.isEmpty { return Languages.all }
+        return Languages.all.filter {
+            $0.name.lowercased().contains(q) || $0.native.lowercased().contains(q) || $0.code.contains(q)
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if query.trimmingCharacters(in: .whitespaces).isEmpty {
+                    row(code: "auto", title: "Auto", subtitle: Languages.displayName("auto"))
+                }
+                ForEach(filtered) { lang in
+                    row(code: lang.code, title: lang.native, subtitle: lang.name)
+                }
+            }
+            .listStyle(.plain)
+            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search 180+ languages")
+            .navigationTitle("Language")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }
+                }
+            }
+        }
+    }
+
+    private func row(code: String, title: String, subtitle: String) -> some View {
+        Button {
+            pick(code)
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            dismiss()
+        } label: {
+            HStack {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title).font(.system(size: 16, weight: .medium)).foregroundStyle(.primary)
+                    Text(subtitle).font(.system(size: 12)).foregroundStyle(.secondary)
+                }
+                Spacer()
+                if selected == code {
+                    Image(systemName: "checkmark").foregroundStyle(Color.accentColor).fontWeight(.bold)
+                }
             }
         }
     }
