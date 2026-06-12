@@ -102,14 +102,19 @@ jobs:
           [ -z "$DEVICE" ] && DEVICE=$(xcrun simctl list devices available | grep -E "iPhone" | head -n 1 | sed -E 's/^ *([^(]+) \(.*/\1/' | xargs)
           echo "Using simulator: $DEVICE"
           xcrun simctl boot "$DEVICE" || true
-          timeout 150 xcrun simctl bootstatus "$DEVICE" -b || true
+          timeout 180 xcrun simctl bootstatus "$DEVICE" -b || true
+          sleep 12
           APP=$(find build-sim/Build/Products -name '*.app' | head -n 1)
-          timeout 60 xcrun simctl install "$DEVICE" "$APP" || true
+          echo "APP=$APP"
+          for i in 1 2 3; do
+            timeout 90 xcrun simctl install "$DEVICE" "$APP" && break
+            echo "install retry $i"; sleep 5
+          done
           mkdir -p "$GITHUB_WORKSPACE/screenshots"
           shot() { # $1 = demo arg, $2 = filename
-            timeout 30 xcrun simctl launch "$DEVICE" io.github.riporipoteam.ripoai "$1" || true
-            sleep 7
-            timeout 30 xcrun simctl io "$DEVICE" screenshot "$GITHUB_WORKSPACE/screenshots/$2" || true
+            timeout 40 xcrun simctl launch "$DEVICE" io.github.riporipoteam.ripoai "$1" || true
+            sleep 11
+            timeout 40 xcrun simctl io "$DEVICE" screenshot "$GITHUB_WORKSPACE/screenshots/$2" || true
             timeout 20 xcrun simctl terminate "$DEVICE" io.github.riporipoteam.ripoai || true
           }
           shot -demo-home 1-home.png
