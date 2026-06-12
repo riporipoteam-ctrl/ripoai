@@ -1,61 +1,47 @@
 import SwiftUI
 
-/// Real Apple Liquid Glass when running on iOS 26+, with a faithful
-/// ultra-thin-material fallback on older systems so the app still builds & runs.
+/// Real Apple Liquid Glass when running on iOS 26+, with an ultra-thin-material
+/// fallback on older systems. Monochrome — no color tints.
 struct LiquidGlassModifier: ViewModifier {
     var cornerRadius: CGFloat
-    var tint: Color?
     var interactive: Bool
 
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
-            content.glassEffect(resolvedGlass, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+            content.glassEffect(interactive ? Glass.regular.interactive() : .regular,
+                                in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
         } else {
             content
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
                 .overlay(
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .strokeBorder(.white.opacity(0.28), lineWidth: 1)
+                        .strokeBorder(Color.primary.opacity(0.08), lineWidth: 1)
                 )
-                .shadow(color: .black.opacity(0.18), radius: 18, x: 0, y: 12)
+                .shadow(color: .black.opacity(0.10), radius: 14, x: 0, y: 8)
         }
-    }
-
-    @available(iOS 26.0, *)
-    private var resolvedGlass: Glass {
-        var g: Glass = .regular
-        if let tint { g = g.tint(tint) }
-        if interactive { g = g.interactive() }
-        return g
     }
 }
 
 extension View {
-    /// Apply Liquid Glass to any view.
-    func liquidGlass(cornerRadius: CGFloat = 24, tint: Color? = nil, interactive: Bool = false) -> some View {
-        modifier(LiquidGlassModifier(cornerRadius: cornerRadius, tint: tint, interactive: interactive))
+    func liquidGlass(cornerRadius: CGFloat = 24, interactive: Bool = false) -> some View {
+        modifier(LiquidGlassModifier(cornerRadius: cornerRadius, interactive: interactive))
     }
 }
 
-/// Animated luminous background so the glass has light to refract.
+/// Clean, ChatGPT-style backdrop: white→soft gray in light, true black in dark.
 struct GlassBackground: View {
-    @State private var drift = false
+    @Environment(\.colorScheme) private var scheme
     var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: [Color(hex: 0xEAF0FF), Color(hex: 0xF2EBFF), Color(hex: 0xE7FAF6)],
-                startPoint: .topLeading, endPoint: .bottomTrailing
-            )
-            RadialGradient(colors: [Color.accentColor.opacity(0.30), .clear],
-                           center: drift ? .topLeading : .topTrailing, startRadius: 10, endRadius: 520)
-            RadialGradient(colors: [Color(hex: 0xBE8CFF).opacity(0.28), .clear],
-                           center: drift ? .bottomTrailing : .center, startRadius: 10, endRadius: 560)
+        Group {
+            if scheme == .dark {
+                LinearGradient(colors: [Color(hex: 0x0B0B0C), Color(hex: 0x161618)],
+                               startPoint: .top, endPoint: .bottom)
+            } else {
+                LinearGradient(colors: [Color(hex: 0xFFFFFF), Color(hex: 0xF3F4F6)],
+                               startPoint: .top, endPoint: .bottom)
+            }
         }
         .ignoresSafeArea()
-        .onAppear {
-            withAnimation(.easeInOut(duration: 14).repeatForever(autoreverses: true)) { drift.toggle() }
-        }
-        .preferredColorScheme(nil)
     }
 }
 

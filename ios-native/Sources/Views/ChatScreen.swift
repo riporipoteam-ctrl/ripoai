@@ -2,8 +2,7 @@ import SwiftUI
 
 struct ChatScreen: View {
     @EnvironmentObject var store: AppStore
-    @Binding var showHistory: Bool
-    @Binding var showSettings: Bool
+    @Binding var showMenu: Bool
     @State private var draft = ""
     @FocusState private var composerFocused: Bool
 
@@ -11,7 +10,7 @@ struct ChatScreen: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            TopBar(showHistory: $showHistory, showSettings: $showSettings)
+            TopBar(showMenu: $showMenu)
 
             if messages.isEmpty {
                 EmptyChat(send: send)
@@ -55,28 +54,31 @@ struct ChatScreen: View {
 
 private struct TopBar: View {
     @EnvironmentObject var store: AppStore
-    @Binding var showHistory: Bool
-    @Binding var showSettings: Bool
+    @Binding var showMenu: Bool
 
     var body: some View {
         HStack {
-            GlassIconButton(system: "line.3.horizontal") { showHistory = true }
+            GlassIconButton(system: "line.3.horizontal") { showMenu = true }
             Spacer()
             Menu {
                 ForEach(AIModel.all) { m in
                     Button { store.model = m } label: {
-                        Label(m.name, systemImage: store.model.id == m.id ? "checkmark" : "sparkles")
+                        if store.model.id == m.id {
+                            Label(m.menuLabel, systemImage: "checkmark")
+                        } else {
+                            Text(m.menuLabel)
+                        }
                     }
                 }
             } label: {
                 HStack(spacing: 6) {
-                    Image(systemName: "sparkles").font(.system(size: 13, weight: .bold))
                     Text(store.model.name).font(.system(size: 15, weight: .bold))
-                    Image(systemName: "chevron.down").font(.system(size: 11, weight: .bold))
+                    Image(systemName: "chevron.down").font(.system(size: 11, weight: .bold)).foregroundStyle(.secondary)
                 }
                 .padding(.horizontal, 14).padding(.vertical, 9)
                 .liquidGlass(cornerRadius: 20)
             }
+            .foregroundStyle(.primary)
             Spacer()
             GlassIconButton(system: "square.and.pencil") {
                 store.newChat()

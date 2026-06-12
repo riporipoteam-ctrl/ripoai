@@ -6,8 +6,10 @@ struct Message: Identifiable, Codable, Equatable {
     var id = UUID()
     var role: Role
     var text: String
-    /// Set when this assistant turn is a generated image (loaded from a URL).
+    /// Generated image result (URL or data URL).
     var imageURL: String? = nil
+    /// Attached images (base64 data URLs) for vision input.
+    var attachments: [String] = []
 }
 
 struct ChatSession: Identifiable, Codable, Equatable {
@@ -17,15 +19,39 @@ struct ChatSession: Identifiable, Codable, Equatable {
     var updated: Date = Date()
 }
 
+enum Provider { case groq, nvidia }
+
 struct AIModel: Identifiable, Hashable {
     let id: String
     let name: String
-    let groq: String
+    let tagline: String
+    let backend: String
+    let provider: Provider
+    var vision = false
+    var badge: String? = nil
 
+    /// Mirrors the web app's model registry (lib/models.ts). NVIDIA tiers go
+    /// through the same ripoai-nvidia worker the website uses.
     static let all: [AIModel] = [
-        AIModel(id: "4o-pro",   name: "AskAI 4o Pro",    groq: "openai/gpt-oss-120b"),
-        AIModel(id: "instant",  name: "AskAI Instant",   groq: "llama-3.3-70b-versatile"),
-        AIModel(id: "fast",     name: "AskAI Fast",      groq: "llama-3.1-8b-instant"),
+        AIModel(id: "1o-instant", name: "AskAI 1o instant", tagline: "Fast everyday answers",
+                backend: "qwen/qwen3-32b", provider: .groq),
+        AIModel(id: "2o-instant", name: "AskAI 2o instant", tagline: "Quick + understands images",
+                backend: "meta-llama/llama-4-scout-17b-16e-instruct", provider: .groq, vision: true),
+        AIModel(id: "1o-pro", name: "AskAI 1o Pro", tagline: "Deeper reasoning + writing",
+                backend: "llama-3.3-70b-versatile", provider: .groq, badge: "PRO"),
+        AIModel(id: "2o-pro", name: "AskAI 2o Pro", tagline: "Flagship — best designs, code & reasoning",
+                backend: "openai/gpt-oss-120b", provider: .groq, badge: "PRO"),
+        AIModel(id: "3o-instant", name: "AskAI 3o instant", tagline: "Lightning-fast and very capable",
+                backend: "llama-3.3-70b-versatile", provider: .groq, badge: "NEW"),
+        AIModel(id: "3o-pro", name: "AskAI 3o Pro", tagline: "Our most powerful — best for building",
+                backend: "openai/gpt-oss-120b", provider: .groq, badge: "MAX"),
+        AIModel(id: "4o-instant", name: "AskAI 4o instant", tagline: "New — fast and very capable",
+                backend: "meta/llama-4-maverick-17b-128e-instruct", provider: .nvidia, badge: "NEW"),
+        AIModel(id: "4o-pro", name: "AskAI 4o Pro", tagline: "Our most advanced — deepest reasoning",
+                backend: "moonshotai/kimi-k2.6", provider: .nvidia, badge: "MAX"),
     ]
-    static let `default` = all[0]
+    var menuLabel: String { badge == nil ? name : "\(name) · \(badge!)" }
+
+    static let `default` = all.first { $0.id == "4o-pro" }!
+    static let visionModel = all.first { $0.id == "2o-instant" }!
 }

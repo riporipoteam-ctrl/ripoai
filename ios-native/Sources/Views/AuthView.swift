@@ -13,17 +13,18 @@ struct AuthView: View {
             GlassBackground()
             VStack(spacing: 18) {
                 Spacer()
-                Image(systemName: "sparkles")
-                    .font(.system(size: 38, weight: .bold))
-                    .foregroundStyle(Color.accentColor)
-                    .frame(width: 84, height: 84)
-                    .liquidGlass(cornerRadius: 26)
+                Image(systemName: "circle.hexagongrid.fill")
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundStyle(.primary)
+                    .frame(width: 80, height: 80)
+                    .liquidGlass(cornerRadius: 24)
 
-                Text(creating ? "Create your AskAI account" : "Welcome back")
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                Text("Sign in to sync your chats across web, Android & iOS.")
+                Text(creating ? "Create your account" : "Welcome back")
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
+                Text(creating ? "Join AskAI — chats sync across web, Android & iOS."
+                              : "Sign in to continue to AskAI.")
                     .font(.system(size: 13)).foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center).padding(.horizontal, 30)
+                    .multilineTextAlignment(.center).padding(.horizontal, 32)
 
                 VStack(spacing: 12) {
                     TextField("Email", text: $email)
@@ -52,27 +53,24 @@ struct AuthView: View {
                     Task { await store.signIn(email: email, password: password, creating: creating) }
                 } label: {
                     HStack {
-                        if store.authBusy { ProgressView().tint(.white) }
+                        if store.authBusy { ProgressView().tint(Color(uiColor: .systemBackground)) }
                         Text(creating ? "Create account" : "Sign in").fontWeight(.bold)
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 15)
-                    .background(
-                        LinearGradient(colors: [Color.accentColor, Color(hex: 0xBE8CFF)],
-                                       startPoint: .leading, endPoint: .trailing),
-                        in: RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    )
-                    .foregroundStyle(.white)
+                    .background(Color.primary, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                    .foregroundStyle(Color(uiColor: .systemBackground))
                 }
                 .buttonStyle(.plain)
                 .disabled(email.isEmpty || password.count < 6 || store.authBusy)
-                .opacity((email.isEmpty || password.count < 6) ? 0.6 : 1)
+                .opacity((email.isEmpty || password.count < 6) ? 0.5 : 1)
                 .padding(.horizontal, 24)
 
-                Button(creating ? "I already have an account" : "Create a new account") {
+                Button(creating ? "I already have an account" : "New to AskAI? Create an account") {
                     creating.toggle(); store.errorText = nil
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 }
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(.primary)
 
                 Spacer()
                 Button("Continue without an account") { store.continueAsGuest() }
@@ -80,5 +78,6 @@ struct AuthView: View {
                     .padding(.bottom, 16)
             }
         }
+        .preferredColorScheme(store.colorScheme)
     }
 }

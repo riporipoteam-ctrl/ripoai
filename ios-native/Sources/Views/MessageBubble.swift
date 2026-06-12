@@ -12,42 +12,36 @@ struct MessageBubble: View {
             if message.role == .user { Spacer(minLength: 40) }
             VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 4) {
                 if message.role == .assistant {
-                    Label("AskAI", systemImage: "sparkles")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(Color.accentColor)
+                    Text("AskAI").font(.system(size: 12, weight: .bold)).foregroundStyle(.secondary)
                 }
-                if let img = message.imageURL, let url = URL(string: img) {
-                    AsyncImage(url: url) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image.resizable().scaledToFit()
-                        case .failure:
-                            VStack(spacing: 6) {
-                                Image(systemName: "photo").font(.title2)
-                                Text("Couldn’t load image").font(.caption)
-                            }.frame(maxWidth: .infinity, minHeight: 220).foregroundStyle(.secondary)
-                        default:
-                            VStack(spacing: 8) {
-                                ProgressView()
-                                Text("Creating your image…").font(.caption).foregroundStyle(.secondary)
-                            }.frame(maxWidth: .infinity, minHeight: 260)
+
+                // Attached photos (vision input)
+                if !message.attachments.isEmpty {
+                    HStack(spacing: 6) {
+                        ForEach(Array(message.attachments.prefix(4).enumerated()), id: \.offset) { _, dataURL in
+                            if let img = UIImage.fromDataURL(dataURL) {
+                                Image(uiImage: img).resizable().scaledToFill()
+                                    .frame(width: 84, height: 84)
+                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            }
                         }
                     }
-                    .frame(maxWidth: 300)
-                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                    .liquidGlass(cornerRadius: 22)
-                } else {
+                }
+
+                if let img = message.imageURL {
+                    GeneratedImage(source: img)
+                } else if !(message.text.isEmpty && message.attachments.isEmpty) || streaming {
                     Group {
                         if message.text.isEmpty && streaming {
                             TypingDots()
-                        } else {
+                        } else if !message.text.isEmpty {
                             Text(LocalizedStringKey(message.text))
                                 .font(.system(size: 16))
                                 .textSelection(.enabled)
                         }
                     }
                     .padding(.horizontal, 15).padding(.vertical, 11)
-                    .foregroundStyle(message.role == .user ? Color.white : Color.primary)
+                    .foregroundStyle(message.role == .user ? Color(uiColor: .systemBackground) : Color.primary)
                     .background(bubbleBackground)
                 }
 
@@ -80,14 +74,47 @@ struct MessageBubble: View {
 
     @ViewBuilder private var bubbleBackground: some View {
         if message.role == .user {
-            LinearGradient(colors: [Color.accentColor, Color(hex: 0xBE8CFF)],
-                           startPoint: .topLeading, endPoint: .bottomTrailing)
-                .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(.white.opacity(0.3)))
+            // Black bubble in light / white bubble in dark — like the web design.
+            RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Color.primary)
         } else {
             RoundedRectangle(cornerRadius: 22, style: .continuous).fill(.clear)
                 .liquidGlass(cornerRadius: 22)
         }
+    }
+}
+
+/// Generated image card: handles the "pending" placeholder, data URLs and remote URLs.
+struct GeneratedImage: View {
+    let source: String
+
+    var body: some View {
+        Group {
+            if source == "pending" {
+                VStack(spacing: 8) {
+                    ProgressView()
+                    Text("Creating your image…").font(.caption).foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, minHeight: 260)
+            } else if source.hasPrefix("data:"), let img = UIImage.fromDataURL(source) {
+                Image(uiImage: img).resizable().scaledToFit()
+            } else if let url = URL(string: source) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .success(let image): image.resizable().scaledToFit()
+                    case .failure:
+                        VStack(spacing: 6) {
+                            Image(systemName: "photo").font(.title2)
+                            Text("Couldn’t load image").font(.caption)
+                        }.frame(maxWidth: .infinity, minHeight: 200).foregroundStyle(.secondary)
+                    default:
+                        ProgressView().frame(maxWidth: .infinity, minHeight: 240)
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: 300)
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .liquidGlass(cornerRadius: 22)
     }
 }
 
@@ -97,7 +124,7 @@ struct TypingDots: View {
         HStack(spacing: 5) {
             ForEach(0..<3) { i in
                 Circle().frame(width: 7, height: 7)
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(.secondary)
                     .opacity(phase == Double(i) ? 1 : 0.3)
             }
         }

@@ -77,12 +77,52 @@ jobs:
           name: AskAI-native-ipa
           path: AskAI-native.ipa
 
+      - name: Build for Simulator (screenshots)
+        working-directory: ios-native
+        run: |
+          xcodebuild \
+            -project AskAI.xcodeproj \
+            -scheme AskAI \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build-sim \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Capture app screenshots in the Simulator
+        working-directory: ios-native
+        run: |
+          DEVICE=$(xcrun simctl list devices available | grep -E "iPhone" | head -n 1 | sed -E 's/^ *([^(]+) \(.*/\1/' | xargs)
+          echo "Using simulator: $DEVICE"
+          xcrun simctl boot "$DEVICE" || true
+          xcrun simctl bootstatus "$DEVICE" -b
+          APP=$(find build-sim/Build/Products -name '*.app' | head -n 1)
+          xcrun simctl install "$DEVICE" "$APP"
+          mkdir -p "$GITHUB_WORKSPACE/screenshots"
+          xcrun simctl launch "$DEVICE" io.github.riporipoteam.ripoai -demo-home
+          sleep 8
+          xcrun simctl io "$DEVICE" screenshot "$GITHUB_WORKSPACE/screenshots/1-home.png"
+          xcrun simctl terminate "$DEVICE" io.github.riporipoteam.ripoai || true
+          xcrun simctl launch "$DEVICE" io.github.riporipoteam.ripoai -demo-chat
+          sleep 8
+          xcrun simctl io "$DEVICE" screenshot "$GITHUB_WORKSPACE/screenshots/2-chat.png"
+
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: AskAI-screenshots
+          path: screenshots/
+
       - name: Publish to release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ios-native-latest
           name: AskAI — Native SwiftUI (Liquid Glass)
-          files: AskAI-native.ipa
+          files: |
+            AskAI-native.ipa
+            screenshots/1-home.png
+            screenshots/2-chat.png
           body: |
             The **real native SwiftUI** AskAI app with Apple Liquid Glass.
 

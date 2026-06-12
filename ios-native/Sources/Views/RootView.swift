@@ -1,24 +1,35 @@
 import SwiftUI
 
+enum AppScreen { case chat, team, projects, settings }
+
 struct RootView: View {
     @EnvironmentObject var store: AppStore
-    @State private var showHistory = false
-    @State private var showSettings = false
+    @State private var screen: AppScreen = .chat
+    @State private var showMenu = false
 
     var body: some View {
         ZStack {
             GlassBackground()
-            ChatScreen(showHistory: $showHistory, showSettings: $showSettings)
+            switch screen {
+            case .chat:
+                ChatScreen(showMenu: $showMenu)
+            case .team:
+                TeamScreen(back: { screen = .chat })
+            case .projects:
+                ProjectsScreen(back: { screen = .chat })
+            case .settings:
+                SettingsScreen(back: { screen = .chat })
+            }
         }
-        .sheet(isPresented: $showHistory) {
-            HistorySheet().environmentObject(store)
-                .presentationDetents([.medium, .large])
-                .presentationBackground(.clear)
+        .sheet(isPresented: $showMenu) {
+            MenuSheet(go: { dest in
+                showMenu = false
+                screen = dest
+            })
+            .environmentObject(store)
+            .presentationDetents([.large])
+            .presentationBackground(.clear)
         }
-        .sheet(isPresented: $showSettings) {
-            SettingsSheet().environmentObject(store)
-                .presentationDetents([.medium])
-                .presentationBackground(.clear)
-        }
+        .preferredColorScheme(store.colorScheme)
     }
 }

@@ -1,10 +1,11 @@
 import Foundation
 
-/// Streams chat completions from Groq's OpenAI-compatible API (SSE), the same
-/// backend the web app uses. Token callbacks arrive on the main actor.
+/// Streams chat completions (SSE). Routes to Groq directly or to the same
+/// ripoai-nvidia worker the website uses (key held server-side there).
 struct GroqClient {
     static let shared = GroqClient()
-    private let endpoint = URL(string: "https://api.groq.com/openai/v1/chat/completions")!
+    private let groqURL = URL(string: "https://api.groq.com/openai/v1/chat/completions")!
+    private let nvidiaURL = URL(string: "https://ripoai-nvidia.ripo-ripoteam.workers.dev")!
 
     enum GroqError: LocalizedError {
         case noKey
@@ -18,22 +19,37 @@ struct GroqClient {
     }
 
     func stream(model: String,
+                provider: Provider = .groq,
                 messages: [Message],
                 onToken: @escaping (String) -> Void) async throws {
-        let key = Secrets.groqKey
-        guard !key.isEmpty else { throw GroqError.noKey }
-
-        var req = URLRequest(url: endpoint)
+        var req: URLRequest
+        if provider == .nvidia {
+            req = URLRequest(url: nvidiaURL)
+        } else {
+            guard !Secrets.groqKey.isEmpty else { throw GroqError.noKey }
+            req = URLRequest(url: groqURL)
+            req.setValue("Bearer \(Secrets.groqKey)", forHTTPHeaderField: "Authorization")
+        }
         req.httpMethod = "POST"
-        req.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
+        // Vision: messages with attachments become OpenAI-style content parts.
+        let msgPayload: [[String: Any]] = messages.map { m in
+            if m.role == .user && !m.attachments.isEmpty {
+                var parts: [[String: Any]] = [["type": "text", "text": m.text]]
+                for url in m.attachments.prefix(5) {
+                    parts.append(["type": "image_url", "image_url": ["url": url]])
+                }
+                return ["role": m.role.rawValue, "content": parts]
+            }
+            return ["role": m.role.rawValue, "content": m.text]
+        }
         let payload: [String: Any] = [
             "model": model,
             "stream": true,
             "temperature": 0.7,
             "max_completion_tokens": 4096,
-            "messages": messages.map { ["role": $0.role.rawValue, "content": $0.text] },
+            "messages": msgPayload,
         ]
         req.httpBody = try JSONSerialization.data(withJSONObject: payload)
 

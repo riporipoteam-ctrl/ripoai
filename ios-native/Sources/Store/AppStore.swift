@@ -7,8 +7,11 @@ final class AppStore: ObservableObject {
     @Published var model: AIModel = .default
     @Published var webSearch = false
     @Published var imageMode = false
+    @Published var agentMode = false
+    @Published var pendingAttachments: [String] = []   // base64 data URLs
     @Published var isStreaming = false
     @Published var errorText: String?
+    @Published var appearance = "system"               // system | light | dark
 
     // Account / cloud sync
     @Published var user: AuthUser?
@@ -18,16 +21,38 @@ final class AppStore: ObservableObject {
     private let saveKey = "askai.sessions.v1"
     private let userKey = "askai.user.v1"
     private let guestKey = "askai.guest.v1"
+    private let appearanceKey = "askai.appearance"
     private var streamTask: Task<Void, Never>?
+
+    var colorScheme: ColorScheme? {
+        appearance == "light" ? .light : appearance == "dark" ? .dark : nil
+    }
 
     init() {
         load()
+        appearance = UserDefaults.standard.string(forKey: appearanceKey) ?? "system"
+        // Screenshot/demo mode for CI: seed content, skip auth.
+        let args = ProcessInfo.processInfo.arguments
+        if args.contains("-demo-chat") || args.contains("-demo-home") {
+            guest = true
+            sessions = []
+            if args.contains("-demo-chat") {
+                var s = ChatSession(title: "Plan a trip to Tokyo")
+                s.messages = [
+                    Message(role: .user, text: "Plan a 3-day trip to Tokyo on a budget"),
+                    Message(role: .assistant, text: "Here’s a tight, budget-friendly plan:\n\n**Day 1 — Classic Tokyo**\n- Senso-ji Temple (free)\n- Walk Nakamise street, snack lunch ¥800\n- Ueno Park + museums\n\n**Day 2 — Modern Tokyo**\n- Shibuya Crossing & Hachiko\n- Harajuku, Takeshita street\n- Evening: Shinjuku Omoide Yokocho\n\n**Day 3 — Day trip**\n- Kamakura Great Buddha (¥980 round trip)\n\nBudget: about **¥9,000/day** with a 72-hour metro pass."),
+                ]
+                sessions = [s]
+            }
+            if sessions.isEmpty { newChat() }
+            currentID = sessions.first?.id
+            return
+        }
         if sessions.isEmpty { newChat() }
         currentID = sessions.first?.id
         guest = UserDefaults.standard.bool(forKey: guestKey)
         loadUser()
         if let u = user {
-            // Refresh the session token and pull cloud chats on launch.
             Task {
                 if let fresh = try? await AuthService.refresh(u) {
                     self.user = fresh; self.persistUser()
@@ -40,6 +65,11 @@ final class AppStore: ObservableObject {
     var current: ChatSession? {
         guard let id = currentID else { return nil }
         return sessions.first(where: { $0.id == id })
+    }
+
+    func setAppearance(_ v: String) {
+        appearance = v
+        UserDefaults.standard.set(v, forKey: appearanceKey)
     }
 
     func newChat() {
@@ -69,18 +99,21 @@ final class AppStore: ObservableObject {
 
     func send(_ raw: String) {
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !isStreaming, let id = currentID else { return }
-        if imageMode || looksLikeImageRequest(text) {
-            generateImage(prompt: text, id: id)
+        let images = pendingAttachments
+        guard (!text.isEmpty || !images.isEmpty), !isStreaming, let id = currentID else { return }
+        pendingAttachments = []
+
+        if images.isEmpty && (imageMode || looksLikeImageRequest(text)) {
+            runImageGeneration(prompt: text, id: id)
             return
         }
         update(id) { s in
-            s.messages.append(Message(role: .user, text: text))
-            if s.title == "New chat" { s.title = String(text.prefix(40)) }
+            s.messages.append(Message(role: .user, text: text, attachments: images))
+            if s.title == "New chat" { s.title = String((text.isEmpty ? "Image chat" : text).prefix(40)) }
             s.messages.append(Message(role: .assistant, text: ""))
         }
         save()
-        runCompletion(for: id)
+        runCompletion(for: id, hasImages: !images.isEmpty)
     }
 
     private func looksLikeImageRequest(_ t: String) -> Bool {
@@ -90,22 +123,28 @@ final class AppStore: ObservableObject {
         return verb && noun
     }
 
-    /// Image generation via Pollinations (FLUX) — a plain image URL, no key needed.
-    private func generateImage(prompt: String, id: UUID) {
+    /// Image generation — NVIDIA worker first (same as web), Pollinations fallback.
+    private func runImageGeneration(prompt: String, id: UUID) {
         let clean = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
-        let seed = Int.random(in: 0..<1_000_000)
-        let encoded = clean.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? clean
-        let url = "https://image.pollinations.ai/prompt/\(encoded)?width=1024&height=1024&seed=\(seed)&model=flux&nologo=true"
         update(id) { s in
             s.messages.append(Message(role: .user, text: clean))
             if s.title == "New chat" { s.title = String(clean.prefix(40)) }
-            s.messages.append(Message(role: .assistant, text: "", imageURL: url))
+            s.messages.append(Message(role: .assistant, text: "", imageURL: "pending"))
         }
         save()
-        syncPush(id)
+        isStreaming = true
+        streamTask = Task {
+            let url = await ImageGen.generate(prompt: clean)
+            if let sIdx = self.sessions.firstIndex(where: { $0.id == id }),
+               let mIdx = self.sessions[sIdx].messages.lastIndex(where: { $0.imageURL == "pending" }) {
+                self.sessions[sIdx].messages[mIdx].imageURL = url
+            }
+            self.isStreaming = false
+            self.save()
+            self.syncPush(id)
+        }
     }
 
-    /// Re-answer the last user turn (drops trailing assistant messages).
     func regenerate() {
         guard !isStreaming, let id = currentID else { return }
         update(id) { s in
@@ -114,30 +153,37 @@ final class AppStore: ObservableObject {
             s.messages.append(Message(role: .assistant, text: ""))
         }
         guard current?.messages.last?.role == .assistant else { return }
-        runCompletion(for: id)
+        let hasImages = !(current?.messages.dropLast().last?.attachments.isEmpty ?? true)
+        runCompletion(for: id, hasImages: hasImages)
     }
 
-    private func runCompletion(for id: UUID) {
+    private func runCompletion(for id: UUID, hasImages: Bool = false) {
         isStreaming = true
         errorText = nil
 
-        let system = Message(role: .system, text:
-            "You are AskAI, a warm, brilliant assistant. Answer clearly and concisely using Markdown when helpful." +
-            (webSearch ? " You can search the live web; cite sources inline when you use them." : ""))
+        var persona = "You are AskAI, a warm, brilliant assistant. Answer clearly and concisely using Markdown when helpful. You were created by the AskAI team — never mention any underlying model or provider."
+        if agentMode { persona += " You are in Agent mode with live web access: work in visible steps, search the web as needed, and cite source links inline." }
+        else if webSearch { persona += " You can search the live web; cite sources inline when you use them." }
+        let system = Message(role: .system, text: persona)
+
         var convo = sessions.first(where: { $0.id == id })?.messages ?? []
         if convo.last?.role == .assistant, (convo.last?.text.isEmpty ?? false) {
             convo.removeLast()
         }
         let history: [Message] = [system] + convo
-        let groqModel = webSearch ? "groq/compound" : model.groq
+
+        // Model routing: images force the vision tier; agent/web use compound.
+        var m = model
+        if hasImages { m = .visionModel }
+        let backend = (agentMode || webSearch) && !hasImages ? "groq/compound" : m.backend
+        let provider: Provider = (agentMode || webSearch) && !hasImages ? .groq : m.provider
 
         streamTask = Task {
             do {
-                try await GroqClient.shared.stream(model: groqModel, messages: history) { [weak self] token in
+                try await GroqClient.shared.stream(model: backend, provider: provider, messages: history) { [weak self] token in
                     self?.appendToLastAssistant(id, token)
                 }
             } catch {
-                // Ignore cancellations (user pressed Stop); surface real errors.
                 if !Task.isCancelled && (error as? URLError)?.code != .cancelled {
                     self.errorText = error.localizedDescription
                 }
@@ -199,7 +245,6 @@ final class AppStore: ObservableObject {
     func signOut() {
         user = nil
         UserDefaults.standard.removeObject(forKey: userKey)
-        // Keep local chats; just stop syncing.
     }
 
     private func persistUser() {
@@ -213,13 +258,11 @@ final class AppStore: ObservableObject {
         user = u
     }
 
-    /// Push one chat to Firestore (fire-and-forget) when signed in.
     private func syncPush(_ id: UUID) {
         guard let u = user, let s = sessions.first(where: { $0.id == id }), !s.messages.isEmpty else { return }
         Task { try? await FirestoreSync.saveChat(s, user: u) }
     }
 
-    /// Merge cloud chats into local (cloud wins when newer); keeps offline chats.
     func pullCloud() async {
         guard let u = user else { return }
         guard let cloud = try? await FirestoreSync.listChats(user: u) else { return }
