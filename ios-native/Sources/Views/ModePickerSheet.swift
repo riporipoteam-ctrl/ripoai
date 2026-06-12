@@ -9,6 +9,7 @@ struct ModePickerSheet: View {
     let onCamera: () -> Void
     let onPhotos: () -> Void
     let onLiveCamera: () -> Void
+    let onScreenVision: () -> Void
     let onVoiceCall: () -> Void
 
     var body: some View {
@@ -24,6 +25,9 @@ struct ModePickerSheet: View {
                         }
                         row("eye.fill", "Live camera", "Let AskAI see through your camera", tint: .purple) {
                             dismiss(); onLiveCamera()
+                        }
+                        row("rectangle.inset.filled.on.rectangle", "Share screen", "Let AskAI see your screen across apps", tint: .teal) {
+                            dismiss(); onScreenVision()
                         }
                     }
 

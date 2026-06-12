@@ -119,6 +119,7 @@ struct Composer: View {
                 onCamera: { showCamera = true },
                 onPhotos: { showPhotoPicker = true },
                 onLiveCamera: { store.requestLiveCamera = true },
+                onScreenVision: { store.requestScreenVision = true },
                 onVoiceCall: { store.requestVoiceCall = true }
             )
             .environmentObject(store)

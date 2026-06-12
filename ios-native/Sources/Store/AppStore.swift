@@ -19,6 +19,7 @@ final class AppStore: ObservableObject {
     @Published var showAgentPanel = false              // present the live browser panel
     @Published var requestVoiceCall = false            // present voice-call full screen
     @Published var requestLiveCamera = false           // present live camera vision full screen
+    @Published var requestScreenVision = false         // present screen-share vision full screen
     @Published var appearance = "system"               // system | light | dark
     @Published var notifyOnComplete = false
     @Published var aiCheckins = "off"                   // off | daily | weekly | monthly

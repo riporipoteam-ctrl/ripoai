@@ -47,6 +47,9 @@ struct RootView: View {
         .fullScreenCover(isPresented: $store.requestLiveCamera) {
             CameraVisionView()
         }
+        .fullScreenCover(isPresented: $store.requestScreenVision) {
+            ScreenVisionView()
+        }
         .sheet(isPresented: $store.showAgentPanel) {
             if let agent = store.agent {
                 AgentBrowserPanel(agent: agent) { store.showAgentPanel = false }
