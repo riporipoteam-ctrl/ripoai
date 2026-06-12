@@ -12,6 +12,9 @@ final class AppStore: ObservableObject {
     @Published var isStreaming = false
     @Published var errorText: String?
     @Published var appearance = "system"               // system | light | dark
+    @Published var verbosity = "balanced"               // concise | balanced | detailed
+    @Published var tone = "friendly"                    // professional | friendly | playful | direct
+    @Published var customInstructions = ""
 
     // Account / cloud sync
     @Published var user: AuthUser?
@@ -22,6 +25,10 @@ final class AppStore: ObservableObject {
     private let userKey = "askai.user.v1"
     private let guestKey = "askai.guest.v1"
     private let appearanceKey = "askai.appearance"
+    private let verbosityKey = "askai.verbosity"
+    private let toneKey = "askai.tone"
+    private let customKey = "askai.custom"
+    private let modelKey = "askai.model"
     private var streamTask: Task<Void, Never>?
 
     var colorScheme: ColorScheme? {
@@ -31,16 +38,20 @@ final class AppStore: ObservableObject {
     init() {
         load()
         appearance = UserDefaults.standard.string(forKey: appearanceKey) ?? "system"
+        verbosity = UserDefaults.standard.string(forKey: verbosityKey) ?? "balanced"
+        tone = UserDefaults.standard.string(forKey: toneKey) ?? "friendly"
+        customInstructions = UserDefaults.standard.string(forKey: customKey) ?? ""
+        if let mid = UserDefaults.standard.string(forKey: modelKey), let m = AIModel.byID(mid) { model = m }
         // Screenshot/demo mode for CI: seed content, skip auth.
         let args = ProcessInfo.processInfo.arguments
-        if args.contains("-demo-chat") || args.contains("-demo-home") {
+        if args.contains("-demo-chat") || args.contains("-demo-home") || args.contains("-demo-settings") {
             guest = true
             sessions = []
             if args.contains("-demo-chat") {
                 var s = ChatSession(title: "Plan a trip to Tokyo")
                 s.messages = [
                     Message(role: .user, text: "Plan a 3-day trip to Tokyo on a budget"),
-                    Message(role: .assistant, text: "Here’s a tight, budget-friendly plan:\n\n**Day 1 — Classic Tokyo**\n- Senso-ji Temple (free)\n- Walk Nakamise street, snack lunch ¥800\n- Ueno Park + museums\n\n**Day 2 — Modern Tokyo**\n- Shibuya Crossing & Hachiko\n- Harajuku, Takeshita street\n- Evening: Shinjuku Omoide Yokocho\n\n**Day 3 — Day trip**\n- Kamakura Great Buddha (¥980 round trip)\n\nBudget: about **¥9,000/day** with a 72-hour metro pass."),
+                    Message(role: .assistant, text: "Here’s a tight, budget-friendly plan:\n\n**Day 1 — Classic Tokyo**\n- Senso-ji Temple (free)\n- Walk Nakamise street, snack lunch ¥800\n- Ueno Park + museums\n\n**Day 2 — Modern Tokyo**\n- Shibuya Crossing & Hachiko\n- Harajuku, Takeshita street\n- Evening: Shinjuku Omoide Yokocho\n\n**Day 3 — Day trip**\n- Kamakura Great Buddha (¥980 round trip)\n\nBudget: about **¥9,000/day** with a 72-hour metro pass.\n\nUseful links: [Tokyo Metro passes](https://www.tokyometro.jp/en/ticket/travel/) and [Senso-ji info](https://www.senso-ji.jp/english/)."),
                 ]
                 sessions = [s]
             }
@@ -70,6 +81,26 @@ final class AppStore: ObservableObject {
     func setAppearance(_ v: String) {
         appearance = v
         UserDefaults.standard.set(v, forKey: appearanceKey)
+    }
+
+    func setVerbosity(_ v: String) {
+        verbosity = v
+        UserDefaults.standard.set(v, forKey: verbosityKey)
+    }
+
+    func setTone(_ v: String) {
+        tone = v
+        UserDefaults.standard.set(v, forKey: toneKey)
+    }
+
+    func setCustomInstructions(_ v: String) {
+        customInstructions = v
+        UserDefaults.standard.set(v, forKey: customKey)
+    }
+
+    func setModel(_ m: AIModel) {
+        model = m
+        UserDefaults.standard.set(m.id, forKey: modelKey)
     }
 
     func newChat() {
@@ -161,7 +192,21 @@ final class AppStore: ObservableObject {
         isStreaming = true
         errorText = nil
 
-        var persona = "You are AskAI, a warm, brilliant assistant. Answer clearly and concisely using Markdown when helpful. You were created by the AskAI team — never mention any underlying model or provider."
+        var persona = "You are AskAI, a warm, brilliant assistant created by the AskAI team — never mention any underlying model or provider. Use Markdown when helpful. Answer the question directly and ONLY as long as it needs to be: no padding, no restating the question, no filler intros or outros. Short questions get short answers. Include relevant links as Markdown links when they genuinely help (docs, sources, sites)."
+        switch verbosity {
+        case "concise": persona += " Style: keep answers brief and to the point — a few sentences. Use lists only when genuinely helpful."
+        case "detailed": persona += " Style: give thorough, in-depth answers with examples and structure when useful."
+        default: persona += " Style: keep answers reasonably concise; expand only when the topic needs it."
+        }
+        switch tone {
+        case "professional": persona += " Use a polished, professional tone."
+        case "playful": persona += " Use a fun, playful, casual tone with light humor."
+        case "direct": persona += " Be blunt and direct — no fluff."
+        default: persona += " Use a warm, friendly, approachable tone."
+        }
+        if !customInstructions.trimmingCharacters(in: .whitespaces).isEmpty {
+            persona += " The user asks: \(customInstructions)"
+        }
         if agentMode { persona += " You are in Agent mode with live web access: work in visible steps, search the web as needed, and cite source links inline." }
         else if webSearch { persona += " You can search the live web; cite sources inline when you use them." }
         let system = Message(role: .system, text: persona)
@@ -172,8 +217,12 @@ final class AppStore: ObservableObject {
         }
         let history: [Message] = [system] + convo
 
-        // Model routing: images force the vision tier; agent/web use compound.
+        // Model routing: Auto resolves per message; images force the vision tier.
         var m = model
+        if m.id == "auto" {
+            let lastUser = convo.last(where: { $0.role == .user })?.text ?? ""
+            m = AIModel.resolveAuto(lastUser, hasImages: hasImages)
+        }
         if hasImages { m = .visionModel }
         let backend = (agentMode || webSearch) && !hasImages ? "groq/compound" : m.backend
         let provider: Provider = (agentMode || webSearch) && !hasImages ? .groq : m.provider
@@ -191,6 +240,7 @@ final class AppStore: ObservableObject {
             self.isStreaming = false
             self.save()
             self.syncPush(id)
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
         }
     }
 

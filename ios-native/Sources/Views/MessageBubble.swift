@@ -35,14 +35,25 @@ struct MessageBubble: View {
                         if message.text.isEmpty && streaming {
                             TypingDots()
                         } else if !message.text.isEmpty {
-                            Text(LocalizedStringKey(message.text))
-                                .font(.system(size: 16))
-                                .textSelection(.enabled)
+                            if message.role == .assistant {
+                                MarkdownText(text: message.text)
+                                    .textSelection(.enabled)
+                            } else {
+                                Text(message.text)
+                                    .font(.system(size: 16))
+                                    .textSelection(.enabled)
+                            }
                         }
                     }
                     .padding(.horizontal, 15).padding(.vertical, 11)
                     .foregroundStyle(message.role == .user ? Color(uiColor: .systemBackground) : Color.primary)
                     .background(bubbleBackground)
+                    .contextMenu {
+                        Button {
+                            UIPasteboard.general.string = message.text
+                        } label: { Label("Copy", systemImage: "doc.on.doc") }
+                        ShareLink(item: message.text) { Label("Share", systemImage: "square.and.arrow.up") }
+                    }
                 }
 
                 if message.role == .assistant && !streaming && !message.text.isEmpty {

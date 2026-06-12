@@ -4,7 +4,8 @@ enum AppScreen { case chat, team, projects, settings }
 
 struct RootView: View {
     @EnvironmentObject var store: AppStore
-    @State private var screen: AppScreen = .chat
+    @State private var screen: AppScreen =
+        ProcessInfo.processInfo.arguments.contains("-demo-settings") ? .settings : .chat
     @State private var showMenu = false
 
     var body: some View {

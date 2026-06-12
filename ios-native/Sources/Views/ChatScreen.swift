@@ -18,12 +18,16 @@ struct ChatScreen: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing: 14) {
+                            // springy list container
+
                             ForEach(messages) { msg in
                                 MessageBubble(message: msg,
                                               streaming: store.isStreaming && msg.id == messages.last?.id && msg.role == .assistant,
                                               isLast: msg.id == messages.last?.id && msg.role == .assistant)
                                     .id(msg.id)
-                                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                                    .transition(.asymmetric(
+                                        insertion: .move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.98, anchor: .bottom)),
+                                        removal: .opacity))
                             }
                         }
                         .padding(.horizontal, 16)
@@ -61,8 +65,8 @@ private struct TopBar: View {
             GlassIconButton(system: "line.3.horizontal") { showMenu = true }
             Spacer()
             Menu {
-                ForEach(AIModel.all) { m in
-                    Button { store.model = m } label: {
+                ForEach(AIModel.selectable) { m in
+                    Button { store.setModel(m) } label: {
                         if store.model.id == m.id {
                             Label(m.menuLabel, systemImage: "checkmark")
                         } else {

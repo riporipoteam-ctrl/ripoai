@@ -43,6 +43,27 @@ struct SettingsScreen: View {
                         }.buttonStyle(.plain).foregroundStyle(.primary)
                     }
 
+                    // Personalization
+                    SectionLabel("Personalization")
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Response length").font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
+                        ChipRow(options: ["concise", "balanced", "detailed"], selected: store.verbosity) { store.setVerbosity($0) }
+                        Text("Tone").font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
+                        ChipRow(options: ["professional", "friendly", "playful", "direct"], selected: store.tone) { store.setTone($0) }
+                        Text("Custom instructions").font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
+                        TextField("e.g. Always answer in short bullet points", text: Binding(
+                            get: { store.customInstructions },
+                            set: { store.setCustomInstructions($0) }
+                        ), axis: .vertical)
+                        .lineLimit(2...4)
+                        .font(.system(size: 14))
+                        .padding(.horizontal, 14).padding(.vertical, 12)
+                        .liquidGlass(cornerRadius: 16)
+                    }
+                    .padding(14)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .liquidGlass(cornerRadius: 20)
+
                     // Appearance
                     SectionLabel("Appearance")
                     HStack(spacing: 8) {
@@ -68,8 +89,8 @@ struct SettingsScreen: View {
                     // Default model
                     SectionLabel("Model")
                     VStack(spacing: 8) {
-                        ForEach(AIModel.all) { m in
-                            Button { store.model = m } label: {
+                        ForEach(AIModel.selectable) { m in
+                            Button { store.setModel(m) } label: {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 1) {
                                         HStack(spacing: 6) {
@@ -99,6 +120,31 @@ struct SettingsScreen: View {
                         .frame(maxWidth: .infinity).padding(.top, 8)
                 }
                 .padding(.horizontal, 16).padding(.bottom, 30)
+            }
+        }
+    }
+}
+
+struct ChipRow: View {
+    let options: [String]
+    let selected: String
+    let pick: (String) -> Void
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(options, id: \.self) { o in
+                Button {
+                    pick(o)
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                } label: {
+                    Text(o.capitalized)
+                        .font(.system(size: 12, weight: .semibold))
+                        .padding(.horizontal, 11).padding(.vertical, 7)
+                        .background(
+                            selected == o ? AnyShapeStyle(Color.primary) : AnyShapeStyle(Color.primary.opacity(0.06)),
+                            in: Capsule()
+                        )
+                        .foregroundStyle(selected == o ? Color(uiColor: .systemBackground) : .primary)
+                }.buttonStyle(.plain)
             }
         }
     }

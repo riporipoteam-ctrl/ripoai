@@ -52,6 +52,32 @@ struct AIModel: Identifiable, Hashable {
     ]
     var menuLabel: String { badge == nil ? name : "\(name) · \(badge!)" }
 
+    /// "Auto" — AskAI picks the best tier per message (resolved at send time).
+    static let auto = AIModel(id: "auto", name: "Auto", tagline: "AskAI picks the best model for each task",
+                              backend: "openai/gpt-oss-120b", provider: .groq)
+    /// Auto + the real tiers, for pickers.
+    static let selectable: [AIModel] = [auto] + all
+
     static let `default` = all.first { $0.id == "4o-pro" }!
     static let visionModel = all.first { $0.id == "2o-instant" }!
+
+    static func byID(_ id: String) -> AIModel? { selectable.first { $0.id == id } }
+
+    /// Mirrors the web app's Auto router (lib/models.ts resolveAutoModel).
+    static func resolveAuto(_ text: String, hasImages: Bool) -> AIModel {
+        if hasImages { return visionModel }
+        let t = text.lowercased()
+        func has(_ words: [String]) -> Bool { words.contains { t.contains($0) } }
+        if has(["website", "web app", "landing", "3d", "game", "shader"]) {
+            return all.first { $0.id == "4o-pro" }!
+        }
+        if has(["code", "coding", "function", "debug", "script", "api", "sql", "regex", "python", "swift", "algorithm"]) {
+            return all.first { $0.id == "2o-pro" }!
+        }
+        if t.count > 260 || has(["explain", "why", "prove", "solve", "analy", "compare", "strateg", "architect", "step by step", "in depth"]) {
+            return all.first { $0.id == "4o-pro" }!
+        }
+        if t.count < 24 { return all.first { $0.id == "3o-instant" }! }
+        return all.first { $0.id == "4o-instant" }!
+    }
 }

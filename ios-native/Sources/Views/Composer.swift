@@ -126,6 +126,8 @@ struct Composer: View {
                 .padding(.trailing, 6).padding(.bottom, 6)
             }
             .liquidGlass(cornerRadius: 28, interactive: true)
+            .shadow(color: Color.primary.opacity(focused.wrappedValue ? 0.18 : 0.0), radius: 16, y: 6)
+            .animation(.easeOut(duration: 0.25), value: focused.wrappedValue)
             .padding(.horizontal, 12)
             .padding(.bottom, 8)
         }
