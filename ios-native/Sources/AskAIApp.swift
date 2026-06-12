@@ -17,6 +17,7 @@ struct AskAIApp: App {
             .tint(Color.accentColor)
             .animation(.easeInOut, value: store.user)
             .animation(.easeInOut, value: store.guest)
+            .onAppear { NotificationManager.shared.configure() }
         }
     }
 }

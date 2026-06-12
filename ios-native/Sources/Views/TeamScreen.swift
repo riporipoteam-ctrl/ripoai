@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 struct TeamAgent: Identifiable {
     let id: String
@@ -38,6 +39,9 @@ struct TeamScreen: View {
     @State private var events: [TeamEvent] = []
     @State private var draft = ""
     @State private var working = false
+    @State private var attachments: [String] = []
+    @State private var showPhotos = false
+    @State private var photoItems: [PhotosPickerItem] = []
 
     var body: some View {
         VStack(spacing: 0) {
@@ -109,35 +113,76 @@ struct TeamScreen: View {
                 }
             }
 
+            // Attachment strip
+            if !attachments.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(Array(attachments.enumerated()), id: \.offset) { i, dataURL in
+                            ZStack(alignment: .topTrailing) {
+                                if let img = UIImage.fromDataURL(dataURL) {
+                                    Image(uiImage: img).resizable().scaledToFill()
+                                        .frame(width: 54, height: 54)
+                                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                }
+                                Button { attachments.remove(at: i) } label: {
+                                    Image(systemName: "xmark.circle.fill").font(.system(size: 15))
+                                        .foregroundStyle(.white, .black.opacity(0.6))
+                                }.offset(x: 5, y: -5)
+                            }
+                        }
+                    }.padding(.horizontal, 16).padding(.bottom, 2)
+                }
+            }
+
             // Composer
             HStack(alignment: .bottom, spacing: 6) {
+                Button { showPhotos = true } label: {
+                    Image(systemName: "plus").font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(.primary).frame(width: 36, height: 36)
+                }.padding(.leading, 6).padding(.bottom, 5)
+
                 TextField("Give the team a task…", text: $draft, axis: .vertical)
                     .font(.system(size: 16)).lineLimit(1...5)
-                    .padding(.leading, 16).padding(.vertical, 13)
+                    .padding(.vertical, 13)
                 Button {
                     let t = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !t.isEmpty, !working else { return }
-                    draft = ""
+                    guard (!t.isEmpty || !attachments.isEmpty), !working else { return }
+                    let imgs = attachments
+                    draft = ""; attachments = []
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    Task { await run(t) }
+                    Task { await run(t.isEmpty ? "Look at this." : t, images: imgs) }
                 } label: {
                     Image(systemName: working ? "ellipsis" : "arrow.up")
                         .font(.system(size: 17, weight: .bold))
                         .foregroundStyle(Color(uiColor: .systemBackground))
                         .frame(width: 40, height: 40)
-                        .background(Circle().fill(draft.isEmpty || working ? AnyShapeStyle(Color.secondary.opacity(0.4)) : AnyShapeStyle(Color.primary)))
+                        .background(Circle().fill((draft.isEmpty && attachments.isEmpty) || working ? AnyShapeStyle(Color.secondary.opacity(0.4)) : AnyShapeStyle(Color.accentColor)))
                 }
                 .buttonStyle(.plain)
-                .disabled(draft.isEmpty || working)
+                .disabled((draft.isEmpty && attachments.isEmpty) || working)
                 .padding(.trailing, 6).padding(.bottom, 6)
             }
             .liquidGlass(cornerRadius: 28, interactive: true)
             .padding(.horizontal, 12).padding(.bottom, 8)
         }
+        .photosPicker(isPresented: $showPhotos, selection: $photoItems, maxSelectionCount: 4, matching: .images)
+        .onChange(of: photoItems) { _, items in
+            guard !items.isEmpty else { return }
+            Task {
+                for item in items {
+                    if let data = try? await item.loadTransferable(type: Data.self),
+                       let img = UIImage(data: data),
+                       let jpeg = img.resized(maxSide: 1280).jpegData(compressionQuality: 0.7) {
+                        attachments.append("data:image/jpeg;base64,\(jpeg.base64EncodedString())")
+                    }
+                }
+                photoItems = []
+            }
+        }
     }
 
     /// Route to the best-fit agent, then stream their in-character answer.
-    private func run(_ task: String) async {
+    private func run(_ task: String, images: [String] = []) async {
         working = true
         events.append(TeamEvent(agent: nil, text: task, fromUser: true))
 
@@ -160,9 +205,12 @@ struct TeamScreen: View {
 
         let system = Message(role: .system, text:
             "You are \(picked.name), the \(picked.role) on the AskAI team. \(picked.persona) Speak in first person, do the task fully and concisely. No status updates, no filler. Use Markdown when helpful.")
+        let userMsg = Message(role: .user, text: task, attachments: images)
+        let model = images.isEmpty ? "openai/gpt-oss-120b" : AIModel.visionModel.backend
+        let provider: Provider = images.isEmpty ? .groq : AIModel.visionModel.provider
         do {
-            try await GroqClient.shared.stream(model: "openai/gpt-oss-120b",
-                                               messages: [system, Message(role: .user, text: task)]) { token in
+            try await GroqClient.shared.stream(model: model, provider: provider,
+                                               messages: [system, userMsg]) { token in
                 ev.text += token
                 if idx < events.count { events[idx] = ev }
             }

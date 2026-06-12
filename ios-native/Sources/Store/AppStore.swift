@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum StreamPhase { case idle, thinking, searching, generating, writing }
 
@@ -15,6 +16,9 @@ final class AppStore: ObservableObject {
     @Published var phase: StreamPhase = .idle
     @Published var errorText: String?
     @Published var appearance = "system"               // system | light | dark
+    @Published var notifyOnComplete = false
+    @Published var aiCheckins = "off"                   // off | daily | weekly | monthly
+    @Published var locationEnabled = false
     @Published var verbosity = "balanced"               // concise | balanced | detailed
     @Published var tone = "friendly"                    // professional | friendly | playful | direct
     @Published var customInstructions = ""
@@ -32,6 +36,9 @@ final class AppStore: ObservableObject {
     private let toneKey = "askai.tone"
     private let customKey = "askai.custom"
     private let modelKey = "askai.model"
+    private let notifyKey = "askai.notify"
+    private let checkinKey = "askai.checkins"
+    private let locKey = "askai.location"
     private var streamTask: Task<Void, Never>?
 
     var colorScheme: ColorScheme? {
@@ -45,6 +52,9 @@ final class AppStore: ObservableObject {
         tone = UserDefaults.standard.string(forKey: toneKey) ?? "friendly"
         customInstructions = UserDefaults.standard.string(forKey: customKey) ?? ""
         if let mid = UserDefaults.standard.string(forKey: modelKey), let m = AIModel.byID(mid) { model = m }
+        notifyOnComplete = UserDefaults.standard.bool(forKey: notifyKey)
+        aiCheckins = UserDefaults.standard.string(forKey: checkinKey) ?? "off"
+        locationEnabled = UserDefaults.standard.bool(forKey: locKey)
         // Screenshot/demo mode for CI: seed content, skip auth.
         let args = ProcessInfo.processInfo.arguments
         if args.contains("-demo-chat") || args.contains("-demo-home") || args.contains("-demo-settings") || args.contains("-demo-menu") || args.contains("-demo-plus") {
@@ -113,6 +123,27 @@ final class AppStore: ObservableObject {
     func setModel(_ m: AIModel) {
         model = m
         UserDefaults.standard.set(m.id, forKey: modelKey)
+    }
+
+    func setNotifyOnComplete(_ on: Bool) {
+        notifyOnComplete = on
+        UserDefaults.standard.set(on, forKey: notifyKey)
+        if on { Task { _ = await NotificationManager.shared.requestAuth() } }
+    }
+
+    func setCheckins(_ freq: String) {
+        aiCheckins = freq
+        UserDefaults.standard.set(freq, forKey: checkinKey)
+        Task {
+            if freq != "off" { _ = await NotificationManager.shared.requestAuth() }
+            NotificationManager.shared.scheduleCheckins(freq)
+        }
+    }
+
+    func setLocationEnabled(_ on: Bool) {
+        locationEnabled = on
+        UserDefaults.standard.set(on, forKey: locKey)
+        if on { LocationManager.shared.request() }
     }
 
     func newChat() {
@@ -188,6 +219,7 @@ final class AppStore: ObservableObject {
             self.save()
             self.syncPush(id)
             UINotificationFeedbackGenerator().notificationOccurred(.success)
+            if self.notifyOnComplete { NotificationManager.shared.taskDone("AskAI", "Your image is ready.") }
         }
     }
 
@@ -244,6 +276,9 @@ final class AppStore: ObservableObject {
         let provider: Provider = (agentMode || webSearch) && !hasImages ? .groq : m.provider
 
         streamTask = Task {
+            // Keep the request alive briefly if the app gets backgrounded mid-stream.
+            let bg = UIApplication.shared.beginBackgroundTask(withName: "askai.stream")
+            defer { UIApplication.shared.endBackgroundTask(bg) }
             do {
                 try await GroqClient.shared.stream(model: backend, provider: provider, messages: history) { [weak self] token in
                     self?.appendToLastAssistant(id, token)
@@ -258,6 +293,7 @@ final class AppStore: ObservableObject {
             self.save()
             self.syncPush(id)
             UINotificationFeedbackGenerator().notificationOccurred(.success)
+            if self.notifyOnComplete { NotificationManager.shared.taskDone("AskAI", "Your answer is ready.") }
         }
     }
 

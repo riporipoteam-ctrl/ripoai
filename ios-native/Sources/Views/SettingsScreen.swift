@@ -64,6 +64,26 @@ struct SettingsScreen: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .liquidGlass(cornerRadius: 20)
 
+                    // Notifications & personalization
+                    SectionLabel("Notifications & Personalization")
+                    VStack(spacing: 12) {
+                        Toggle("Notify when a task finishes", isOn: Binding(
+                            get: { store.notifyOnComplete }, set: { store.setNotifyOnComplete($0) }))
+                        Divider()
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("AI check-ins").font(.system(size: 13, weight: .semibold)).foregroundStyle(.secondary)
+                            ChipRow(options: ["off", "daily", "weekly", "monthly"], selected: store.aiCheckins) { store.setCheckins($0) }
+                            Text("AskAI sends a friendly nudge to help with your chats.")
+                                .font(.system(size: 11)).foregroundStyle(.secondary)
+                        }
+                        Divider()
+                        Toggle("Use my location for personalization", isOn: Binding(
+                            get: { store.locationEnabled }, set: { store.setLocationEnabled($0) }))
+                    }
+                    .tint(Color.accentColor)
+                    .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                    .liquidGlass(cornerRadius: 20)
+
                     // Appearance
                     SectionLabel("Appearance")
                     HStack(spacing: 8) {
