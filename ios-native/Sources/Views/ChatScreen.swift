@@ -48,6 +48,22 @@ struct ChatScreen: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             Composer(draft: $draft, focused: $composerFocused, send: send)
         }
+        // Swipe in from the left edge to open the sidebar (ChatGPT/Gemini style).
+        .overlay(alignment: .leading) {
+            Color.clear
+                .frame(width: 20)
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 12)
+                        .onEnded { v in
+                            if v.translation.width > 45 && abs(v.translation.height) < 60 {
+                                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                                showMenu = true
+                            }
+                        }
+                )
+                .ignoresSafeArea(edges: .vertical)
+        }
     }
 
     private func scrollDown(_ proxy: ScrollViewProxy) {

@@ -44,7 +44,7 @@ struct ModePickerSheet: View {
                                 on: store.imageMode) {
                             store.imageMode = true; store.webSearch = false; store.agentMode = false; dismiss()
                         }
-                        modeRow("sparkles", "Agent", "Multi-step work with live web access", tint: .orange,
+                        modeRow("pawprint.fill", "OpenClaw Agent", "Live browsing — searches, opens & reads pages", tint: .orange,
                                 on: store.agentMode) {
                             store.agentMode = true; store.webSearch = false; store.imageMode = false; dismiss()
                         }

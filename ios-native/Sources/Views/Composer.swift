@@ -15,7 +15,7 @@ struct Composer: View {
 
     private var placeholder: String {
         if store.imageMode { return "Describe an image…" }
-        if store.agentMode { return "Give the agent a task…" }
+        if store.agentMode { return "Give OpenClaw a task…" }
         if store.webSearch { return "Search the web…" }
         return "Message AskAI…"
     }
@@ -33,7 +33,7 @@ struct Composer: View {
                 HStack(spacing: 6) {
                     if store.webSearch { ModeChip(label: "Web search", icon: "globe") { store.webSearch = false } }
                     if store.imageMode { ModeChip(label: "Create image", icon: "paintbrush") { store.imageMode = false } }
-                    if store.agentMode { ModeChip(label: "Agent", icon: "sparkles") { store.agentMode = false } }
+                    if store.agentMode { ModeChip(label: "OpenClaw", icon: "pawprint.fill") { store.agentMode = false } }
                     Spacer()
                 }
                 .padding(.horizontal, 18)
