@@ -6,26 +6,46 @@ struct Composer: View {
     var focused: FocusState<Bool>.Binding
     let send: (String) -> Void
 
+    private var placeholder: String {
+        if store.imageMode { return "Describe an image…" }
+        if store.webSearch { return "Search the web…" }
+        return "Message AskAI…"
+    }
+
     var body: some View {
         VStack(spacing: 6) {
             if let err = store.errorText {
                 Text(err).font(.caption).foregroundStyle(.secondary)
                     .padding(.horizontal, 18)
             }
-            HStack(alignment: .bottom, spacing: 8) {
+            HStack(alignment: .bottom, spacing: 4) {
                 Button {
                     store.webSearch.toggle()
+                    if store.webSearch { store.imageMode = false }
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 } label: {
                     Image(systemName: "globe")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(store.webSearch ? Color.accentColor : Color.secondary)
-                        .frame(width: 34, height: 34)
+                        .frame(width: 32, height: 34)
                 }
                 .buttonStyle(.plain)
                 .padding(.leading, 8).padding(.bottom, 8)
 
-                TextField(store.webSearch ? "Search the web…" : "Message AskAI…", text: $draft, axis: .vertical)
+                Button {
+                    store.imageMode.toggle()
+                    if store.imageMode { store.webSearch = false }
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                } label: {
+                    Image(systemName: "photo")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(store.imageMode ? Color.accentColor : Color.secondary)
+                        .frame(width: 32, height: 34)
+                }
+                .buttonStyle(.plain)
+                .padding(.bottom, 8)
+
+                TextField(placeholder, text: $draft, axis: .vertical)
                     .focused(focused)
                     .font(.system(size: 16))
                     .lineLimit(1...6)

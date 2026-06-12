@@ -6,9 +6,17 @@ struct AskAIApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .environmentObject(store)
-                .tint(Color.accentColor)
+            Group {
+                if store.user != nil || store.guest {
+                    RootView()
+                } else {
+                    AuthView()
+                }
+            }
+            .environmentObject(store)
+            .tint(Color.accentColor)
+            .animation(.easeInOut, value: store.user)
+            .animation(.easeInOut, value: store.guest)
         }
     }
 }

@@ -27,6 +27,34 @@ struct SettingsSheet: View {
                     }
                 }
 
+                Text("Account").font(.system(size: 13, weight: .bold)).foregroundStyle(.secondary)
+                    .padding(.top, 6)
+                if let u = store.user {
+                    HStack {
+                        Image(systemName: "person.crop.circle.fill").foregroundStyle(Color.accentColor)
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(u.email).font(.system(size: 14, weight: .semibold)).lineLimit(1)
+                            Text("Synced across web, Android & iOS").font(.system(size: 11)).foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button("Sign out") { store.signOut() }
+                            .font(.system(size: 13, weight: .bold)).foregroundStyle(.red)
+                    }
+                    .padding(.horizontal, 14).padding(.vertical, 13)
+                    .frame(maxWidth: .infinity).liquidGlass(cornerRadius: 18)
+                } else {
+                    Button { dismiss(); store.guest = false } label: {
+                        HStack {
+                            Image(systemName: "icloud.and.arrow.up")
+                            Text("Sign in to sync your chats").fontWeight(.semibold)
+                            Spacer()
+                            Image(systemName: "chevron.right").font(.caption)
+                        }
+                        .padding(.horizontal, 14).padding(.vertical, 13)
+                        .frame(maxWidth: .infinity).liquidGlass(cornerRadius: 18)
+                    }.buttonStyle(.plain).foregroundStyle(.primary)
+                }
+
                 Spacer()
                 Text("AskAI for iOS · Liquid Glass").font(.caption).foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)

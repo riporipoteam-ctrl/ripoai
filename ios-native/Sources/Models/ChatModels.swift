@@ -6,6 +6,8 @@ struct Message: Identifiable, Codable, Equatable {
     var id = UUID()
     var role: Role
     var text: String
+    /// Set when this assistant turn is a generated image (loaded from a URL).
+    var imageURL: String? = nil
 }
 
 struct ChatSession: Identifiable, Codable, Equatable {

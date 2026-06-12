@@ -16,18 +16,40 @@ struct MessageBubble: View {
                         .font(.system(size: 12, weight: .bold))
                         .foregroundStyle(Color.accentColor)
                 }
-                Group {
-                    if message.text.isEmpty && streaming {
-                        TypingDots()
-                    } else {
-                        Text(LocalizedStringKey(message.text))
-                            .font(.system(size: 16))
-                            .textSelection(.enabled)
+                if let img = message.imageURL, let url = URL(string: img) {
+                    AsyncImage(url: url) { phase in
+                        switch phase {
+                        case .success(let image):
+                            image.resizable().scaledToFit()
+                        case .failure:
+                            VStack(spacing: 6) {
+                                Image(systemName: "photo").font(.title2)
+                                Text("Couldn’t load image").font(.caption)
+                            }.frame(maxWidth: .infinity, minHeight: 220).foregroundStyle(.secondary)
+                        default:
+                            VStack(spacing: 8) {
+                                ProgressView()
+                                Text("Creating your image…").font(.caption).foregroundStyle(.secondary)
+                            }.frame(maxWidth: .infinity, minHeight: 260)
+                        }
                     }
+                    .frame(maxWidth: 300)
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .liquidGlass(cornerRadius: 22)
+                } else {
+                    Group {
+                        if message.text.isEmpty && streaming {
+                            TypingDots()
+                        } else {
+                            Text(LocalizedStringKey(message.text))
+                                .font(.system(size: 16))
+                                .textSelection(.enabled)
+                        }
+                    }
+                    .padding(.horizontal, 15).padding(.vertical, 11)
+                    .foregroundStyle(message.role == .user ? Color.white : Color.primary)
+                    .background(bubbleBackground)
                 }
-                .padding(.horizontal, 15).padding(.vertical, 11)
-                .foregroundStyle(message.role == .user ? Color.white : Color.primary)
-                .background(bubbleBackground)
 
                 if message.role == .assistant && !streaming && !message.text.isEmpty {
                     HStack(spacing: 14) {
