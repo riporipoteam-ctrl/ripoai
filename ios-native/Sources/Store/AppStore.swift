@@ -278,8 +278,10 @@ final class AppStore: ObservableObject {
             m = AIModel.resolveAuto(lastUser, hasImages: hasImages)
         }
         if hasImages { m = .visionModel }
-        let backend = (agentMode || webSearch) && !hasImages ? "groq/compound" : m.backend
-        let provider: Provider = (agentMode || webSearch) && !hasImages ? .groq : m.provider
+        let useCompound = (agentMode || webSearch) && !hasImages
+        let backend = useCompound ? "groq/compound" : m.backend
+        let provider: Provider = useCompound ? .groq : m.provider
+        let fallbackModel = m.provider == .groq ? m.backend : "llama-3.3-70b-versatile"
 
         let liveTitle = sessions.first(where: { $0.id == id })?.title ?? "AskAI"
         let startStatus = (agentMode || webSearch) ? "Searching the web" : "Thinking"
@@ -298,6 +300,21 @@ final class AppStore: ObservableObject {
                     self.errorText = error.localizedDescription
                 }
             }
+            // Web/agent reliability: if the search tool ran but streamed no answer,
+            // fall back to a normal model so the user never gets a dead bubble.
+            if useCompound, !Task.isCancelled, self.lastAssistantIsEmpty(id) {
+                self.phase = .thinking
+                LiveActivityManager.shared.update(status: "Writing the answer", progress: 0.5)
+                do {
+                    try await GroqClient.shared.stream(model: fallbackModel, provider: .groq, messages: history) { [weak self] token in
+                        self?.appendToLastAssistant(id, token)
+                    }
+                } catch {
+                    if self.lastAssistantIsEmpty(id) {
+                        self.setLastAssistant(id, "I searched but couldn't pull that together just now — try asking again.")
+                    }
+                }
+            }
             self.isStreaming = false
             self.phase = .idle
             LiveActivityManager.shared.end()
@@ -314,6 +331,18 @@ final class AppStore: ObservableObject {
         phase = .idle
         LiveActivityManager.shared.end()
         save()
+    }
+
+    private func lastAssistantIsEmpty(_ id: UUID) -> Bool {
+        guard let s = sessions.first(where: { $0.id == id }),
+              let last = s.messages.last(where: { $0.role == .assistant }) else { return false }
+        return last.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func setLastAssistant(_ id: UUID, _ text: String) {
+        guard let sIdx = sessions.firstIndex(where: { $0.id == id }),
+              let mIdx = sessions[sIdx].messages.lastIndex(where: { $0.role == .assistant }) else { return }
+        sessions[sIdx].messages[mIdx].text = text
     }
 
     private func appendToLastAssistant(_ id: UUID, _ token: String) {
