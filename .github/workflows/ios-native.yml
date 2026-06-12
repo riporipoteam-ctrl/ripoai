@@ -77,6 +77,14 @@ jobs:
           name: AskAI-native-ipa
           path: AskAI-native.ipa
 
+      - name: Publish .ipa to release (fast — before screenshots)
+        uses: softprops/action-gh-release@v2
+        with:
+          fail_on_unmatched_files: false
+          tag_name: ios-native-latest
+          name: AskAI — Native SwiftUI (Liquid Glass)
+          files: AskAI-native.ipa
+
       - name: Build for Simulator (screenshots)
         working-directory: ios-native
         continue-on-error: true
