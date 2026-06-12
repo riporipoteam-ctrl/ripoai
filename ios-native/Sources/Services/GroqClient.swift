@@ -73,4 +73,12 @@ struct GroqClient {
             await MainActor.run { onToken(token) }
         }
     }
+
+    /// Non-streaming convenience: accumulate a full completion (used by the
+    /// OpenClaw agent loop for its decision/summary steps).
+    func complete(model: String, messages: [Message], temperature: Double = 0.4) async throws -> String {
+        var out = ""
+        try await stream(model: model, messages: messages) { out += $0 }
+        return out
+    }
 }

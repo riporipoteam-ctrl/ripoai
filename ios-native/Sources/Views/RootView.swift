@@ -47,6 +47,15 @@ struct RootView: View {
         .fullScreenCover(isPresented: $store.requestLiveCamera) {
             CameraVisionView()
         }
+        .sheet(isPresented: $store.showAgentPanel) {
+            if let agent = store.agent {
+                AgentBrowserPanel(agent: agent) { store.showAgentPanel = false }
+                    .padding(.top, 6)
+                    .presentationDetents([.large])
+                    .presentationBackground(.clear)
+                    .presentationDragIndicator(.visible)
+            }
+        }
         .preferredColorScheme(store.colorScheme)
     }
 }

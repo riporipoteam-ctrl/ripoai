@@ -15,6 +15,8 @@ final class AppStore: ObservableObject {
     @Published var isStreaming = false
     @Published var phase: StreamPhase = .idle
     @Published var errorText: String?
+    @Published var agent: OpenClawAgent?               // live OpenClaw run
+    @Published var showAgentPanel = false              // present the live browser panel
     @Published var requestVoiceCall = false            // present voice-call full screen
     @Published var requestLiveCamera = false           // present live camera vision full screen
     @Published var appearance = "system"               // system | light | dark
@@ -189,7 +191,40 @@ final class AppStore: ObservableObject {
             s.messages.append(Message(role: .assistant, text: ""))
         }
         save()
-        runCompletion(for: id, hasImages: !images.isEmpty)
+        if agentMode {
+            runAgentTask(text, id: id)
+        } else {
+            runCompletion(for: id, hasImages: !images.isEmpty)
+        }
+    }
+
+    /// Agent mode → run the OpenClaw browser agent live and write its findings.
+    private func runAgentTask(_ task: String, id: UUID) {
+        let a = OpenClawAgent()
+        agent = a
+        showAgentPanel = true
+        isStreaming = true
+        phase = .searching
+        let liveTitle = sessions.first(where: { $0.id == id })?.title ?? "AskAI"
+        LiveActivityManager.shared.start(title: liveTitle, status: "OpenClaw is browsing", progress: 0.15)
+        streamTask = Task {
+            let bg = UIApplication.shared.beginBackgroundTask(withName: "askai.agent")
+            defer { UIApplication.shared.endBackgroundTask(bg) }
+            let answer = await a.run(task)
+            var text = answer.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !a.sources.isEmpty {
+                text += "\n\n**Sources**\n" + a.sources.prefix(8).map { "- [\($0.title)](\($0.url))" }.joined(separator: "\n")
+            }
+            if text.isEmpty { text = "I browsed the web but couldn’t pull that together — try rephrasing the task." }
+            self.setLastAssistant(id, text)
+            self.isStreaming = false
+            self.phase = .idle
+            LiveActivityManager.shared.end()
+            self.save()
+            self.syncPush(id)
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+            if self.notifyOnComplete { NotificationManager.shared.taskDone("AskAI", "OpenClaw finished your task.") }
+        }
     }
 
     private func looksLikeImageRequest(_ t: String) -> Bool {
