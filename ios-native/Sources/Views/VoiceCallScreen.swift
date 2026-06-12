@@ -8,10 +8,12 @@ struct VoiceCallScreen: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var speech = SpeechInput()
     @StateObject private var voice = VoiceOut()
+    @StateObject private var camera = CameraFrameProvider()
 
     @State private var state: CallState = .listening
     @State private var lastReply = ""
     @State private var animate = false
+    @State private var cameraOn = false
     @State private var convo: [Message] = [
         Message(role: .system, text: "You are AskAI on a live voice call. Reply in short, natural, spoken sentences — no markdown, no lists, no long monologues."),
     ]
@@ -21,6 +23,14 @@ struct VoiceCallScreen: View {
         ZStack {
             LinearGradient(colors: [Color(hex: 0x0B0B0C), Color(hex: 0x1A1A1E)], startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
+
+            // Live camera feed fills the screen during a video call so AskAI sees.
+            if cameraOn {
+                CameraPreview(session: camera.session)
+                    .ignoresSafeArea()
+                    .overlay(Color.black.opacity(0.35).ignoresSafeArea())
+                    .transition(.opacity)
+            }
 
             VStack(spacing: 26) {
                 Spacer()
@@ -52,20 +62,38 @@ struct VoiceCallScreen: View {
                 Spacer()
 
                 // Controls
-                HStack(spacing: 40) {
+                HStack(spacing: 26) {
                     Button { speech.toggle() } label: {
                         Image(systemName: speech.isRecording ? "mic.fill" : "mic.slash.fill")
-                            .font(.system(size: 22, weight: .bold)).foregroundStyle(.white)
-                            .frame(width: 64, height: 64).background(.white.opacity(0.12), in: Circle())
+                            .font(.system(size: 20, weight: .bold)).foregroundStyle(.white)
+                            .frame(width: 58, height: 58).background(.white.opacity(0.12), in: Circle())
+                    }
+                    // Camera on/off — turns the call into a video call AskAI can see.
+                    Button {
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        cameraOn.toggle()
+                        if cameraOn { camera.start(position: .back) } else { camera.stop() }
+                    } label: {
+                        Image(systemName: cameraOn ? "video.fill" : "video.slash.fill")
+                            .font(.system(size: 20, weight: .bold)).foregroundStyle(cameraOn ? .black : .white)
+                            .frame(width: 58, height: 58)
+                            .background(cameraOn ? AnyShapeStyle(.white) : AnyShapeStyle(.white.opacity(0.12)), in: Circle())
+                    }
+                    if cameraOn {
+                        Button { camera.flip() } label: {
+                            Image(systemName: "arrow.triangle.2.circlepath.camera.fill")
+                                .font(.system(size: 18, weight: .bold)).foregroundStyle(.white)
+                                .frame(width: 58, height: 58).background(.white.opacity(0.12), in: Circle())
+                        }
                     }
                     Button {
-                        speech.stop(); voice.stop()
+                        speech.stop(); voice.stop(); camera.stop()
                         LiveActivityManager.shared.end()
                         dismiss()
                     } label: {
                         Image(systemName: "phone.down.fill")
-                            .font(.system(size: 24, weight: .bold)).foregroundStyle(.white)
-                            .frame(width: 70, height: 70).background(Color.red, in: Circle())
+                            .font(.system(size: 22, weight: .bold)).foregroundStyle(.white)
+                            .frame(width: 64, height: 64).background(Color.red, in: Circle())
                     }
                 }
                 .padding(.bottom, 40)
@@ -77,7 +105,8 @@ struct VoiceCallScreen: View {
             LiveActivityManager.shared.start(title: "Voice call", status: "Listening…",
                                              isVoiceCall: true)
         }
-        .onDisappear { LiveActivityManager.shared.end() }
+        .onDisappear { camera.stop(); LiveActivityManager.shared.end() }
+        .animation(.easeInOut, value: cameraOn)
         .onChange(of: state) { _, s in
             LiveActivityManager.shared.update(status: stateLabel, isVoiceCall: true)
         }
@@ -105,12 +134,19 @@ struct VoiceCallScreen: View {
 
     private func reply(to text: String) async {
         state = .thinking
-        convo.append(Message(role: .user, text: text))
+        // When the camera is on, attach the latest frame so AskAI can see.
+        let frame = cameraOn ? camera.latestDataURL() : nil
+        let userMsg = Message(role: .user, text: text, attachments: frame.map { [$0] } ?? [])
+        convo.append(userMsg)
+        let model = frame != nil ? AIModel.visionModel.backend : "llama-3.3-70b-versatile"
+        let provider: Provider = frame != nil ? AIModel.visionModel.provider : .groq
         var out = ""
         do {
-            try await GroqClient.shared.stream(model: "llama-3.3-70b-versatile", messages: convo) { out += $0 }
+            try await GroqClient.shared.stream(model: model, provider: provider, messages: convo) { out += $0 }
         } catch { out = "Sorry, I didn't catch that." }
         convo.append(Message(role: .assistant, text: out))
+        // Drop the frame from history so old images don't pile up in context.
+        if let idx = convo.firstIndex(where: { $0.id == userMsg.id }) { convo[idx].attachments = [] }
         lastReply = out
         state = .speaking
         voice.speak(out) {

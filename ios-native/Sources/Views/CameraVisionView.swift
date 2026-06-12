@@ -6,7 +6,7 @@ import AVFoundation
 /// continuously. Streams the answer and can speak it aloud.
 struct CameraVisionView: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var cam = CameraVisionModel()
+    @StateObject private var cam = CameraFrameProvider()
     @StateObject private var voice = VoiceOut()
 
     @State private var prompt = "What am I looking at?"
@@ -99,7 +99,7 @@ struct CameraVisionView: View {
             }
         }
         .statusBarHidden(true)
-        .onAppear { cam.configure() }
+        .onAppear { cam.start(position: .back) }
         .onDisappear { liveTask?.cancel(); cam.stop() }
         .animation(.spring(response: 0.35), value: answer.isEmpty)
         .animation(.easeInOut, value: live)
@@ -136,11 +136,9 @@ struct CameraVisionView: View {
     private func ask(_ q: String) async {
         guard !thinking else { return }
         thinking = true; answer = ""
-        guard let frame = await cam.capture(),
-              let jpeg = frame.resized(maxSide: 1024).jpegData(compressionQuality: 0.6) else {
-            answer = "Couldn't capture the camera."; thinking = false; return
+        guard let dataURL = cam.latestDataURL() else {
+            answer = "Point the camera at something and try again."; thinking = false; return
         }
-        let dataURL = "data:image/jpeg;base64,\(jpeg.base64EncodedString())"
         let system = Message(role: .system, text:
             "You are AskAI looking through the user's live camera. Answer about what you see in one or two short, natural spoken sentences. No markdown, no lists.")
         let user = Message(role: .user, text: q, attachments: [dataURL])
@@ -173,59 +171,5 @@ struct CameraPreview: UIViewRepresentable {
     final class PreviewView: UIView {
         override class var layerClass: AnyClass { AVCaptureVideoPreviewLayer.self }
         var previewLayer: AVCaptureVideoPreviewLayer { layer as! AVCaptureVideoPreviewLayer }
-    }
-}
-
-/// Manages the capture session and grabs single frames on demand.
-@MainActor
-final class CameraVisionModel: NSObject, ObservableObject {
-    let session = AVCaptureSession()
-    private let output = AVCapturePhotoOutput()
-    private let queue = DispatchQueue(label: "askai.camera.vision")
-    private var cont: CheckedContinuation<UIImage?, Never>?
-
-    func configure() {
-        AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
-            guard granted, let self else { return }
-            self.queue.async {
-                self.session.beginConfiguration()
-                self.session.sessionPreset = .photo
-                if let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
-                   let input = try? AVCaptureDeviceInput(device: device),
-                   self.session.canAddInput(input) {
-                    self.session.addInput(input)
-                }
-                if self.session.canAddOutput(self.output) { self.session.addOutput(self.output) }
-                self.session.commitConfiguration()
-                self.session.startRunning()
-            }
-        }
-    }
-
-    func stop() {
-        queue.async { [weak self] in
-            guard let self, self.session.isRunning else { return }
-            self.session.stopRunning()
-        }
-    }
-
-    func capture() async -> UIImage? {
-        guard session.isRunning else { return nil }
-        return await withCheckedContinuation { c in
-            self.cont = c
-            let settings = AVCapturePhotoSettings()
-            self.output.capturePhoto(with: settings, delegate: self)
-        }
-    }
-}
-
-extension CameraVisionModel: AVCapturePhotoCaptureDelegate {
-    nonisolated func photoOutput(_ output: AVCapturePhotoOutput,
-                                 didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
-        let img = photo.fileDataRepresentation().flatMap { UIImage(data: $0) }
-        Task { @MainActor [weak self] in
-            self?.cont?.resume(returning: img)
-            self?.cont = nil
-        }
     }
 }
