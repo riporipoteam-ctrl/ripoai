@@ -52,6 +52,7 @@ struct ChatScreen: View {
         .overlay(alignment: .leading) {
             Color.clear
                 .frame(width: 20)
+                .frame(maxHeight: .infinity)
                 .contentShape(Rectangle())
                 .gesture(
                     DragGesture(minimumDistance: 12)
@@ -62,7 +63,6 @@ struct ChatScreen: View {
                             }
                         }
                 )
-                .ignoresSafeArea(edges: .vertical)
         }
     }
 

@@ -14,8 +14,7 @@ struct RootView: View {
     @State private var showVoiceCall = false
 
     var body: some View {
-        ZStack {
-            GlassBackground()
+        Group {
             switch screen {
             case .chat:
                 ChatScreen(showMenu: $showMenu)
@@ -29,6 +28,10 @@ struct RootView: View {
                 PlusScreen(back: { screen = .chat })
             }
         }
+        // Background must NOT be a ZStack sibling — a sibling that ignores the
+        // keyboard safe area defeats the composer's keyboard avoidance. As a
+        // .background it fills behind while the screen keeps its safe areas.
+        .background(GlassBackground())
         .sheet(isPresented: $showMenu) {
             MenuSheet(
                 go: { dest in showMenu = false; screen = dest },
