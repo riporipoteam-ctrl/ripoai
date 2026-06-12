@@ -1,5 +1,7 @@
 import SwiftUI
 
+enum StreamPhase { case idle, thinking, searching, generating, writing }
+
 @MainActor
 final class AppStore: ObservableObject {
     @Published var sessions: [ChatSession] = []
@@ -10,6 +12,7 @@ final class AppStore: ObservableObject {
     @Published var agentMode = false
     @Published var pendingAttachments: [String] = []   // base64 data URLs
     @Published var isStreaming = false
+    @Published var phase: StreamPhase = .idle
     @Published var errorText: String?
     @Published var appearance = "system"               // system | light | dark
     @Published var verbosity = "balanced"               // concise | balanced | detailed
@@ -44,9 +47,18 @@ final class AppStore: ObservableObject {
         if let mid = UserDefaults.standard.string(forKey: modelKey), let m = AIModel.byID(mid) { model = m }
         // Screenshot/demo mode for CI: seed content, skip auth.
         let args = ProcessInfo.processInfo.arguments
-        if args.contains("-demo-chat") || args.contains("-demo-home") || args.contains("-demo-settings") {
+        if args.contains("-demo-chat") || args.contains("-demo-home") || args.contains("-demo-settings") || args.contains("-demo-menu") || args.contains("-demo-plus") {
             guest = true
             sessions = []
+            if args.contains("-demo-menu") {
+                sessions = [
+                    ChatSession(title: "Plan a trip to Tokyo"),
+                    ChatSession(title: "Logo design ideas"),
+                    ChatSession(title: "Explain quantum entanglement"),
+                    ChatSession(title: "Swift async/await help"),
+                    ChatSession(title: "Best cheap hotels in NYC"),
+                ]
+            }
             if args.contains("-demo-chat") {
                 var s = ChatSession(title: "Plan a trip to Tokyo")
                 s.messages = [
@@ -164,6 +176,7 @@ final class AppStore: ObservableObject {
         }
         save()
         isStreaming = true
+        phase = .generating
         streamTask = Task {
             let url = await ImageGen.generate(prompt: clean)
             if let sIdx = self.sessions.firstIndex(where: { $0.id == id }),
@@ -171,8 +184,10 @@ final class AppStore: ObservableObject {
                 self.sessions[sIdx].messages[mIdx].imageURL = url
             }
             self.isStreaming = false
+            self.phase = .idle
             self.save()
             self.syncPush(id)
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
         }
     }
 
@@ -190,6 +205,7 @@ final class AppStore: ObservableObject {
 
     private func runCompletion(for id: UUID, hasImages: Bool = false) {
         isStreaming = true
+        phase = (agentMode || webSearch) ? .searching : .thinking
         errorText = nil
 
         var persona = "You are AskAI, a warm, brilliant assistant created by the AskAI team — never mention any underlying model or provider. Use Markdown when helpful. Answer the question directly and ONLY as long as it needs to be: no padding, no restating the question, no filler intros or outros. Short questions get short answers. Include relevant links as Markdown links when they genuinely help (docs, sources, sites)."
@@ -238,6 +254,7 @@ final class AppStore: ObservableObject {
                 }
             }
             self.isStreaming = false
+            self.phase = .idle
             self.save()
             self.syncPush(id)
             UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -247,6 +264,7 @@ final class AppStore: ObservableObject {
     func stop() {
         streamTask?.cancel()
         isStreaming = false
+        phase = .idle
         save()
     }
 
@@ -254,6 +272,7 @@ final class AppStore: ObservableObject {
         guard let sIdx = sessions.firstIndex(where: { $0.id == id }),
               let mIdx = sessions[sIdx].messages.lastIndex(where: { $0.role == .assistant })
         else { return }
+        if phase != .writing { phase = .writing }
         sessions[sIdx].messages[mIdx].text += token
     }
 

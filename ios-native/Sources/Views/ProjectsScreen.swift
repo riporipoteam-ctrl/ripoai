@@ -13,6 +13,8 @@ struct ProjectsScreen: View {
     @State private var projects: [ProjectItem] = []
     @State private var loading = false
     @State private var opened: ProjectItem?
+    @State private var creating = false
+    @State private var newName = ""
 
     var body: some View {
         VStack(spacing: 0) {
@@ -21,7 +23,11 @@ struct ProjectsScreen: View {
                 Spacer()
                 Text("Projects").font(.system(size: 17, weight: .bold))
                 Spacer()
-                Color.clear.frame(width: 42, height: 42)
+                if store.user != nil {
+                    GlassIconButton(system: "plus") { creating = true }
+                } else {
+                    Color.clear.frame(width: 42, height: 42)
+                }
             }
             .padding(.horizontal, 14).padding(.top, 6).padding(.bottom, 8)
 
@@ -81,6 +87,38 @@ struct ProjectsScreen: View {
             ProjectFilesSheet(project: p)
                 .presentationDetents([.large])
         }
+        .alert("New project", isPresented: $creating) {
+            TextField("Project name", text: $newName)
+            Button("Create") { Task { await createProject() } }
+            Button("Cancel", role: .cancel) { newName = "" }
+        } message: {
+            Text("Creates a starter web project synced to your account.")
+        }
+    }
+
+    private func createProject() async {
+        guard let u = store.user else { return }
+        let name = newName.trimmingCharacters(in: .whitespaces).isEmpty ? "My Project" : newName
+        newName = ""
+        let id = UUID().uuidString
+        let starter = "<!doctype html>\n<html><head><meta charset=\"utf-8\"><title>\(name)</title></head>\n<body>\n  <h1>\(name)</h1>\n  <p>Built with AskAI.</p>\n</body></html>"
+        let url = URL(string: "\(FB.docBase)/users/\(u.uid)/projects/\(id)")!
+        var req = URLRequest(url: url)
+        req.httpMethod = "PATCH"
+        req.setValue("Bearer \(u.idToken)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let body: [String: Any] = ["fields": [
+            "name": ["stringValue": name],
+            "description": ["stringValue": "Created in the AskAI app"],
+            "template": ["stringValue": "static"],
+            "files": ["mapValue": ["fields": ["/index.html": ["stringValue": starter]]]],
+            "createdAt": ["integerValue": String(Int(Date().timeIntervalSince1970 * 1000))],
+            "updatedAt": ["integerValue": String(Int(Date().timeIntervalSince1970 * 1000))],
+        ]]
+        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        _ = try? await URLSession.shared.data(for: req)
+        await loadProjects()
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
     }
 
     private func loadProjects() async {

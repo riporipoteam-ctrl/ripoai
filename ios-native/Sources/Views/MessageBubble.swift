@@ -94,9 +94,10 @@ struct MessageBubble: View {
     }
 }
 
-/// Generated image card: handles the "pending" placeholder, data URLs and remote URLs.
+/// Generated image card: tap to open a zoomable full-screen viewer (save/share).
 struct GeneratedImage: View {
     let source: String
+    @State private var showViewer = false
 
     var body: some View {
         Group {
@@ -126,6 +127,20 @@ struct GeneratedImage: View {
         .frame(maxWidth: 300)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .liquidGlass(cornerRadius: 22)
+        .overlay(alignment: .bottomTrailing) {
+            if source != "pending" {
+                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(7)
+                    .background(.black.opacity(0.45), in: Circle())
+                    .padding(8)
+            }
+        }
+        .onTapGesture { if source != "pending" { showViewer = true } }
+        .fullScreenCover(isPresented: $showViewer) {
+            ImageViewer(source: source)
+        }
     }
 }
 

@@ -12,6 +12,12 @@
   <key>CFBundleShortVersionString</key><string>$(MARKETING_VERSION)</string>
   <key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
   <key>LSRequiresIPhoneOS</key><true/>
+  <key>NSCameraUsageDescription</key>
+  <string>AskAI uses the camera so you can take a photo or let the AI see what you're showing it.</string>
+  <key>NSPhotoLibraryAddUsageDescription</key>
+  <string>AskAI saves generated images to your photo library.</string>
+  <key>NSPhotoLibraryUsageDescription</key>
+  <string>AskAI lets you attach photos from your library to a chat.</string>
   <key>NSMicrophoneUsageDescription</key>
   <string>AskAI uses the microphone for voice input so you can dictate messages.</string>
   <key>NSSpeechRecognitionUsageDescription</key>

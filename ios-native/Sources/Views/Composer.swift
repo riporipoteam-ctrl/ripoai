@@ -10,6 +10,7 @@ struct Composer: View {
     @StateObject private var speech = SpeechInput()
     @State private var photoItems: [PhotosPickerItem] = []
     @State private var showPhotoPicker = false
+    @State private var showCamera = false
 
     private var placeholder: String {
         if store.imageMode { return "Describe an image…" }
@@ -18,49 +19,47 @@ struct Composer: View {
         return "Message AskAI…"
     }
 
+    private var canSend: Bool { !draft.trimmingCharacters(in: .whitespaces).isEmpty || !store.pendingAttachments.isEmpty }
+
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 7) {
             if let err = store.errorText {
-                Text(err).font(.caption).foregroundStyle(.secondary).padding(.horizontal, 18)
+                Text(err).font(.caption).foregroundStyle(.red).padding(.horizontal, 18)
             }
 
-            // Active mode chips
+            // Mode chips
             if store.webSearch || store.imageMode || store.agentMode {
                 HStack(spacing: 6) {
                     if store.webSearch { ModeChip(label: "Web search", icon: "globe") { store.webSearch = false } }
-                    if store.imageMode { ModeChip(label: "Create image", icon: "photo") { store.imageMode = false } }
+                    if store.imageMode { ModeChip(label: "Create image", icon: "paintbrush") { store.imageMode = false } }
                     if store.agentMode { ModeChip(label: "Agent", icon: "sparkles") { store.agentMode = false } }
                     Spacer()
                 }
                 .padding(.horizontal, 18)
             }
 
-            // Attached images strip
+            // Attachment thumbnails
             if !store.pendingAttachments.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(Array(store.pendingAttachments.enumerated()), id: \.offset) { i, dataURL in
                             ZStack(alignment: .topTrailing) {
                                 AttachedThumb(dataURL: dataURL)
-                                Button {
-                                    store.pendingAttachments.remove(at: i)
-                                } label: {
+                                Button { store.pendingAttachments.remove(at: i) } label: {
                                     Image(systemName: "xmark.circle.fill")
-                                        .font(.system(size: 16))
-                                        .foregroundStyle(.white, .black.opacity(0.6))
-                                }
-                                .offset(x: 5, y: -5)
+                                        .font(.system(size: 17)).foregroundStyle(.white, .black.opacity(0.6))
+                                }.offset(x: 5, y: -5)
                             }
                         }
-                    }
-                    .padding(.horizontal, 18).padding(.top, 4)
+                    }.padding(.horizontal, 18).padding(.top, 4)
                 }
             }
 
-            HStack(alignment: .bottom, spacing: 6) {
-                // + menu: attach photos & modes
+            HStack(alignment: .bottom, spacing: 8) {
+                // + menu
                 Menu {
-                    Button { showPhotoPicker = true } label: { Label("Attach photos", systemImage: "photo.on.rectangle") }
+                    Button { showCamera = true } label: { Label("Take photo", systemImage: "camera") }
+                    Button { showPhotoPicker = true } label: { Label("Photo library", systemImage: "photo.on.rectangle") }
                     Divider()
                     Button { store.imageMode.toggle(); store.webSearch = false; store.agentMode = false } label: {
                         Label(store.imageMode ? "Create image ✓" : "Create image", systemImage: "paintbrush")
@@ -73,65 +72,61 @@ struct Composer: View {
                     }
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 18, weight: .semibold))
-                        .frame(width: 36, height: 36)
+                        .font(.system(size: 19, weight: .semibold))
+                        .foregroundStyle(.primary)
+                        .frame(width: 38, height: 38)
                 }
-                .foregroundStyle(.primary)
-                .padding(.leading, 8).padding(.bottom, 7)
+                .padding(.leading, 6).padding(.bottom, 5)
 
                 TextField(placeholder, text: $draft, axis: .vertical)
                     .focused(focused)
-                    .font(.system(size: 16))
-                    .lineLimit(1...6)
-                    .padding(.vertical, 13)
-                    .onChange(of: speech.transcript) { _, t in
-                        if speech.isRecording { draft = t }
-                    }
+                    .font(.system(size: 16.5))
+                    .lineLimit(1...7)
+                    .padding(.vertical, 12)
+                    .onChange(of: speech.transcript) { _, t in if speech.isRecording { draft = t } }
 
-                // Mic
-                Button {
-                    speech.toggle()
-                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                } label: {
-                    Image(systemName: speech.isRecording ? "mic.fill" : "mic")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundStyle(speech.isRecording ? Color.red : Color.secondary)
-                        .frame(width: 32, height: 34)
-                        .symbolEffect(.pulse, isActive: speech.isRecording)
+                // Mic (hidden once typing)
+                if !canSend {
+                    Button {
+                        speech.toggle(); UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    } label: {
+                        Image(systemName: speech.isRecording ? "mic.fill" : "mic")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(speech.isRecording ? .red : .secondary)
+                            .frame(width: 34, height: 34)
+                            .symbolEffect(.pulse, isActive: speech.isRecording)
+                    }
+                    .buttonStyle(.plain).padding(.bottom, 7)
                 }
-                .buttonStyle(.plain)
-                .padding(.bottom, 8)
 
-                // Send / stop
+                // Send / Stop — big, high-contrast, always visible
                 Button {
-                    if store.isStreaming { store.stop() } else {
-                        if speech.isRecording { speech.stop() }
-                        send(draft)
-                    }
+                    if store.isStreaming { store.stop() }
+                    else { if speech.isRecording { speech.stop() }; send(draft) }
                 } label: {
                     Image(systemName: store.isStreaming ? "stop.fill" : "arrow.up")
-                        .font(.system(size: 17, weight: .bold))
+                        .font(.system(size: 18, weight: .heavy))
                         .foregroundStyle(Color(uiColor: .systemBackground))
-                        .frame(width: 40, height: 40)
+                        .frame(width: 44, height: 44)
                         .background(
-                            Circle().fill(
-                                (draft.isEmpty && store.pendingAttachments.isEmpty && !store.isStreaming)
-                                ? AnyShapeStyle(Color.secondary.opacity(0.4))
-                                : AnyShapeStyle(Color.primary)
-                            )
+                            Circle().fill(canSend || store.isStreaming ? Color.accentColor : Color.secondary.opacity(0.45))
                         )
+                        .shadow(color: .black.opacity(0.2), radius: 6, y: 3)
                 }
                 .buttonStyle(.plain)
-                .disabled(draft.isEmpty && store.pendingAttachments.isEmpty && !store.isStreaming)
-                .padding(.trailing, 6).padding(.bottom, 6)
+                .disabled(!canSend && !store.isStreaming)
+                .padding(.trailing, 5).padding(.bottom, 4)
+                .animation(.spring(response: 0.3), value: canSend)
             }
-            .liquidGlass(cornerRadius: 28, interactive: true)
-            .shadow(color: Color.primary.opacity(focused.wrappedValue ? 0.18 : 0.0), radius: 16, y: 6)
-            .animation(.easeOut(duration: 0.25), value: focused.wrappedValue)
+            .liquidGlass(cornerRadius: 26, interactive: true)
             .padding(.horizontal, 12)
-            .padding(.bottom, 8)
+            .padding(.bottom, 6)
         }
         .photosPicker(isPresented: $showPhotoPicker, selection: $photoItems, maxSelectionCount: 5, matching: .images)
+        .fullScreenCover(isPresented: $showCamera) {
+            CameraPicker { dataURL in store.pendingAttachments.append(dataURL) }
+                .ignoresSafeArea()
+        }
         .onChange(of: photoItems) { _, items in
             guard !items.isEmpty else { return }
             Task {
@@ -162,8 +157,7 @@ private struct ModeChip: View {
             .padding(.horizontal, 10).padding(.vertical, 6)
             .liquidGlass(cornerRadius: 14)
         }
-        .buttonStyle(.plain)
-        .foregroundStyle(.primary)
+        .buttonStyle(.plain).foregroundStyle(.primary)
     }
 }
 
@@ -173,9 +167,7 @@ private struct AttachedThumb: View {
         Group {
             if let img = UIImage.fromDataURL(dataURL) {
                 Image(uiImage: img).resizable().scaledToFill()
-            } else {
-                Color.secondary.opacity(0.2)
-            }
+            } else { Color.secondary.opacity(0.2) }
         }
         .frame(width: 56, height: 56)
         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))

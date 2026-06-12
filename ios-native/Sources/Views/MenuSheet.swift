@@ -4,6 +4,7 @@ struct MenuSheet: View {
     @EnvironmentObject var store: AppStore
     @Environment(\.dismiss) private var dismiss
     let go: (AppScreen) -> Void
+    var voiceCall: () -> Void = {}
     @State private var search = ""
 
     private var filtered: [ChatSession] {
@@ -47,8 +48,10 @@ struct MenuSheet: View {
                 ScrollView {
                     VStack(spacing: 8) {
                         // Navigation
+                        NavRow(icon: "waveform", title: "Voice call", subtitle: "Talk with AskAI live") { voiceCall() }
                         NavRow(icon: "person.2", title: "Agents", subtitle: "Your AI team") { go(.team) }
                         NavRow(icon: "folder", title: "Projects", subtitle: "Code with live files") { go(.projects) }
+                        NavRow(icon: "crown", title: "AskAI+", subtitle: "Unlock more power") { go(.plus) }
                         NavRow(icon: "gearshape", title: "Settings", subtitle: "Models, account, appearance") { go(.settings) }
 
                         // Chats

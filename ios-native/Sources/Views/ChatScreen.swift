@@ -18,8 +18,6 @@ struct ChatScreen: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing: 14) {
-                            // springy list container
-
                             ForEach(messages) { msg in
                                 MessageBubble(message: msg,
                                               streaming: store.isStreaming && msg.id == messages.last?.id && msg.role == .assistant,
@@ -29,21 +27,35 @@ struct ChatScreen: View {
                                         insertion: .move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.98, anchor: .bottom)),
                                         removal: .opacity))
                             }
+                            if store.isStreaming, store.phase != .writing {
+                                StatusIndicator(phase: store.phase).id("status")
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.leading, 4)
+                            }
                         }
                         .padding(.horizontal, 16)
                         .padding(.top, 8)
-                        .padding(.bottom, 16)
+                        .padding(.bottom, 8)
                     }
                     .scrollDismissesKeyboard(.interactively)
-                    .onChange(of: messages.last?.text) { _, _ in
-                        if let last = messages.last?.id {
-                            withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(last, anchor: .bottom) }
-                        }
-                    }
+                    .onChange(of: messages.last?.text) { _, _ in scrollDown(proxy) }
+                    .onChange(of: store.phase) { _, _ in scrollDown(proxy) }
                 }
             }
-
+        }
+        // safeAreaInset keeps the composer ABOVE the keyboard, always.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
             Composer(draft: $draft, focused: $composerFocused, send: send)
+        }
+    }
+
+    private func scrollDown(_ proxy: ScrollViewProxy) {
+        withAnimation(.easeOut(duration: 0.2)) {
+            if store.isStreaming, store.phase != .writing {
+                proxy.scrollTo("status", anchor: .bottom)
+            } else if let last = messages.last?.id {
+                proxy.scrollTo(last, anchor: .bottom)
+            }
         }
     }
 
@@ -53,6 +65,47 @@ struct ChatScreen: View {
         draft = ""
         composerFocused = false
         UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+    }
+}
+
+/// Animated "Thinking… / Searching the web… / Generating… " row.
+struct StatusIndicator: View {
+    let phase: StreamPhase
+    @State private var dots = 0
+
+    private var label: String {
+        switch phase {
+        case .searching: return "Searching the web"
+        case .generating: return "Generating image"
+        case .thinking: return "Thinking"
+        default: return "Working"
+        }
+    }
+    private var icon: String {
+        switch phase {
+        case .searching: return "globe"
+        case .generating: return "photo"
+        default: return "sparkles"
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 9) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(.secondary)
+                .symbolEffect(.pulse, options: .repeating)
+            Text(label + String(repeating: ".", count: dots))
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 13).padding(.vertical, 10)
+        .liquidGlass(cornerRadius: 16)
+        .onAppear {
+            Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { _ in
+                dots = (dots + 1) % 4
+            }
+        }
     }
 }
 

@@ -32,6 +32,8 @@ struct GroqClient {
         }
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        // Web search (compound) runs tools server-side and can take a while.
+        req.timeoutInterval = 180
 
         // Vision: messages with attachments become OpenAI-style content parts.
         let msgPayload: [[String: Any]] = messages.map { m in

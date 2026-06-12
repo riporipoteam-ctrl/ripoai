@@ -54,10 +54,16 @@ struct MarkdownText: View {
 
     /// Inline markdown via AttributedString — makes [links](url) tappable.
     private func inline(_ s: String) -> Text {
-        if let attr = try? AttributedString(
+        if var attr = try? AttributedString(
             markdown: s,
             options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace)
         ) {
+            // Highlight links: blue + underline so they read as links in mono UI.
+            let linkRanges = attr.runs.filter { $0.link != nil }.map { $0.range }
+            for r in linkRanges {
+                attr[r].foregroundColor = .blue
+                attr[r].underlineStyle = .single
+            }
             return Text(attr)
         }
         return Text(s)
