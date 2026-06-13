@@ -14,6 +14,7 @@ import { getModel, resolveAutoModel, type ModelTier } from '../lib/models'
 import { buildSystemPrompt, AGENT_SYSTEM, WEB3D_INSTRUCTIONS, wantsWebsite, needsDeepThinking } from '../lib/prompt'
 import { extractSocialImages, buildSocialPrompt } from '../lib/social'
 import { searchModel, shouldAutoSearch } from '../lib/search'
+import { liveSearchContext } from '../lib/liveSearch'
 import { searchWebImages, wantsWebImageSearch, webImageQuery } from '../lib/webImages'
 import { runAgentBrowserTask, type AgentBrowserEvent, type AgentBrowserState } from '../lib/agentBrowser'
 import { extractMemories } from '../lib/memory'
@@ -439,6 +440,19 @@ export function useChat(chatId: string | undefined) {
         }
       }
 
+      // REAL web search: actually search + read pages and ground the answer on
+      // the results (reliable), instead of trusting the compound tool to do it.
+      let searchGrounding = ''
+      if (useCompound) {
+        try {
+          const r = await liveSearchContext(history[history.length - 1]?.content ?? '')
+          if (r?.context) searchGrounding = r.context
+        } catch {
+          /* fall back to compound */
+        }
+      }
+      const groundedSearch = searchGrounding.length > 0
+
       // 3o models run on OpenRouter (free), with automatic Groq fallback on
       // rate-limit/slow/error. Not used for vision or web-search turns.
       const useOR = model.provider === 'openrouter' && !!model.orModel && !hasImages && !useCompound
@@ -448,7 +462,7 @@ export function useChat(chatId: string | undefined) {
       const visionModel = getModel('ripoai-2o-instant')
       const groqModel = hasImages
         ? visionModel.groqModel
-        : useCompound
+        : useCompound && !groundedSearch
           ? searchModel()
           : fallback.groqModel
       const visionCapable = hasImages || model.vision
@@ -464,6 +478,14 @@ export function useChat(chatId: string | undefined) {
           : buildSystemPrompt(model, settings, memories))
 
       const lastText = lastUser?.content ?? ''
+
+      // Ground the answer on the real search results we just fetched.
+      if (groundedSearch) {
+        system +=
+          '\n\n' +
+          searchGrounding +
+          '\n\nAnswer the user using these live results. Be specific and practical (names, numbers, steps, prices). Cite sources inline as Markdown links. If they don\'t cover it, say what you do know and what to check next.'
+      }
 
       // Skills: explicit "/slug" wins; otherwise auto-pick the most relevant
       // installed skill (like auto web search) and follow it.
@@ -717,7 +739,12 @@ export function useChat(chatId: string | undefined) {
       const usePuter = model.provider === 'puter' && !!model.puterModel && !hasImages && !useCompound
       const useNvidia = model.provider === 'nvidia' && !!model.nvModel && !hasImages && !useCompound
       const attempts: Attempt[] = []
-      if (useCompound) {
+      if (groundedSearch) {
+        // Real search already injected live results into the system prompt —
+        // answer with a strong NORMAL model (no flaky compound tool).
+        attempts.push({ provider: 'groq', model: 'openai/gpt-oss-120b', maxTokens: 2560 })
+        attempts.push({ provider: 'groq', model: 'llama-3.3-70b-versatile', maxTokens: 2048 })
+      } else if (useCompound) {
         attempts.push({ provider: 'groq', model: searchModel(), maxTokens: 2048 })
         attempts.push({ provider: 'groq', model: 'llama-3.3-70b-versatile', maxTokens: 1500 })
       } else if (hasImages) {
