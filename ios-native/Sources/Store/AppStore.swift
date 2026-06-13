@@ -196,6 +196,18 @@ final class AppStore: ObservableObject {
         return kws.contains { l.contains($0) }
     }
 
+    /// Broader trigger for grounding answers (incl. image questions): identify,
+    /// fix/repair, parts, prices, how-to, troubleshooting, etc.
+    func wantsResearch(_ t: String) -> Bool {
+        if needsFreshInfo(t) { return true }
+        let l = t.lowercased()
+        let kws = ["fix", "repair", "replace", "broken", "error", "how to", "how do i",
+                   "what is", "what's this", "whats this", "identify", "diagnose", "model",
+                   "part", "serial", "cost", "worth", "manual", "instructions", "troubleshoot",
+                   "not working", "won't", "wont", "should i", "compatible", "specs", "review"]
+        return kws.contains { l.contains($0) }
+    }
+
     func setModel(_ m: AIModel) {
         model = m
         UserDefaults.standard.set(m.id, forKey: modelKey)
@@ -393,22 +405,42 @@ final class AppStore: ObservableObject {
         if hasImages { m = .visionModel }
         let lastUserText = convo.last(where: { $0.role == .user })?.text ?? ""
         let autoSearch = autoWebSearch && needsFreshInfo(lastUserText)
-        let useCompound = (agentMode || webSearch || autoSearch) && !hasImages
-        if autoSearch && !webSearch && !agentMode { phase = .searching }
-        let backend = useCompound ? "groq/compound" : m.backend
-        let provider: Provider = useCompound ? .groq : m.provider
-        let fallbackModel = m.provider == .groq ? m.backend : "llama-3.3-70b-versatile"
+        // Real search: web/agent mode, auto-detected fresh-info queries, OR an
+        // image the user is asking to identify/fix (the repair-shop case).
+        let doSearch = !lastUserText.isEmpty &&
+            ((agentMode || webSearch || autoSearch) ||
+             (hasImages && (webSearch || (autoWebSearch && wantsResearch(lastUserText)))))
+        // Answer with a normal/vision model grounded on real results (reliable),
+        // not a server-side tool that may silently do nothing.
+        let answerModel = hasImages ? AIModel.visionModel.backend : m.backend
+        let answerProvider: Provider = hasImages ? AIModel.visionModel.provider : m.provider
+        if doSearch { phase = .searching }
 
         let liveTitle = sessions.first(where: { $0.id == id })?.title ?? "AskAI"
-        let startStatus = useCompound ? "Searching the web" : "Thinking"
-        LiveActivityManager.shared.start(title: liveTitle, status: startStatus, progress: 0.1)
+        LiveActivityManager.shared.start(title: liveTitle, status: doSearch ? "Searching the web" : "Thinking", progress: 0.1)
 
         streamTask = Task {
             // Keep the request alive briefly if the app gets backgrounded mid-stream.
             let bg = UIApplication.shared.beginBackgroundTask(withName: "askai.stream")
             defer { UIApplication.shared.endBackgroundTask(bg) }
+
+            // 1) Actually search the web and ground the answer on the results.
+            var grounded = history
+            var sources: [(title: String, url: String)] = []
+            if doSearch, let result = await WebSearch.run(lastUserText) {
+                sources = result.sources
+                let ctx = Message(role: .system, text: result.context +
+                    "\n\nAnswer the user's question using these live results. Be specific and practical (names, numbers, steps, parts, prices). Cite sources inline as Markdown links. If the results don't cover it, say what you do know and what to check next.")
+                grounded = [system, ctx] + convo
+                self.phase = .writing
+                LiveActivityManager.shared.update(status: "Writing the answer", progress: 0.6)
+            } else if doSearch {
+                self.phase = .thinking   // search came back empty — answer from knowledge
+            }
+
+            // 2) Stream the grounded answer.
             do {
-                try await GroqClient.shared.stream(model: backend, provider: provider, messages: history) { [weak self] token in
+                try await GroqClient.shared.stream(model: answerModel, provider: answerProvider, messages: grounded) { [weak self] token in
                     self?.appendToLastAssistant(id, token)
                 }
             } catch {
@@ -416,20 +448,13 @@ final class AppStore: ObservableObject {
                     self.errorText = error.localizedDescription
                 }
             }
-            // Web/agent reliability: if the search tool ran but streamed no answer,
-            // fall back to a normal model so the user never gets a dead bubble.
-            if useCompound, !Task.isCancelled, self.lastAssistantIsEmpty(id) {
-                self.phase = .thinking
-                LiveActivityManager.shared.update(status: "Writing the answer", progress: 0.5)
-                do {
-                    try await GroqClient.shared.stream(model: fallbackModel, provider: .groq, messages: history) { [weak self] token in
-                        self?.appendToLastAssistant(id, token)
-                    }
-                } catch {
-                    if self.lastAssistantIsEmpty(id) {
-                        self.setLastAssistant(id, "I searched but couldn't pull that together just now — try asking again.")
-                    }
-                }
+            // 3) Append a Sources list when we used the web.
+            if !sources.isEmpty, !self.lastAssistantIsEmpty(id) {
+                let block = "\n\n**Sources**\n" + sources.prefix(5).map { "- [\($0.title)](\($0.url))" }.joined(separator: "\n")
+                self.appendToLastAssistant(id, block)
+            }
+            if self.lastAssistantIsEmpty(id) {
+                self.setLastAssistant(id, "I couldn't pull that together just now — try asking again.")
             }
             self.isStreaming = false
             self.phase = .idle
