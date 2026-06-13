@@ -160,6 +160,12 @@ export function newAgent(): Agent {
   }
 }
 
+/** Does this chat message read like "create/make an agent that…"? */
+export function looksLikeAgentRequest(text: string): boolean {
+  const l = (text || '').toLowerCase()
+  return /\b(create|make|hire|build|add|spin ?up|give me)\b/.test(l) && /\bagent\b/.test(l)
+}
+
 /** AskAI (head agent) designs a new agent from a plain-English request and
  *  generates a realistic profile picture for it. */
 export async function aiDesignAgent(description: string): Promise<Agent> {
