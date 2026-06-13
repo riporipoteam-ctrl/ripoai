@@ -15,6 +15,7 @@ import { buildSystemPrompt, AGENT_SYSTEM, WEB3D_INSTRUCTIONS, wantsWebsite, need
 import { extractSocialImages, buildSocialPrompt } from '../lib/social'
 import { searchModel, shouldAutoSearch } from '../lib/search'
 import { liveSearchContext } from '../lib/liveSearch'
+import { looksLikeAgentRequest } from '../lib/agents'
 import { searchWebImages, wantsWebImageSearch, webImageQuery } from '../lib/webImages'
 import { runAgentBrowserTask, type AgentBrowserEvent, type AgentBrowserState } from '../lib/agentBrowser'
 import { extractMemories } from '../lib/memory'
@@ -237,6 +238,51 @@ export function useChat(chatId: string | undefined) {
         }
         setStreaming(false)
         if (titleRef.current === 'New chat') titleRef.current = 'Installed a skill'
+        await persist(finalMsgs, id, opts.model, opts.projectId)
+        return
+      }
+
+      // Create an agent from chat: "make an agent named Leon that researches…"
+      if (
+        !opts.image &&
+        !opts.systemOverride &&
+        !opts.agent &&
+        looksLikeAgentRequest(lastUser?.content ?? '')
+      ) {
+        const desc = (lastUser?.content ?? '').trim()
+        const assistantId = uid4()
+        setMessages((m) => [
+          ...m,
+          { id: assistantId, role: 'assistant', content: '🎨 Designing your agent…', model: opts.model, createdAt: Date.now() },
+        ])
+        setStreaming(true)
+        let finalMsgs: StoredMessage[] = []
+        try {
+          const { aiDesignAgent, upsertAgent } = await import('../lib/agents')
+          const agent = await aiDesignAgent(desc)
+          upsertAgent(user.uid, agent)
+          const skills = agent.skills?.length ? ` Great at ${agent.skills.slice(0, 3).join(', ')}.` : ''
+          setMessages((m) => {
+            finalMsgs = m.map((x) =>
+              x.id === assistantId
+                ? {
+                    ...x,
+                    content: `✅ Meet **${agent.name}** — your ${agent.role}.${skills} I painted a profile picture and added them to your team. Pick them in chat or **@${agent.name}** to dispatch them.`,
+                  }
+                : x,
+            )
+            return finalMsgs
+          })
+        } catch {
+          setMessages((m) => {
+            finalMsgs = m.map((x) =>
+              x.id === assistantId ? { ...x, content: "I couldn't create that agent — try rephrasing." } : x,
+            )
+            return finalMsgs
+          })
+        }
+        setStreaming(false)
+        if (titleRef.current === 'New chat') titleRef.current = 'New agent'
         await persist(finalMsgs, id, opts.model, opts.projectId)
         return
       }

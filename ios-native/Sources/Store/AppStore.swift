@@ -271,6 +271,11 @@ final class AppStore: ObservableObject {
             runImageGeneration(prompt: text, id: id)
             return
         }
+        // Create an agent right from the main chat: "make an agent named Leon…"
+        if images.isEmpty && !agentMode && looksLikeAgentRequest(text) {
+            runAgentCreation(text, id: id)
+            return
+        }
         update(id) { s in
             s.messages.append(Message(role: .user, text: text, attachments: images))
             if s.title == "New chat" { s.title = String((text.isEmpty ? "Image chat" : text).prefix(40)) }
@@ -281,6 +286,31 @@ final class AppStore: ObservableObject {
             runAgentTask(text, id: id)
         } else {
             runCompletion(for: id, hasImages: !images.isEmpty)
+        }
+    }
+
+    /// Build an agent from a chat message and confirm it inline in the chat.
+    private func runAgentCreation(_ text: String, id: UUID) {
+        update(id) { s in
+            s.messages.append(Message(role: .user, text: text))
+            if s.title == "New chat" { s.title = "New agent" }
+            s.messages.append(Message(role: .assistant, text: "Designing your agent…"))
+        }
+        isStreaming = true
+        save()
+        streamTask = Task {
+            let a = await createAgent(from: text)
+            let msg: String
+            if let a {
+                let skills = a.skills.isEmpty ? "" : " They're great at \(a.skills.prefix(3).joined(separator: ", "))."
+                msg = "✅ Meet **\(a.name)** — your \(a.role).\(skills) I gave them a profile picture and their own room. Open **Agents** to chat with \(a.name) or assign tasks."
+            } else {
+                msg = "I couldn't create that agent just now — try rephrasing, e.g. \"make an agent named Leon that researches things for me.\""
+            }
+            self.setLastAssistant(id, msg)
+            self.isStreaming = false
+            self.save()
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
         }
     }
 
