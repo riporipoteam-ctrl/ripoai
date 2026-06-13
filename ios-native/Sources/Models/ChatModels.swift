@@ -68,13 +68,23 @@ struct AIModel: Identifiable, Hashable {
         if hasImages { return visionModel }
         let t = text.lowercased()
         func has(_ words: [String]) -> Bool { words.contains { t.contains($0) } }
-        if has(["website", "web app", "landing", "3d", "game", "shader"]) {
+        if has(["website", "web app", "landing", "3d", "game", "shader", "three.js", "webgl"]) {
             return all.first { $0.id == "4o-pro" }!
         }
-        if has(["code", "coding", "function", "debug", "script", "api", "sql", "regex", "python", "swift", "algorithm"]) {
+        if has(["code", "coding", "function", "debug", "script", "api", "sql", "regex",
+                "python", "swift", "javascript", "typescript", "rust", "java", "c++",
+                "algorithm", "refactor", "stack trace", "compile"]) {
             return all.first { $0.id == "2o-pro" }!
         }
-        if t.count > 260 || has(["explain", "why", "prove", "solve", "analy", "compare", "strateg", "architect", "step by step", "in depth"]) {
+        if has(["math", "equation", "integral", "derivative", "calculus", "theorem",
+                "probability", "matrix", "geometry", "proof"]) {
+            return all.first { $0.id == "4o-pro" }!
+        }
+        if has(["essay", "write", "story", "poem", "novel", "screenplay", "blog", "article", "letter"]) {
+            return all.first { $0.id == "2o-pro" }!
+        }
+        if t.count > 260 || has(["explain", "why", "prove", "solve", "analy", "compare",
+                                 "strateg", "architect", "step by step", "in depth", "trade-off", "pros and cons"]) {
             return all.first { $0.id == "4o-pro" }!
         }
         if t.count < 24 { return all.first { $0.id == "3o-instant" }! }

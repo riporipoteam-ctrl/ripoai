@@ -50,7 +50,8 @@ struct GroqClient {
             "model": model,
             "stream": true,
             "temperature": 0.7,
-            "max_completion_tokens": 4096,
+            "top_p": 0.95,
+            "max_completion_tokens": 8192,
             "messages": msgPayload,
         ]
         req.httpBody = try JSONSerialization.data(withJSONObject: payload)
