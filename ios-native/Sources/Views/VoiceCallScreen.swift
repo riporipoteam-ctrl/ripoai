@@ -239,7 +239,7 @@ final class VoiceOut: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
     static func bestVoice(for lang: String) -> AVSpeechSynthesisVoice? {
         let base = String(lang.prefix(2)).lowercased()
         let voices = AVSpeechSynthesisVoice.speechVoices().filter { $0.language.lowercased().hasPrefix(base) }
-        func rank(_ q: AVSpeechSynthesisVoice.Quality) -> Int {
+        func rank(_ q: AVSpeechSynthesisVoiceQuality) -> Int {
             if #available(iOS 16.0, *), q == .premium { return 3 }
             return q == .enhanced ? 2 : 1
         }
