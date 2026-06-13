@@ -535,6 +535,90 @@ final class AppStore: ObservableObject {
         saveProjects()
     }
 
+    @Published var projectBuilding = false
+
+    /// Chat with AskAI to build/edit a project. Streams a coding answer, parses
+    /// fenced ```lang /path blocks into real files, and auto-continues if the
+    /// model hits the length limit (so long builds never stop half-done).
+    func buildInProject(_ id: UUID, prompt: String) {
+        guard let pIdx = projects.firstIndex(where: { $0.id == id }), !projectBuilding else { return }
+        projectBuilding = true
+        projects[pIdx].chat.append(Message(role: .user, text: prompt))
+        projects[pIdx].chat.append(Message(role: .assistant, text: ""))
+        saveProjects()
+        let aIdx = projects[pIdx].chat.count - 1
+
+        let sys = Message(role: .system, text: """
+        You are AskAI Projects — a world-class web developer building a multi-file static website (plain HTML/CSS/JS, no build step). Output EACH file as its own fenced block whose info string is the file path, e.g.:
+        ```html /index.html
+        <!doctype html> … </html>
+        ```
+        ```css /styles.css
+        …
+        ```
+        Prefer separate files (/index.html + /styles.css + /script.js). Make it modern, polished, fully responsive, with real content and tasteful motion. Only output the files you are changing. Never write placeholders like "rest of code" — finish every file completely and runnably.
+        """)
+        let filesNote = projects[pIdx].files.isEmpty ? "" :
+            "Current files:\n" + projects[pIdx].files.keys.sorted().map { "- \($0)" }.joined(separator: "\n")
+        var history: [Message] = [sys]
+        if !filesNote.isEmpty { history.append(Message(role: .system, text: filesNote)) }
+        history += projects[pIdx].chat.dropLast()  // includes the new user msg
+
+        streamTask = Task {
+            let bg = UIApplication.shared.beginBackgroundTask(withName: "askai.build")
+            defer { UIApplication.shared.endBackgroundTask(bg) }
+            var full = ""
+            var rounds = 0
+            var convo = history
+            repeat {
+                var chunk = ""
+                do {
+                    try await GroqClient.shared.stream(model: "openai/gpt-oss-120b", messages: convo) { [weak self] tok in
+                        chunk += tok; full += tok
+                        if let self, pIdx < self.projects.count, aIdx < self.projects[pIdx].chat.count {
+                            self.projects[pIdx].chat[aIdx].text = full
+                        }
+                    }
+                } catch { break }
+                rounds += 1
+                // Auto-continue if it looks cut off mid-file (unbalanced fences).
+                let openFences = full.components(separatedBy: "```").count - 1
+                let looksCut = openFences % 2 == 1 || chunk.count > 3500
+                if looksCut && rounds < 4 {
+                    convo = history + [Message(role: .assistant, text: full),
+                                       Message(role: .user, text: "Continue exactly where you left off. Do not repeat earlier content.")]
+                } else { break }
+            } while rounds < 4
+
+            // Parse fenced files into the project.
+            let parsed = Self.parseFiles(full)
+            if pIdx < self.projects.count {
+                for (path, code) in parsed { self.projects[pIdx].files[path] = code }
+                self.projects[pIdx].updated = Date()
+            }
+            self.projectBuilding = false
+            self.saveProjects()
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+        }
+    }
+
+    /// Parse ```lang /path\n…``` blocks into [path: code].
+    static func parseFiles(_ text: String) -> [String: String] {
+        var out: [String: String] = [:]
+        let pattern = #"```[a-zA-Z0-9]*\s+(/?[^\s`]+)\n([\s\S]*?)```"#
+        guard let re = try? NSRegularExpression(pattern: pattern) else { return out }
+        let ns = text as NSString
+        re.enumerateMatches(in: text, range: NSRange(location: 0, length: ns.length)) { m, _, _ in
+            guard let m, m.numberOfRanges >= 3 else { return }
+            var path = ns.substring(with: m.range(at: 1))
+            if !path.hasPrefix("/") { path = "/" + path }
+            // Normalise to keys like "index.html" used by the file list.
+            let key = String(path.drop(while: { $0 == "/" }))
+            out[key] = ns.substring(with: m.range(at: 2))
+        }
+        return out
+    }
+
     func saveProjects() {
         if let data = try? JSONEncoder().encode(projects) {
             UserDefaults.standard.set(data, forKey: projectsKey)
