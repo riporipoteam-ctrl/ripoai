@@ -71,6 +71,24 @@ export default function Settings() {
   const [skillErr, setSkillErr] = useState('')
   const [agents, setAgents] = useState<Agent[]>([])
   const [editing, setEditing] = useState<Agent | null>(null)
+  const [aiDesc, setAiDesc] = useState('')
+  const [aiBusy, setAiBusy] = useState(false)
+
+  async function createAgentWithAI() {
+    if (!user || !aiDesc.trim() || aiBusy) return
+    setAiBusy(true)
+    try {
+      const { aiDesignAgent } = await import('../lib/agents')
+      const agent = await aiDesignAgent(aiDesc.trim())
+      upsertAgent(user.uid, agent)
+      setAgents(loadAgents(user.uid))
+      setAiDesc('')
+    } catch {
+      /* ignore */
+    } finally {
+      setAiBusy(false)
+    }
+  }
   const avatarInput = useRef<HTMLInputElement>(null)
   async function handleAvatar(file?: File) {
     if (!file) return
@@ -596,6 +614,34 @@ export default function Settings() {
                 </button>
               </div>
 
+              {/* Create an agent with AI — designs persona/skills + a real profile pic. */}
+              <div className="mb-3 rounded-2xl border border-accent/30 bg-accent/5 p-3">
+                <div className="mb-1.5 flex items-center gap-1.5 text-xs font-bold">
+                  <Wand2 size={14} className="text-accent" /> Create an agent with AI
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    value={aiDesc}
+                    onChange={(e) => setAiDesc(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') createAgentWithAI()
+                    }}
+                    placeholder='e.g. "make an agent named Leon that researches things for me"'
+                    className="flex-1 rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm outline-none focus:border-accent"
+                  />
+                  <button
+                    onClick={createAgentWithAI}
+                    disabled={aiBusy || !aiDesc.trim()}
+                    className="accent-gradient-bg pressable flex shrink-0 items-center gap-1 rounded-xl px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+                  >
+                    {aiBusy ? 'Creating…' : 'Create'}
+                  </button>
+                </div>
+                <p className="mt-1.5 text-[11px] text-muted">
+                  AskAI designs the agent's name, personality and skills, and paints a profile picture.
+                </p>
+              </div>
+
               {editing && (
                 <div className="mb-3 space-y-2 rounded-2xl border border-accent/30 bg-accent/5 p-3">
                   <div className="flex gap-2">
@@ -653,12 +699,21 @@ export default function Settings() {
               <div className="space-y-2">
                 {agents.map((a) => (
                   <div key={a.id} className="flex items-center gap-3 rounded-2xl border border-white/10 p-3">
-                    <span
-                      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg"
-                      style={{ background: a.color + '2a', boxShadow: `0 0 0 1px ${a.color}55` }}
-                    >
-                      {a.emoji}
-                    </span>
+                    {a.avatar ? (
+                      <img
+                        src={a.avatar}
+                        alt={a.name}
+                        className="h-10 w-10 shrink-0 rounded-xl object-cover"
+                        style={{ boxShadow: `0 0 0 1px ${a.color}55` }}
+                      />
+                    ) : (
+                      <span
+                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg"
+                        style={{ background: a.color + '2a', boxShadow: `0 0 0 1px ${a.color}55` }}
+                      >
+                        {a.emoji}
+                      </span>
+                    )}
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-semibold">
                         {a.name} <span className="text-xs font-normal text-muted">{a.role}</span>
