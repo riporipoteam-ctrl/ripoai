@@ -25,6 +25,7 @@ export const UI_STRINGS: string[] = [
   // Status
   'Thinking…', 'Searching the web…', 'Generating image…', 'Working…',
   'What are we making?', 'What can I help with?', 'Daily tasks', 'Saved messages', 'Describe an image to generate...',
+  'Voice', 'Skills', 'Data controls', 'About', 'Agent team', 'Profile picture', 'Change photo',
 ]
 
 interface I18nState {
