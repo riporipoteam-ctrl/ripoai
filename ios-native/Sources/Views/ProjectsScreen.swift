@@ -1,18 +1,9 @@
 import SwiftUI
 
-struct ProjectItem: Identifiable {
-    let id: String
-    let name: String
-    let description: String
-    let files: [String: String]
-}
-
 struct ProjectsScreen: View {
     @EnvironmentObject var store: AppStore
     let back: () -> Void
-    @State private var projects: [ProjectItem] = []
-    @State private var loading = false
-    @State private var opened: ProjectItem?
+    @State private var opened: Project?
     @State private var creating = false
     @State private var newName = ""
 
@@ -23,44 +14,34 @@ struct ProjectsScreen: View {
                 Spacer()
                 Text("Projects").font(.system(size: 17, weight: .bold))
                 Spacer()
-                if store.user != nil {
-                    GlassIconButton(system: "plus") { creating = true }
-                } else {
-                    Color.clear.frame(width: 42, height: 42)
-                }
+                GlassIconButton(system: "plus") { newName = ""; creating = true }
             }
             .padding(.horizontal, 14).padding(.top, 6).padding(.bottom, 8)
 
-            if store.user == nil {
+            if store.projects.isEmpty {
                 VStack(spacing: 12) {
                     Spacer()
-                    Image(systemName: "folder").font(.system(size: 36)).foregroundStyle(.secondary)
-                    Text("Sign in to see your projects")
-                        .font(.system(size: 16, weight: .semibold))
-                    Text("Projects you build on the website appear here.")
+                    Image(systemName: "folder.badge.plus").font(.system(size: 40)).foregroundStyle(.secondary)
+                    Text("No projects yet").font(.system(size: 17, weight: .bold))
+                    Text("Create a project to start building. It's saved on your device.")
                         .font(.system(size: 13)).foregroundStyle(.secondary)
-                    Button("Sign in") { store.guest = false }
-                        .font(.system(size: 14, weight: .bold))
-                        .padding(.horizontal, 22).padding(.vertical, 11)
-                        .background(Color.primary, in: Capsule())
-                        .foregroundStyle(Color(uiColor: .systemBackground))
-                    Spacer()
-                }
-            } else if loading {
-                Spacer(); ProgressView("Loading projects…"); Spacer()
-            } else if projects.isEmpty {
-                VStack(spacing: 10) {
-                    Spacer()
-                    Image(systemName: "folder").font(.system(size: 36)).foregroundStyle(.secondary)
-                    Text("No projects yet").font(.system(size: 16, weight: .semibold))
-                    Text("Create one on the website — it'll show up here.")
-                        .font(.system(size: 13)).foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center).padding(.horizontal, 40)
+                    Button {
+                        newName = ""; creating = true
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    } label: {
+                        Label("New project", systemImage: "plus")
+                            .font(.system(size: 15, weight: .bold))
+                            .padding(.horizontal, 22).padding(.vertical, 12)
+                            .background(Color.primary, in: Capsule())
+                            .foregroundStyle(Color(uiColor: .systemBackground))
+                    }.buttonStyle(.plain)
                     Spacer()
                 }
             } else {
                 ScrollView {
                     VStack(spacing: 8) {
-                        ForEach(projects) { p in
+                        ForEach(store.projects) { p in
                             Button { opened = p } label: {
                                 HStack {
                                     Image(systemName: "folder.fill").foregroundStyle(.secondary)
@@ -75,121 +56,109 @@ struct ProjectsScreen: View {
                                 .padding(.horizontal, 14).padding(.vertical, 13)
                                 .frame(maxWidth: .infinity)
                                 .liquidGlass(cornerRadius: 18)
-                            }.buttonStyle(.plain).foregroundStyle(.primary)
+                            }
+                            .buttonStyle(.plain).foregroundStyle(.primary)
+                            .contextMenu {
+                                Button(role: .destructive) { store.deleteProject(p.id) } label: {
+                                    Label("Delete", systemImage: "trash")
+                                }
+                            }
                         }
                     }
                     .padding(.horizontal, 16).padding(.bottom, 24)
                 }
             }
         }
-        .task { await loadProjects() }
         .sheet(item: $opened) { p in
-            ProjectFilesSheet(project: p)
+            ProjectFilesSheet(projectID: p.id).environmentObject(store)
                 .presentationDetents([.large])
         }
         .alert("New project", isPresented: $creating) {
             TextField("Project name", text: $newName)
-            Button("Create") { Task { await createProject() } }
+            Button("Create") {
+                let p = store.createProject(name: newName)
+                newName = ""
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                opened = p
+            }
             Button("Cancel", role: .cancel) { newName = "" }
         } message: {
-            Text("Creates a starter web project synced to your account.")
-        }
-    }
-
-    private func createProject() async {
-        guard let u = store.user else { return }
-        let name = newName.trimmingCharacters(in: .whitespaces).isEmpty ? "My Project" : newName
-        newName = ""
-        let id = UUID().uuidString
-        let starter = "<!doctype html>\n<html><head><meta charset=\"utf-8\"><title>\(name)</title></head>\n<body>\n  <h1>\(name)</h1>\n  <p>Built with AskAI.</p>\n</body></html>"
-        let url = URL(string: "\(FB.docBase)/users/\(u.uid)/projects/\(id)")!
-        var req = URLRequest(url: url)
-        req.httpMethod = "PATCH"
-        req.setValue("Bearer \(u.idToken)", forHTTPHeaderField: "Authorization")
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        let body: [String: Any] = ["fields": [
-            "name": ["stringValue": name],
-            "description": ["stringValue": "Created in the AskAI app"],
-            "template": ["stringValue": "static"],
-            "files": ["mapValue": ["fields": ["/index.html": ["stringValue": starter]]]],
-            "createdAt": ["integerValue": String(Int(Date().timeIntervalSince1970 * 1000))],
-            "updatedAt": ["integerValue": String(Int(Date().timeIntervalSince1970 * 1000))],
-        ]]
-        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
-        _ = try? await URLSession.shared.data(for: req)
-        await loadProjects()
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
-    }
-
-    private func loadProjects() async {
-        guard let u = store.user else { return }
-        loading = true
-        defer { loading = false }
-        guard let url = URL(string: "\(FB.docBase)/users/\(u.uid)/projects?pageSize=50") else { return }
-        var req = URLRequest(url: url)
-        req.setValue("Bearer \(u.idToken)", forHTTPHeaderField: "Authorization")
-        guard let (data, _) = try? await URLSession.shared.data(for: req),
-              let obj = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-              let docs = obj["documents"] as? [[String: Any]] else { return }
-        projects = docs.compactMap { doc in
-            guard let name = doc["name"] as? String,
-                  let f = doc["fields"] as? [String: Any] else { return nil }
-            let id = name.split(separator: "/").last.map(String.init) ?? UUID().uuidString
-            let title = ((f["name"] as? [String: Any])?["stringValue"] as? String) ?? "Project"
-            let desc = ((f["description"] as? [String: Any])?["stringValue"] as? String) ?? ""
-            var files: [String: String] = [:]
-            if let fm = ((f["files"] as? [String: Any])?["mapValue"] as? [String: Any])?["fields"] as? [String: Any] {
-                for (path, v) in fm {
-                    if let code = (v as? [String: Any])?["stringValue"] as? String { files[path] = code }
-                }
-            }
-            return ProjectItem(id: id, name: title, description: desc, files: files)
+            Text("Creates a starter web project saved on your device.")
         }
     }
 }
 
+/// View + edit a project's files. Edits save straight back to the store.
 private struct ProjectFilesSheet: View {
-    let project: ProjectItem
+    @EnvironmentObject var store: AppStore
+    let projectID: UUID
     @State private var openFile: String?
 
+    private var project: Project? { store.projects.first { $0.id == projectID } }
+
     var body: some View {
-        ZStack {
-            GlassBackground()
-            VStack(alignment: .leading, spacing: 0) {
-                Text(project.name).font(.system(size: 20, weight: .bold, design: .rounded))
-                    .padding(.horizontal, 18).padding(.top, 20).padding(.bottom, 10)
-                ScrollView {
-                    VStack(spacing: 6) {
+        NavigationStack {
+            Group {
+                if let project {
+                    List {
                         ForEach(project.files.keys.sorted(), id: \.self) { path in
                             Button { openFile = path } label: {
                                 HStack {
                                     Image(systemName: "doc.text").foregroundStyle(.secondary)
-                                    Text(path).font(.system(size: 14, weight: .medium, design: .monospaced)).lineLimit(1)
+                                    Text(path).font(.system(size: 14, weight: .medium, design: .monospaced))
                                     Spacer()
+                                    Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
                                 }
-                                .padding(.horizontal, 14).padding(.vertical, 11)
-                                .frame(maxWidth: .infinity)
-                                .liquidGlass(cornerRadius: 14)
-                            }.buttonStyle(.plain).foregroundStyle(.primary)
+                            }.foregroundStyle(.primary)
                         }
                     }
-                    .padding(.horizontal, 16).padding(.bottom, 24)
+                    .listStyle(.plain)
+                } else {
+                    Text("Project not found.").foregroundStyle(.secondary)
                 }
             }
-        }
-        .sheet(item: Binding(
-            get: { openFile.map { FileID(path: $0) } },
-            set: { openFile = $0?.path }
-        )) { fid in
-            ScrollView {
-                Text(project.files[fid.path] ?? "")
-                    .font(.system(size: 12, design: .monospaced))
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(16)
+            .navigationTitle(project?.name ?? "Project")
+            .navigationBarTitleDisplayMode(.inline)
+            .sheet(item: Binding(get: { openFile.map { FileID(path: $0) } },
+                                 set: { openFile = $0?.path })) { fid in
+                FileEditor(projectID: projectID, path: fid.path).environmentObject(store)
             }
-            .presentationDetents([.large])
         }
+    }
+}
+
+private struct FileEditor: View {
+    @EnvironmentObject var store: AppStore
+    @Environment(\.dismiss) private var dismiss
+    let projectID: UUID
+    let path: String
+    @State private var text = ""
+    @State private var loaded = false
+
+    var body: some View {
+        NavigationStack {
+            TextEditor(text: $text)
+                .font(.system(size: 13, design: .monospaced))
+                .padding(8)
+                .navigationTitle(path)
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Save") {
+                            store.updateProjectFile(projectID, path: path, content: text)
+                            UINotificationFeedbackGenerator().notificationOccurred(.success)
+                            dismiss()
+                        }.fontWeight(.bold)
+                    }
+                }
+                .onAppear {
+                    if !loaded {
+                        text = store.projects.first { $0.id == projectID }?.files[path] ?? ""
+                        loaded = true
+                    }
+                }
+        }
+        .presentationDetents([.large])
     }
 }
 

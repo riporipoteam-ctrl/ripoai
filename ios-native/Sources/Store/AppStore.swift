@@ -29,6 +29,8 @@ final class AppStore: ObservableObject {
     @Published var customInstructions = ""
     @Published var language = "auto"                    // "auto" or ISO code
     @Published var autoWebSearch = true                 // auto-search when a query needs fresh info
+    @Published var projects: [Project] = []             // local projects (everyone)
+    @Published var teamLog: [TeamLogEntry] = []         // persisted Agents room
 
     // Account / cloud sync
     @Published var user: AuthUser?
@@ -66,6 +68,8 @@ final class AppStore: ObservableObject {
         locationEnabled = UserDefaults.standard.bool(forKey: locKey)
         language = UserDefaults.standard.string(forKey: langKey) ?? "auto"
         autoWebSearch = UserDefaults.standard.object(forKey: autoSearchKey) as? Bool ?? true
+        loadProjects()
+        loadTeamLog()
         // Screenshot/demo mode for CI: seed content, skip auth.
         let args = ProcessInfo.processInfo.arguments
         if args.contains("-demo-chat") || args.contains("-demo-home") || args.contains("-demo-settings") || args.contains("-demo-menu") || args.contains("-demo-plus") {
@@ -438,6 +442,56 @@ final class AppStore: ObservableObject {
         guard let data = UserDefaults.standard.data(forKey: saveKey),
               let decoded = try? JSONDecoder().decode([ChatSession].self, from: data) else { return }
         sessions = decoded.sorted { $0.updated > $1.updated }
+    }
+
+    // MARK: Projects (local, work for everyone)
+    private let projectsKey = "askai.projects.v1"
+
+    @discardableResult
+    func createProject(name: String) -> Project {
+        let clean = name.trimmingCharacters(in: .whitespaces)
+        let title = clean.isEmpty ? "Untitled project" : clean
+        let starter = "<!doctype html>\n<html>\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n  <title>\(title)</title>\n</head>\n<body>\n  <h1>\(title)</h1>\n  <p>Built with AskAI.</p>\n</body>\n</html>"
+        let p = Project(name: title, files: ["index.html": starter])
+        projects.insert(p, at: 0)
+        saveProjects()
+        return p
+    }
+
+    func deleteProject(_ id: UUID) {
+        projects.removeAll { $0.id == id }
+        saveProjects()
+    }
+
+    func updateProjectFile(_ id: UUID, path: String, content: String) {
+        guard let i = projects.firstIndex(where: { $0.id == id }) else { return }
+        projects[i].files[path] = content
+        projects[i].updated = Date()
+        saveProjects()
+    }
+
+    func saveProjects() {
+        if let data = try? JSONEncoder().encode(projects) {
+            UserDefaults.standard.set(data, forKey: projectsKey)
+        }
+    }
+    private func loadProjects() {
+        guard let data = UserDefaults.standard.data(forKey: projectsKey),
+              let decoded = try? JSONDecoder().decode([Project].self, from: data) else { return }
+        projects = decoded.sorted { $0.updated > $1.updated }
+    }
+
+    // MARK: Agents (team) room — persisted
+    private let teamKey = "askai.team.v1"
+    func saveTeamLog() {
+        if let data = try? JSONEncoder().encode(teamLog) {
+            UserDefaults.standard.set(data, forKey: teamKey)
+        }
+    }
+    private func loadTeamLog() {
+        guard let data = UserDefaults.standard.data(forKey: teamKey),
+              let decoded = try? JSONDecoder().decode([TeamLogEntry].self, from: data) else { return }
+        teamLog = decoded
     }
 
     // MARK: Account

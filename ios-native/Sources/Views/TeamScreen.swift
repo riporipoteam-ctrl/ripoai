@@ -36,12 +36,13 @@ struct TeamEvent: Identifiable {
 struct TeamScreen: View {
     @EnvironmentObject var store: AppStore
     let back: () -> Void
-    @State private var events: [TeamEvent] = []
     @State private var draft = ""
     @State private var working = false
     @State private var attachments: [String] = []
     @State private var showPhotos = false
     @State private var photoItems: [PhotosPickerItem] = []
+
+    private func agent(_ id: String?) -> TeamAgent? { TeamAgent.all.first { $0.id == id } }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -61,7 +62,7 @@ struct TeamScreen: View {
             }
             .padding(.horizontal, 14).padding(.top, 6).padding(.bottom, 8)
 
-            if events.isEmpty {
+            if store.teamLog.isEmpty {
                 VStack(spacing: 14) {
                     Spacer()
                     Text("🧭💻🎨🔎").font(.system(size: 34))
@@ -75,7 +76,7 @@ struct TeamScreen: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: 12) {
-                            ForEach(events) { ev in
+                            ForEach(store.teamLog) { ev in
                                 if ev.fromUser {
                                     HStack {
                                         Spacer(minLength: 50)
@@ -84,7 +85,7 @@ struct TeamScreen: View {
                                             .background(Color.primary, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                                             .foregroundStyle(Color(uiColor: .systemBackground))
                                     }
-                                } else if let a = ev.agent {
+                                } else if let a = agent(ev.agentId) {
                                     HStack(alignment: .top, spacing: 10) {
                                         Text(a.emoji).font(.system(size: 18))
                                             .frame(width: 34, height: 34)
@@ -107,7 +108,7 @@ struct TeamScreen: View {
                         .padding(.horizontal, 16).padding(.vertical, 10)
                         .id("bottom")
                     }
-                    .onChange(of: events.last?.text) { _, _ in
+                    .onChange(of: store.teamLog.last?.text) { _, _ in
                         withAnimation { proxy.scrollTo("bottom", anchor: .bottom) }
                     }
                 }
@@ -184,7 +185,8 @@ struct TeamScreen: View {
     /// Route to the best-fit agent, then stream their in-character answer.
     private func run(_ task: String, images: [String] = []) async {
         working = true
-        events.append(TeamEvent(agent: nil, text: task, fromUser: true))
+        store.teamLog.append(TeamLogEntry(agentId: nil, text: task, fromUser: true))
+        store.saveTeamLog()
 
         // Pick the agent with a quick routing completion.
         var picked = TeamAgent.all[0]
@@ -199,25 +201,26 @@ struct TeamScreen: View {
             picked = match
         }
 
-        var ev = TeamEvent(agent: picked, text: "")
-        events.append(ev)
-        let idx = events.count - 1
+        let entry = TeamLogEntry(agentId: picked.id, text: "", fromUser: false)
+        store.teamLog.append(entry)
+        let idx = store.teamLog.count - 1
 
+        var langNote = ""
+        if let lang = Languages.instructionName(store.language) { langNote = " Always respond in \(lang)." }
         let system = Message(role: .system, text:
-            "You are \(picked.name), the \(picked.role) on the AskAI team. \(picked.persona) Speak in first person, do the task fully and concisely. No status updates, no filler. Use Markdown when helpful.")
+            "You are \(picked.name), the \(picked.role) on the AskAI team. \(picked.persona) Speak in first person, do the task fully and concisely. No status updates, no filler. Use Markdown when helpful.\(langNote)")
         let userMsg = Message(role: .user, text: task, attachments: images)
         let model = images.isEmpty ? "openai/gpt-oss-120b" : AIModel.visionModel.backend
         let provider: Provider = images.isEmpty ? .groq : AIModel.visionModel.provider
         do {
             try await GroqClient.shared.stream(model: model, provider: provider,
                                                messages: [system, userMsg]) { token in
-                ev.text += token
-                if idx < events.count { events[idx] = ev }
+                if idx < store.teamLog.count { store.teamLog[idx].text += token }
             }
         } catch {
-            ev.text = "(\(picked.name) couldn't respond right now.)"
-            if idx < events.count { events[idx] = ev }
+            if idx < store.teamLog.count { store.teamLog[idx].text = "(\(picked.name) couldn't respond right now.)" }
         }
+        store.saveTeamLog()
         working = false
     }
 }
