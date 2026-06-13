@@ -1,0 +1,32 @@
+name: Deploy AskAI Cloud Computer (Cloudflare sandbox)
+
+# Manual only — this spins up REAL Cloudflare Containers that bill usage on your
+# account. It never runs automatically. To activate:
+#   1. Add repo secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, SANDBOX_SECRET
+#   2. Make sure your Cloudflare account has Workers Paid + Containers enabled
+#   3. Run this workflow from the Actions tab.
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker/sandbox
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install
+      - name: Put SANDBOX_SECRET
+        run: echo "${{ secrets.SANDBOX_SECRET }}" | npx wrangler secret put SANDBOX_SECRET
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Deploy sandbox worker + container
+        run: npx wrangler deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

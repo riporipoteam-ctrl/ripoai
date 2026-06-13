@@ -1,0 +1,29 @@
+{
+  // AskAI Cloud Computer — Cloudflare Containers sandbox for AI agents.
+  // Requires Workers Paid + Containers. Deploy with your own account/token.
+  "name": "askai-sandbox",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-05-01",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": { "enabled": true },
+
+  // The container image that backs every sandbox instance.
+  "containers": [
+    {
+      "class_name": "Sandbox",
+      "image": "./Dockerfile",
+      "max_instances": 2,
+      "instance_type": "standard"
+    }
+  ],
+
+  // The Sandbox class (exported from @cloudflare/sandbox) is a Durable Object.
+  "durable_objects": {
+    "bindings": [{ "class_name": "Sandbox", "name": "Sandbox" }]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["Sandbox"] }
+  ]
+
+  // SANDBOX_SECRET is set as a secret at deploy time (wrangler secret put).
+}
