@@ -44,11 +44,6 @@ struct ChatScreen: View {
                                         insertion: .move(edge: .bottom).combined(with: .opacity).combined(with: .scale(scale: 0.98, anchor: .bottom)),
                                         removal: .opacity))
                             }
-                            if store.isStreaming, store.phase != .writing {
-                                StatusIndicator(phase: store.phase).id("status")
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .padding(.leading, 4)
-                            }
                         }
                         .padding(.horizontal, 16)
                         .padding(.top, 8)
@@ -89,11 +84,7 @@ struct ChatScreen: View {
 
     private func scrollDown(_ proxy: ScrollViewProxy) {
         withAnimation(.easeOut(duration: 0.2)) {
-            if store.isStreaming, store.phase != .writing {
-                proxy.scrollTo("status", anchor: .bottom)
-            } else if let last = messages.last?.id {
-                proxy.scrollTo(last, anchor: .bottom)
-            }
+            if let last = messages.last?.id { proxy.scrollTo(last, anchor: .bottom) }
         }
     }
 

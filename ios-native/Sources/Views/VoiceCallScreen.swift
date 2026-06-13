@@ -137,48 +137,124 @@ struct VoiceCallScreen: View {
 
     private func reply(to text: String) async {
         state = .thinking
-        // When the camera is on, attach the latest frame so AskAI can see.
         let frame = cameraOn ? camera.latestDataURL() : nil
         let userMsg = Message(role: .user, text: text, attachments: frame.map { [$0] } ?? [])
         convo.append(userMsg)
         let model = frame != nil ? AIModel.visionModel.backend : "llama-3.3-70b-versatile"
         let provider: Provider = frame != nil ? AIModel.visionModel.provider : .groq
+
+        voice.begin(language: store.language)
         var out = ""
+        var spokenUpTo = ""            // index into `out` already sent to TTS
+        var startedSpeaking = false
         do {
-            try await GroqClient.shared.stream(model: model, provider: provider, messages: convo) { out += $0 }
-        } catch { out = "Sorry, I didn't catch that." }
+            try await GroqClient.shared.stream(model: model, provider: provider, messages: convo) { tok in
+                out += tok
+                lastReply = out
+                // Speak complete sentences as they arrive → it talks back fast.
+                if let chunk = Self.nextSentence(in: out, after: spokenUpTo) {
+                    spokenUpTo += chunk
+                    if !startedSpeaking { startedSpeaking = true; state = .speaking }
+                    voice.enqueue(chunk)
+                }
+            }
+        } catch { out = out.isEmpty ? "Sorry, I didn't catch that." : out }
+        // Speak any trailing remainder.
+        let rest = String(out.dropFirst(spokenUpTo.count))
+        if !rest.trimmingCharacters(in: .whitespaces).isEmpty {
+            state = .speaking; voice.enqueue(rest)
+        }
         convo.append(Message(role: .assistant, text: out))
-        // Drop the frame from history so old images don't pile up in context.
         if let idx = convo.firstIndex(where: { $0.id == userMsg.id }) { convo[idx].attachments = [] }
         lastReply = out
-        state = .speaking
-        voice.speak(out) {
-            Task { @MainActor in
-                state = .listening
-                speech.start()
-            }
+        if !startedSpeaking && rest.isEmpty { state = .listening; speech.start(); return }
+        voice.finish {
+            Task { @MainActor in state = .listening; speech.start() }
         }
+    }
+
+    /// Returns the next full sentence at the start of `text` beyond `consumed`.
+    private static func nextSentence(in text: String, after consumed: String) -> String? {
+        guard text.count > consumed.count else { return nil }
+        let remainder = text.dropFirst(consumed.count)
+        if let r = remainder.firstIndex(where: { ".!?\n".contains($0) }) {
+            let end = remainder.index(after: r)
+            let sentence = String(remainder[remainder.startIndex..<end])
+            // Only emit once we have a bit of text (avoid choppy one-word chunks).
+            return sentence.count >= 4 ? sentence : nil
+        }
+        return nil
     }
 }
 
-/// Text-to-speech wrapper.
+/// Text-to-speech: picks the best (premium/enhanced) voice for the language and
+/// can speak incrementally (sentence-by-sentence) so replies start instantly.
 @MainActor
 final class VoiceOut: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
     private let synth = AVSpeechSynthesizer()
-    private var onDone: (() -> Void)?
+    private var onAllDone: (() -> Void)?
+    private var pending = 0
+    private var finishing = false
+    private var langCode = "en-US"
+
     override init() { super.init(); synth.delegate = self }
 
-    func speak(_ text: String, done: @escaping () -> Void) {
-        onDone = done
+    /// Start a fresh spoken turn in the given app-language.
+    func begin(language: String) {
+        langCode = Self.ttsLocale(language)
+        finishing = false; pending = 0
         try? AVAudioSession.sharedInstance().setCategory(.playback, options: .duckOthers)
         try? AVAudioSession.sharedInstance().setActive(true)
-        let u = AVSpeechUtterance(string: text)
-        u.voice = AVSpeechSynthesisVoice(language: "en-US")
-        u.rate = 0.52
+    }
+
+    /// Speak one chunk (queued — earlier chunks finish first).
+    func enqueue(_ text: String) {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty else { return }
+        let u = AVSpeechUtterance(string: t)
+        u.voice = Self.bestVoice(for: langCode)
+        u.rate = 0.5
+        pending += 1
         synth.speak(u)
     }
-    func stop() { synth.stopSpeaking(at: .immediate) }
+
+    /// No more chunks coming — call done once everything has been spoken.
+    func finish(done: @escaping () -> Void) { onAllDone = done; finishing = true; checkDone() }
+
+    /// One-shot convenience (used by camera/screen vision).
+    func speak(_ text: String, done: @escaping () -> Void) {
+        begin(language: "auto"); enqueue(text); finish(done: done)
+    }
+
+    func stop() { synth.stopSpeaking(at: .immediate); pending = 0; finishing = false; onAllDone = nil }
+
+    private func checkDone() {
+        if finishing && pending == 0 { let d = onAllDone; onAllDone = nil; finishing = false; d?() }
+    }
     nonisolated func speechSynthesizer(_ s: AVSpeechSynthesizer, didFinish u: AVSpeechUtterance) {
-        Task { @MainActor in onDone?(); onDone = nil }
+        Task { @MainActor in self.pending -= 1; self.checkDone() }
+    }
+
+    /// Highest-quality installed voice for a language (premium > enhanced > default).
+    static func bestVoice(for lang: String) -> AVSpeechSynthesisVoice? {
+        let base = String(lang.prefix(2)).lowercased()
+        let voices = AVSpeechSynthesisVoice.speechVoices().filter { $0.language.lowercased().hasPrefix(base) }
+        func rank(_ q: AVSpeechSynthesisVoice.Quality) -> Int {
+            if #available(iOS 16.0, *), q == .premium { return 3 }
+            return q == .enhanced ? 2 : 1
+        }
+        return voices.max(by: { rank($0.quality) < rank($1.quality) }) ?? AVSpeechSynthesisVoice(language: lang)
+    }
+
+    /// Map an app-language selection to a TTS locale.
+    static func ttsLocale(_ selection: String) -> String {
+        let code = selection == "auto" ? (Languages.device().code) : selection
+        let map: [String: String] = ["en": "en-US", "es": "es-ES", "fr": "fr-FR", "de": "de-DE",
+            "it": "it-IT", "pt": "pt-BR", "ru": "ru-RU", "ja": "ja-JP", "ko": "ko-KR",
+            "zh": "zh-CN", "ar": "ar-SA", "hi": "hi-IN", "nl": "nl-NL", "tr": "tr-TR",
+            "pl": "pl-PL", "sv": "sv-SE", "da": "da-DK", "fi": "fi-FI", "no": "nb-NO",
+            "cs": "cs-CZ", "el": "el-GR", "he": "he-IL", "th": "th-TH", "id": "id-ID",
+            "uk": "uk-UA", "ro": "ro-RO", "hu": "hu-HU", "vi": "vi-VN"]
+        return map[code] ?? "en-US"
     }
 }
