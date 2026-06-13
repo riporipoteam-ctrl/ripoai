@@ -16,6 +16,7 @@ import {
   Mail,
 } from 'lucide-react'
 import { useStore } from '../store'
+import { useT } from '../lib/i18n'
 import Modal from './ui/Modal'
 import Button from './ui/Button'
 import { MODEL_LIST } from '../lib/models'
@@ -56,6 +57,7 @@ export default function Settings() {
     syncing,
     resync,
   } = useStore()
+  const tr = useT()
   const [tab, setTab] = useState<(typeof TABS)[number]['id']>('general')
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [vp, setVp] = useState(getVoicePrefs())
@@ -156,7 +158,7 @@ export default function Settings() {
                   : 'text-muted hover:bg-white/[0.06] hover:text-ink'
               }`}
             >
-              <t.icon size={16} className={tab === t.id ? 'text-accent' : ''} /> {t.label}
+              <t.icon size={16} className={tab === t.id ? 'text-accent' : ''} /> {tr(t.label)}
             </button>
           ))}
         </div>
