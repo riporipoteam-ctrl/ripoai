@@ -111,6 +111,8 @@ export interface UserSettings {
   emoji: 'none' | 'some' | 'lots'
   memoryEnabled: boolean
   onboarded: boolean
+  /** ISO code or 'auto' — language for AI replies (and UI where available). */
+  language?: string
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -127,6 +129,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   emoji: 'some',
   memoryEnabled: true,
   onboarded: false,
+  language: 'auto',
 }
 
 /* =====================================================================
