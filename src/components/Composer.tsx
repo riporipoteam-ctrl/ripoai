@@ -30,6 +30,7 @@ import { haptic } from '../lib/native'
 import { matchSkills } from '../lib/skills'
 import { loadAgents } from '../lib/agents'
 import { useStore } from '../store'
+import { useT } from '../lib/i18n'
 
 interface Props {
   model: ModelTier
@@ -81,6 +82,7 @@ export default function Composer({
   onTeam,
 }: Props) {
   const { user } = useStore()
+  const t = useT()
   const [text, setText] = useState('')
   const [attachments, setAttachments] = useState<Attachment[]>([])
 
@@ -388,7 +390,7 @@ export default function Composer({
           }}
           onPaste={handlePaste}
           rows={1}
-          placeholder={imageMode ? 'Describe an image to generate...' : effPlaceholder}
+          placeholder={imageMode ? t('Describe an image to generate...') : effPlaceholder}
           className="no-scrollbar max-h-[220px] w-full resize-none bg-transparent px-3 py-2 text-[0.975rem] outline-none placeholder:text-muted"
         />
 

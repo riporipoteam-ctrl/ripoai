@@ -3,6 +3,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from './firebase'
 import { useStore, applyAppearance } from './store'
+import { useI18n } from './lib/i18n'
 import { initNative, syncStatusBarTheme } from './lib/native'
 import { completeGoogleRedirect } from './lib/googleAuth'
 import SignIn from './pages/SignIn'
@@ -99,6 +100,11 @@ export default function App() {
   useEffect(() => {
     syncStatusBarTheme(document.documentElement.classList.contains('dark'))
   }, [settings.theme])
+
+  // Translate the whole UI into the chosen language (cached per language).
+  useEffect(() => {
+    useI18n.getState().apply(settings.language)
+  }, [settings.language])
 
   return (
     <>
