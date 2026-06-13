@@ -19,6 +19,7 @@ import { useStore } from '../store'
 import Modal from './ui/Modal'
 import Button from './ui/Button'
 import { MODEL_LIST } from '../lib/models'
+import { LANGUAGES } from '../lib/languages'
 import { clearAllChats, clearMemories, deleteMemory } from '../lib/db'
 import { listVoices, getVoicePrefs, setVoicePrefs, isSpeechSupported } from '../hooks/useSpeech'
 import { speakHQ, stopVoice } from '../lib/voice'
@@ -292,6 +293,24 @@ export default function Settings() {
                     </option>
                   ))}
                 </select>
+              </Field>
+
+              <Field label="Language">
+                <select
+                  value={settings.language ?? 'auto'}
+                  onChange={(e) => updateSettings({ language: e.target.value })}
+                  className="w-full rounded-2xl border border-white/15 bg-white/5 px-3 py-2.5 outline-none focus:border-accent"
+                >
+                  <option value="auto" className="bg-surface text-ink">
+                    Auto (device language)
+                  </option>
+                  {LANGUAGES.map((l) => (
+                    <option key={l.code} value={l.code} className="bg-surface text-ink">
+                      {l.native} — {l.name}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1.5 text-xs text-muted">AskAI replies in this language.</p>
               </Field>
             </>
           )}

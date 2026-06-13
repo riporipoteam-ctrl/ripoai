@@ -222,31 +222,6 @@ export default function ChatView() {
               Ask anything, build apps & sites, search the live web, create images, or dispatch a team of agents.
             </motion.p>
 
-            <div className="empty-suggestions mt-6 grid w-full max-w-xl grid-cols-2 gap-2 sm:mt-7 sm:gap-3">
-              {suggestions.map((s, i) => (
-                <motion.button
-                  key={s.title}
-                  initial={{ opacity: 0, y: 16 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 + 0.06 * i }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleSend(s.prompt, [])}
-                  className="suggestion-card lift-card glass pressable group flex items-center gap-2.5 rounded-2xl p-3 text-left sm:gap-3.5 sm:p-4"
-                >
-                  <span className="launch-icon accent-gradient-bg flex h-9 w-9 shrink-0 items-center justify-center rounded-xl shadow-[0_6px_16px_-8px_rgb(var(--ink)/0.6)] sm:h-11 sm:w-11 sm:rounded-2xl">
-                    <s.icon size={17} strokeWidth={2.4} />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <div className="text-[14px] font-extrabold tracking-tight sm:text-[15px]">{s.title}</div>
-                    <div className="mt-0.5 truncate text-[11px] text-muted sm:text-[13px]">{s.sub}</div>
-                  </span>
-                  <ChevronRight
-                    size={16}
-                    className="hidden shrink-0 text-muted transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-ink sm:block"
-                  />
-                </motion.button>
-              ))}
-            </div>
           </div>
         ) : (
           /* Extra top clearance when the floating top bar overlays the scroll

@@ -1,5 +1,6 @@
 import type { Memory, UserSettings } from './db'
 import type { RipoModel } from './models'
+import { aiLanguageName } from './languages'
 
 const BASE_PERSONA = `You are AskAI, a brilliant, warm and highly capable AI assistant made by the AskAI team.
 You write clearly and beautifully, format answers with Markdown (headings, lists, tables, fenced code blocks with language tags), and use LaTeX ($...$ / $$...$$) for math.
@@ -92,6 +93,11 @@ export function buildSystemPrompt(
       .map((m) => `- ${m.text}`)
       .join('\n')
     parts.push(`Things you remember about this user (use when relevant):\n${mems}`)
+  }
+
+  const lang = aiLanguageName(settings.language)
+  if (lang) {
+    parts.push(`ALWAYS write your entire reply in ${lang}, regardless of the language of the question, unless the user explicitly asks for another language.`)
   }
 
   const now = new Date()
