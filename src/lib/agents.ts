@@ -11,6 +11,10 @@ export interface Agent {
   /** Freeform persona + instructions that shape how the agent works. */
   personality: string
   color: string
+  /** AI-generated profile picture (image URL) — shown instead of the emoji. */
+  avatar?: string
+  /** What the agent is good at. */
+  skills?: string[]
 }
 
 export const DEFAULT_AGENTS: Agent[] = [
@@ -154,6 +158,49 @@ export function newAgent(): Agent {
     personality: '',
     color: randomColor(),
   }
+}
+
+/** AskAI (head agent) designs a new agent from a plain-English request and
+ *  generates a realistic profile picture for it. */
+export async function aiDesignAgent(description: string): Promise<Agent> {
+  const { complete } = await import('./groq')
+  const { generateImage } = await import('./imagegen')
+  const sys = `You design an AI team agent from the user's request. Reply with ONLY compact JSON, no prose:
+{"name":"<short first name; use the one the user gave, else invent a fitting one — no spaces>","role":"<2-4 word role>","personality":"<2-3 sentences of personality + how it works>","skills":["skill1","skill2","skill3"],"avatar":"<a vivid 1-line image prompt for a friendly, realistic avatar portrait, e.g. 'a friendly golden retriever wearing glasses, studio portrait' or 'a warm smiling young engineer, soft studio light'>"}`
+  let obj: any = {}
+  try {
+    const out = await complete(
+      'llama-3.3-70b-versatile',
+      [
+        { role: 'system', content: sys },
+        { role: 'user', content: description },
+      ],
+      { temperature: 0.5, maxTokens: 400 },
+    )
+    const a = out.indexOf('{')
+    const b = out.lastIndexOf('}')
+    if (a >= 0 && b >= 0) obj = JSON.parse(out.slice(a, b + 1))
+  } catch {
+    /* fall back to defaults below */
+  }
+  const agent: Agent = {
+    id: crypto.randomUUID(),
+    name: String(obj.name || 'Nova').replace(/\s+/g, ''),
+    emoji: '🤖',
+    role: String(obj.role || 'Specialist'),
+    personality: String(obj.personality || 'A capable, friendly AI specialist.'),
+    color: randomColor(),
+    skills: Array.isArray(obj.skills) ? obj.skills.map(String) : [],
+  }
+  try {
+    agent.avatar = await generateImage(
+      `${obj.avatar || 'a friendly robot avatar, studio portrait, soft lighting'}. High-quality avatar portrait, centered, clean background.`,
+      { w: 512, h: 512 },
+    )
+  } catch {
+    /* keep emoji fallback */
+  }
+  return agent
 }
 
 export function getAgent(uid: string, id: string): Agent | null {
