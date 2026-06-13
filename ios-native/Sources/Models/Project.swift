@@ -18,3 +18,16 @@ struct TeamLogEntry: Identifiable, Codable, Equatable {
     var text: String
     var fromUser: Bool
 }
+
+/// A user-created AI agent with its own persona, skills, avatar and chat room.
+struct CustomAgent: Identifiable, Codable, Equatable {
+    var id = UUID()
+    var name: String
+    var role: String
+    var persona: String
+    var skills: [String] = []
+    var avatar: String? = nil      // generated image URL / data URL
+    var canBrowse: Bool = true
+    var chat: [Message] = []
+    var created = Date()
+}

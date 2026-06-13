@@ -32,6 +32,7 @@ final class AppStore: ObservableObject {
     @Published var projects: [Project] = []             // local projects (everyone)
     @Published var teamLog: [TeamLogEntry] = []         // persisted Agents room
     @Published var i18n: [String: String] = [:]         // English UI string -> translated
+    @Published var agents: [CustomAgent] = []           // user-created AI agents
 
     // Account / cloud sync
     @Published var user: AuthUser?
@@ -71,6 +72,7 @@ final class AppStore: ObservableObject {
         autoWebSearch = UserDefaults.standard.object(forKey: autoSearchKey) as? Bool ?? true
         loadProjects()
         loadTeamLog()
+        loadAgents()
         applyTranslations()
         // Screenshot/demo mode for CI: seed content, skip auth.
         let args = ProcessInfo.processInfo.arguments
@@ -628,6 +630,112 @@ final class AppStore: ObservableObject {
         guard let data = UserDefaults.standard.data(forKey: projectsKey),
               let decoded = try? JSONDecoder().decode([Project].self, from: data) else { return }
         projects = decoded.sorted { $0.updated > $1.updated }
+    }
+
+    // MARK: Custom AI agents
+    private let agentsKey = "askai.agents.v2"
+    @Published var creatingAgent = false
+    @Published var agentCreationStatus = ""
+
+    func saveAgents() {
+        if let data = try? JSONEncoder().encode(agents) { UserDefaults.standard.set(data, forKey: agentsKey) }
+    }
+    private func loadAgents() {
+        guard let data = UserDefaults.standard.data(forKey: agentsKey),
+              let decoded = try? JSONDecoder().decode([CustomAgent].self, from: data) else { return }
+        agents = decoded
+    }
+
+    /// True if the message reads like a request to create/hire a new agent.
+    func looksLikeAgentRequest(_ t: String) -> Bool {
+        let l = t.lowercased()
+        let verb = ["create", "make", "hire", "build", "add", "spin up", "give me"].contains { l.contains($0) }
+        return verb && l.contains("agent")
+    }
+
+    /// Head agent (AskAI 4o Pro) designs a new agent from the request, then
+    /// generates its profile picture. Drives a live creation status.
+    func createAgent(from request: String) async -> CustomAgent? {
+        creatingAgent = true
+        agentCreationStatus = "Designing your agent…"
+        defer { creatingAgent = false }
+
+        let sys = Message(role: .system, text: """
+        You are AskAI, the head of an AI agent team. The user wants a new agent. Design it. Reply with ONLY compact JSON, no prose:
+        {"name":"<a short first name; use the one the user gave, else invent a fitting one>","role":"<2-4 word role>","persona":"<2-3 sentence personality + how it works>","skills":["skill1","skill2","skill3"],"avatar":"<a vivid 1-line image prompt for a friendly, realistic avatar portrait — e.g. 'a friendly golden retriever wearing glasses, studio portrait' or 'a warm smiling young engineer, soft studio light'>"}
+        """)
+        guard let out = try? await GroqClient.shared.complete(
+            model: "openai/gpt-oss-120b",
+            messages: [sys, Message(role: .user, text: request)]),
+              let start = out.firstIndex(of: "{"), let end = out.lastIndex(of: "}"),
+              let data = String(out[start...end]).data(using: .utf8),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else { agentCreationStatus = ""; return nil }
+
+        let name = (obj["name"] as? String)?.trimmingCharacters(in: .whitespaces) ?? "Nova"
+        let role = (obj["role"] as? String) ?? "Specialist"
+        let persona = (obj["persona"] as? String) ?? "A capable, friendly AI specialist."
+        let skills = (obj["skills"] as? [String]) ?? []
+        let avatarPrompt = (obj["avatar"] as? String) ?? "a friendly robot avatar, studio portrait, soft lighting"
+
+        agentCreationStatus = "Painting \(name)'s portrait…"
+        let avatar = await ImageGen.generate(prompt: "\(avatarPrompt). High-quality avatar portrait, centered, clean background.")
+
+        var agent = CustomAgent(name: name, role: role, persona: persona, skills: skills, avatar: avatar)
+        agent.chat = [Message(role: .assistant, text: "Hi, I'm **\(name)** — your \(role). \(skills.isEmpty ? "" : "I can help with \(skills.prefix(3).joined(separator: ", ")). ")Give me a task and I'll get to work.")]
+        agents.insert(agent, at: 0)
+        saveAgents()
+        agentCreationStatus = ""
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        return agent
+    }
+
+    func updateAgent(_ a: CustomAgent) {
+        guard let i = agents.firstIndex(where: { $0.id == a.id }) else { return }
+        agents[i] = a; saveAgents()
+    }
+    func deleteAgent(_ id: UUID) { agents.removeAll { $0.id == id }; saveAgents() }
+
+    @Published var agentReplying = false
+
+    /// Send a message to one agent's room. The agent answers in character and,
+    /// when the task needs current info, actually browses the web (OpenClaw).
+    func messageAgent(_ id: UUID, text: String) {
+        guard let idx = agents.firstIndex(where: { $0.id == id }), !agentReplying else { return }
+        agentReplying = true
+        agents[idx].chat.append(Message(role: .user, text: text))
+        agents[idx].chat.append(Message(role: .assistant, text: ""))
+        saveAgents()
+        let aIdx = agents[idx].chat.count - 1
+        let agent = agents[idx]
+        let browse = agent.canBrowse && wantsResearch(text)
+
+        var langNote = ""
+        if let lang = Languages.instructionName(language) { langNote = " Always respond in \(lang)." }
+        let sys = Message(role: .system, text:
+            "You are \(agent.name), a \(agent.role) on the user's AI team. \(agent.persona) Skills: \(agent.skills.joined(separator: ", ")). Speak in first person, be concise and genuinely useful, use Markdown when helpful.\(langNote)")
+        var history = [sys] + agent.chat.dropLast()
+
+        streamTask = Task {
+            let bg = UIApplication.shared.beginBackgroundTask(withName: "askai.agent.msg")
+            defer { UIApplication.shared.endBackgroundTask(bg) }
+            var sources: [(title: String, url: String)] = []
+            if browse, let r = await WebSearch.run(text) {
+                sources = r.sources
+                history.insert(Message(role: .system, text: r.context + "\n\nUse these live results; cite sources inline."), at: 1)
+            }
+            do {
+                try await GroqClient.shared.stream(model: "openai/gpt-oss-120b", messages: history) { [weak self] tok in
+                    guard let self, let i = self.agents.firstIndex(where: { $0.id == id }), aIdx < self.agents[i].chat.count else { return }
+                    self.agents[i].chat[aIdx].text += tok
+                }
+            } catch {}
+            if !sources.isEmpty, let i = self.agents.firstIndex(where: { $0.id == id }), aIdx < self.agents[i].chat.count {
+                self.agents[i].chat[aIdx].text += "\n\n**Sources**\n" + sources.prefix(4).map { "- [\($0.title)](\($0.url))" }.joined(separator: "\n")
+            }
+            self.agentReplying = false
+            self.saveAgents()
+        }
     }
 
     // MARK: Agents (team) room — persisted

@@ -41,6 +41,8 @@ struct TeamScreen: View {
     @State private var attachments: [String] = []
     @State private var showPhotos = false
     @State private var photoItems: [PhotosPickerItem] = []
+    @State private var openAgent: CustomAgent?
+    @State private var editAgent: CustomAgent?
 
     private func agent(_ id: String?) -> TeamAgent? { TeamAgent.all.first { $0.id == id } }
 
@@ -61,6 +63,26 @@ struct TeamScreen: View {
                 }
             }
             .padding(.horizontal, 14).padding(.top, 6).padding(.bottom, 8)
+
+            // Roster of your created agents — tap to open their room.
+            if !store.agents.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 14) {
+                        ForEach(store.agents) { a in
+                            Button { openAgent = a } label: {
+                                VStack(spacing: 4) {
+                                    AgentAvatar(agent: a, size: 52)
+                                    Text(a.name).font(.system(size: 11, weight: .semibold)).lineLimit(1)
+                                }.frame(width: 64)
+                            }.buttonStyle(.plain).foregroundStyle(.primary)
+                            .contextMenu {
+                                Button { editAgent = a } label: { Label("Edit", systemImage: "pencil") }
+                                Button(role: .destructive) { store.deleteAgent(a.id) } label: { Label("Delete", systemImage: "trash") }
+                            }
+                        }
+                    }.padding(.horizontal, 16).padding(.bottom, 8)
+                }
+            }
 
             if store.teamLog.isEmpty {
                 VStack(spacing: 14) {
@@ -142,16 +164,20 @@ struct TeamScreen: View {
                         .foregroundStyle(.primary).frame(width: 36, height: 36)
                 }.padding(.leading, 6).padding(.bottom, 5)
 
-                TextField(store.t("Give the team a task…"), text: $draft, axis: .vertical)
+                TextField("Give a task — or “make an agent that…”", text: $draft, axis: .vertical)
                     .font(.system(size: 16)).lineLimit(1...5)
                     .padding(.vertical, 13)
                 Button {
                     let t = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard (!t.isEmpty || !attachments.isEmpty), !working else { return }
+                    guard (!t.isEmpty || !attachments.isEmpty), !working, !store.creatingAgent else { return }
                     let imgs = attachments
                     draft = ""; attachments = []
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    Task { await run(t.isEmpty ? "Look at this." : t, images: imgs) }
+                    if imgs.isEmpty && store.looksLikeAgentRequest(t) {
+                        Task { if let a = await store.createAgent(from: t) { openAgent = a } }
+                    } else {
+                        Task { await run(t.isEmpty ? "Look at this." : t, images: imgs) }
+                    }
                 } label: {
                     Image(systemName: working ? "ellipsis" : "arrow.up")
                         .font(.system(size: 17, weight: .bold))
@@ -179,6 +205,17 @@ struct TeamScreen: View {
                 }
                 photoItems = []
             }
+        }
+        .overlay {
+            if store.creatingAgent {
+                AgentCreationOverlay(status: store.agentCreationStatus)
+            }
+        }
+        .sheet(item: $openAgent) { a in
+            AgentRoomView(agentID: a.id).environmentObject(store)
+        }
+        .sheet(item: $editAgent) { a in
+            AgentEditView(agent: a).environmentObject(store)
         }
     }
 
@@ -222,5 +259,183 @@ struct TeamScreen: View {
         }
         store.saveTeamLog()
         working = false
+    }
+}
+
+// MARK: - Agent avatar
+
+struct AgentAvatar: View {
+    let agent: CustomAgent
+    var size: CGFloat = 44
+    var body: some View {
+        Group {
+            if let a = agent.avatar, a.hasPrefix("data:"), let img = UIImage.fromDataURL(a) {
+                Image(uiImage: img).resizable().scaledToFill()
+            } else if let a = agent.avatar, let url = URL(string: a) {
+                AsyncImage(url: url) { phase in
+                    if let img = phase.image { img.resizable().scaledToFill() }
+                    else { fallback }
+                }
+            } else { fallback }
+        }
+        .frame(width: size, height: size)
+        .clipShape(Circle())
+        .overlay(Circle().strokeBorder(Color.primary.opacity(0.1), lineWidth: 1))
+    }
+    private var fallback: some View {
+        ZStack {
+            Circle().fill(Color.accentColor.opacity(0.22))
+            Text(String(agent.name.prefix(1))).font(.system(size: size * 0.42, weight: .bold)).foregroundStyle(Color.accentColor)
+        }
+    }
+}
+
+// MARK: - Creation overlay (cool animation while AskAI builds the agent)
+
+struct AgentCreationOverlay: View {
+    let status: String
+    @State private var pulse = false
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.55).ignoresSafeArea()
+            VStack(spacing: 18) {
+                ZStack {
+                    ForEach(0..<3) { i in
+                        Circle().stroke(Color.accentColor.opacity(0.5), lineWidth: 2)
+                            .frame(width: 90 + CGFloat(i) * 26, height: 90 + CGFloat(i) * 26)
+                            .scaleEffect(pulse ? 1.1 : 0.9).opacity(pulse ? 0.2 : 0.7)
+                            .animation(.easeInOut(duration: 1.2).repeatForever().delay(Double(i) * 0.2), value: pulse)
+                    }
+                    Image(systemName: "sparkles").font(.system(size: 34, weight: .bold)).foregroundStyle(.white)
+                        .symbolEffect(.variableColor.iterative, options: .repeating)
+                }
+                Text(status.isEmpty ? "Creating your agent…" : status)
+                    .font(.system(size: 15, weight: .semibold)).foregroundStyle(.white)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(34)
+        }
+        .onAppear { pulse = true }
+        .transition(.opacity)
+    }
+}
+
+// MARK: - Agent room (chat with one agent)
+
+struct AgentRoomView: View {
+    @EnvironmentObject var store: AppStore
+    @Environment(\.dismiss) private var dismiss
+    let agentID: UUID
+    @State private var draft = ""
+    @State private var showProfile = false
+
+    private var agent: CustomAgent? { store.agents.first { $0.id == agentID } }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                if let agent {
+                    Button { showProfile = true } label: {
+                        HStack(spacing: 10) {
+                            AgentAvatar(agent: agent, size: 40)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(agent.name).font(.system(size: 15, weight: .bold)).foregroundStyle(.primary)
+                                Text(store.agentReplying ? "typing…" : agent.role)
+                                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "info.circle").foregroundStyle(.secondary)
+                        }.padding(.horizontal, 16).padding(.vertical, 8)
+                    }.buttonStyle(.plain)
+                    Divider()
+
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            LazyVStack(alignment: .leading, spacing: 12) {
+                                ForEach(agent.chat) { m in
+                                    if m.role == .user {
+                                        HStack { Spacer(minLength: 40)
+                                            Text(m.text).padding(.horizontal, 14).padding(.vertical, 10)
+                                                .background(Color.primary, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+                                                .foregroundStyle(Color(uiColor: .systemBackground)) }
+                                    } else {
+                                        MarkdownText(text: m.text.isEmpty ? "…" : m.text)
+                                            .padding(.horizontal, 13).padding(.vertical, 10).liquidGlass(cornerRadius: 16)
+                                    }
+                                }.id("end")
+                            }.padding(16)
+                        }
+                        .onChange(of: agent.chat.last?.text) { _, _ in withAnimation { proxy.scrollTo("end", anchor: .bottom) } }
+                    }
+
+                    HStack(alignment: .bottom, spacing: 8) {
+                        TextField("Message \(agent.name)…", text: $draft, axis: .vertical)
+                            .font(.system(size: 16)).lineLimit(1...5).padding(.vertical, 11).padding(.leading, 6)
+                        Button {
+                            let t = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+                            guard !t.isEmpty, !store.agentReplying else { return }
+                            draft = ""; UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                            store.messageAgent(agentID, text: t)
+                        } label: {
+                            Image(systemName: store.agentReplying ? "ellipsis" : "arrow.up")
+                                .font(.system(size: 17, weight: .bold)).foregroundStyle(Color(uiColor: .systemBackground))
+                                .frame(width: 40, height: 40)
+                                .background(Circle().fill(draft.isEmpty || store.agentReplying ? AnyShapeStyle(.secondary.opacity(0.4)) : AnyShapeStyle(Color.accentColor)))
+                        }.buttonStyle(.plain).disabled(draft.isEmpty || store.agentReplying).padding(.trailing, 6).padding(.bottom, 5)
+                    }
+                    .liquidGlass(cornerRadius: 26, interactive: true).padding(.horizontal, 12).padding(.bottom, 8)
+                } else {
+                    Spacer(); Text("Agent not found.").foregroundStyle(.secondary); Spacer()
+                }
+            }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } } }
+            .sheet(isPresented: $showProfile) {
+                if let agent { AgentEditView(agent: agent).environmentObject(store) }
+            }
+        }
+    }
+}
+
+// MARK: - Agent profile / edit
+
+struct AgentEditView: View {
+    @EnvironmentObject var store: AppStore
+    @Environment(\.dismiss) private var dismiss
+    @State var agent: CustomAgent
+    @State private var skillsText = ""
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    HStack { Spacer(); AgentAvatar(agent: agent, size: 96); Spacer() }
+                        .listRowBackground(Color.clear)
+                }
+                Section("Name") { TextField("Name", text: $agent.name) }
+                Section("Role") { TextField("Role", text: $agent.role) }
+                Section("Personality & how it works") {
+                    TextField("Persona", text: $agent.persona, axis: .vertical).lineLimit(3...8)
+                }
+                Section("Skills (comma-separated)") {
+                    TextField("research, coding, writing", text: $skillsText, axis: .vertical).lineLimit(1...4)
+                }
+                Section { Toggle("Can browse the web", isOn: $agent.canBrowse) }
+            }
+            .navigationTitle("Agent profile")
+            .navigationBarTitleDisplayMode(.inline)
+            .onAppear { skillsText = agent.skills.joined(separator: ", ") }
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Save") {
+                        agent.skills = skillsText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+                        store.updateAgent(agent)
+                        UINotificationFeedbackGenerator().notificationOccurred(.success)
+                        dismiss()
+                    }.fontWeight(.bold)
+                }
+            }
+        }
     }
 }
