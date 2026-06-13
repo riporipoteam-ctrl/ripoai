@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams, useLocation } from 'react-router-dom'
+import { useT } from '../lib/i18n'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   PenSquare,
@@ -67,6 +68,7 @@ export default function Sidebar() {
   const location = useLocation()
   const path = location.pathname
   const { user, settings, chats, projects, sidebarOpen, setSidebar, openSettings, unreadChats } = useStore()
+  const t = useT()
   const [search, setSearch] = useState('')
   const [bookmarksOpen, setBookmarksOpen] = useState(false)
   const [menuFor, setMenuFor] = useState<string | null>(null)
@@ -158,7 +160,7 @@ export default function Sidebar() {
                 }}
                 className="pressable accent-gradient-bg flex w-full items-center justify-center gap-2 rounded-2xl px-3 py-3 text-sm font-bold shadow-sm transition hover:brightness-110"
               >
-                <PenSquare size={17} /> New chat
+                <PenSquare size={17} /> {t('New chat')}
               </button>
 
               {/* Search */}
@@ -167,7 +169,7 @@ export default function Sidebar() {
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search chats & messages"
+                  placeholder={t('Search chats')}
                   className="w-full bg-transparent text-sm outline-none placeholder:text-muted"
                 />
               </div>
@@ -224,10 +226,10 @@ export default function Sidebar() {
                           )
                         }
                       />
-                      <NavItem icon={<Users size={17} />} label="Agent team" to="/team" active={path === '/team'} />
+                      <NavItem icon={<Users size={17} />} label={t('Agents')} to="/team" active={path === '/team'} />
                       <NavItem
                         icon={<ListChecks size={17} />}
-                        label="Daily tasks"
+                        label={t('Daily tasks')}
                         to="/tasks"
                         active={path === '/tasks'}
                         trailing={
@@ -236,7 +238,7 @@ export default function Sidebar() {
                           ) : undefined
                         }
                       />
-                      <NavItem icon={<Bookmark size={17} />} label="Saved messages" onClick={() => setBookmarksOpen(true)} />
+                      <NavItem icon={<Bookmark size={17} />} label={t('Saved messages')} onClick={() => setBookmarksOpen(true)} />
                     </>
                   )
                 })()}
@@ -247,7 +249,7 @@ export default function Sidebar() {
             <div className="mt-2 flex-1 overflow-y-auto px-2">
               {/* Projects */}
               <div className="mb-1 flex items-center justify-between px-2 pt-1">
-                <span className="text-xs font-bold uppercase tracking-wide text-muted">Projects</span>
+                <span className="text-xs font-bold uppercase tracking-wide text-muted">{t('Projects')}</span>
                 <button
                   onClick={createProject}
                   className="pressable rounded-lg p-1 text-muted hover:bg-white/10 hover:text-ink"

@@ -424,3 +424,27 @@
     padding-top: 5rem !important;
   }
 }
+
+/* ============================================================
+   v3.1 motion polish — additive animations on existing classes
+   ============================================================ */
+
+/* Subtle living gradient on the accent buttons (New chat, Send). */
+@keyframes askai-accent-shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.accent-gradient-bg {
+  background-size: 180% 180%;
+  animation: askai-accent-shimmer 7s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .accent-gradient-bg { animation: none; }
+}
+
+/* Springier press + hover lift on the launch/suggestion + nav cards. */
+.lift-card, .pressable {
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.18s ease, filter 0.18s ease;
+}
+.lift-card:hover { transform: translateY(-2px); }
+.pressable:active { transform: scale(0.97); }

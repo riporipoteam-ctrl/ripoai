@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { useChat } from '../hooks/useChat'
 import { useStore } from '../store'
+import { useT } from '../lib/i18n'
 import Composer from './Composer'
 import VoiceCall from './VoiceCall'
 import Message from './Message'
@@ -78,6 +79,7 @@ export default function ChatView() {
   const { chatId } = useParams()
   const navigate = useNavigate()
   const { settings, user, sidebarOpen, toggleSidebar, banStatus } = useStore()
+  const t = useT()
   const ban = banStatus?.ban
   const banned = banActive(ban)
   const msgLimit = banStatus?.msgLimit || 0
@@ -205,11 +207,11 @@ export default function ChatView() {
                   <>
                     {slot}, {name}.
                     <span className="mt-1 block bg-gradient-to-r from-[rgb(var(--ink))] to-[rgb(var(--muted))] bg-clip-text text-transparent">
-                      What are we making?
+                      {t('What are we making?')}
                     </span>
                   </>
                 ) : (
-                  <>What can I help with?</>
+                  <>{t('What can I help with?')}</>
                 )
               })()}
             </motion.h1>
@@ -219,7 +221,7 @@ export default function ChatView() {
               transition={{ delay: 0.16 }}
               className="mt-2 hidden max-w-md text-center text-sm text-muted sm:block"
             >
-              Ask anything, build apps & sites, search the live web, create images, or dispatch a team of agents.
+              {t('Ask anything, build apps & sites, search the live web, create images, or dispatch a team of agents.')}
             </motion.p>
 
           </div>
