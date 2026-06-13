@@ -12,7 +12,7 @@ struct ProjectsScreen: View {
             HStack {
                 GlassIconButton(system: "chevron.left", action: back)
                 Spacer()
-                Text("Projects").font(.system(size: 17, weight: .bold))
+                Text(store.t("Projects")).font(.system(size: 17, weight: .bold))
                 Spacer()
                 GlassIconButton(system: "plus") { newName = ""; creating = true }
             }
@@ -22,15 +22,15 @@ struct ProjectsScreen: View {
                 VStack(spacing: 12) {
                     Spacer()
                     Image(systemName: "folder.badge.plus").font(.system(size: 40)).foregroundStyle(.secondary)
-                    Text("No projects yet").font(.system(size: 17, weight: .bold))
-                    Text("Create a project to start building. It's saved on your device.")
+                    Text(store.t("No projects yet")).font(.system(size: 17, weight: .bold))
+                    Text(store.t("Create a project to start building. It's saved on your device."))
                         .font(.system(size: 13)).foregroundStyle(.secondary)
                         .multilineTextAlignment(.center).padding(.horizontal, 40)
                     Button {
                         newName = ""; creating = true
                         UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     } label: {
-                        Label("New project", systemImage: "plus")
+                        Label(store.t("New project"), systemImage: "plus")
                             .font(.system(size: 15, weight: .bold))
                             .padding(.horizontal, 22).padding(.vertical, 12)
                             .background(Color.primary, in: Capsule())

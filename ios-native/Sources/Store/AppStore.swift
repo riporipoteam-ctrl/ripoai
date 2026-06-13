@@ -31,6 +31,7 @@ final class AppStore: ObservableObject {
     @Published var autoWebSearch = true                 // auto-search when a query needs fresh info
     @Published var projects: [Project] = []             // local projects (everyone)
     @Published var teamLog: [TeamLogEntry] = []         // persisted Agents room
+    @Published var i18n: [String: String] = [:]         // English UI string -> translated
 
     // Account / cloud sync
     @Published var user: AuthUser?
@@ -70,6 +71,7 @@ final class AppStore: ObservableObject {
         autoWebSearch = UserDefaults.standard.object(forKey: autoSearchKey) as? Bool ?? true
         loadProjects()
         loadTeamLog()
+        applyTranslations()
         // Screenshot/demo mode for CI: seed content, skip auth.
         let args = ProcessInfo.processInfo.arguments
         if args.contains("-demo-chat") || args.contains("-demo-home") || args.contains("-demo-settings") || args.contains("-demo-menu") || args.contains("-demo-plus") {
@@ -138,6 +140,44 @@ final class AppStore: ObservableObject {
     func setLanguage(_ v: String) {
         language = v
         UserDefaults.standard.set(v, forKey: langKey)
+        applyTranslations()
+    }
+
+    /// Translate the whole UI: look a string up in the translation table.
+    func t(_ s: String) -> String { i18n[s] ?? s }
+
+    /// Load cached translations for the active language and refresh in background.
+    func applyTranslations() {
+        let target = language == "auto" ? Languages.device().code : language
+        guard target != "en" else { i18n = [:]; return }
+        if let data = UserDefaults.standard.data(forKey: "askai.i18n.\(target)"),
+           let cached = try? JSONDecoder().decode([String: String].self, from: data) {
+            i18n = cached
+        } else {
+            i18n = [:]
+        }
+        Task { await fetchTranslations(target) }
+    }
+
+    private func fetchTranslations(_ code: String) async {
+        guard let lang = Languages.all.first(where: { $0.code == code }) else { return }
+        let list = UIStrings.all
+        if i18n.count >= list.count { return }   // already have a full set cached
+        let numbered = list.enumerated().map { "\($0.offset). \($0.element)" }.joined(separator: "\n")
+        let sys = "You are a professional app localizer. Translate each numbered UI label into \(lang.name) (\(lang.native)). Return ONLY a JSON array of strings — same order, exactly \(list.count) items, no comments. Keep translations short and natural for a mobile app. Preserve punctuation like '…' and symbols."
+        guard let out = try? await GroqClient.shared.complete(
+            model: "llama-3.3-70b-versatile",
+            messages: [Message(role: .system, text: sys), Message(role: .user, text: numbered)]),
+            let start = out.firstIndex(of: "["), let end = out.lastIndex(of: "]"),
+            let data = String(out[start...end]).data(using: .utf8),
+            let arr = try? JSONSerialization.jsonObject(with: data) as? [String],
+            arr.count == list.count else { return }
+        var d: [String: String] = [:]
+        for (i, s) in list.enumerated() where !arr[i].isEmpty { d[s] = arr[i] }
+        i18n = d
+        if let enc = try? JSONEncoder().encode(d) {
+            UserDefaults.standard.set(enc, forKey: "askai.i18n.\(code)")
+        }
     }
 
     func setAutoWebSearch(_ v: Bool) {

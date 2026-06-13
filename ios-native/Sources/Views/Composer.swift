@@ -70,7 +70,7 @@ struct Composer: View {
                 .buttonStyle(.plain)
                 .padding(.leading, 6).padding(.bottom, 5)
 
-                TextField(placeholder, text: $draft, axis: .vertical)
+                TextField(store.t(placeholder), text: $draft, axis: .vertical)
                     .focused(focused)
                     .font(.system(size: 16.5))
                     .lineLimit(1...7)

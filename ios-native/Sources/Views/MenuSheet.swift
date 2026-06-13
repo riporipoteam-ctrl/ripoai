@@ -38,7 +38,7 @@ struct MenuSheet: View {
                 // Search
                 HStack(spacing: 8) {
                     Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                    TextField("Search chats", text: $search)
+                    TextField(store.t("Search chats"), text: $search)
                         .textInputAutocapitalization(.never)
                 }
                 .padding(.horizontal, 14).padding(.vertical, 11)
@@ -48,15 +48,15 @@ struct MenuSheet: View {
                 ScrollView {
                     VStack(spacing: 8) {
                         // Navigation
-                        NavRow(icon: "waveform", title: "Voice call", subtitle: "Talk with AskAI live") { voiceCall() }
-                        NavRow(icon: "person.2", title: "Agents", subtitle: "Your AI team") { go(.team) }
-                        NavRow(icon: "folder", title: "Projects", subtitle: "Code with live files") { go(.projects) }
-                        NavRow(icon: "crown", title: "AskAI+", subtitle: "Unlock more power") { go(.plus) }
-                        NavRow(icon: "gearshape", title: "Settings", subtitle: "Models, account, appearance") { go(.settings) }
+                        NavRow(icon: "waveform", title: store.t("Voice call"), subtitle: store.t("Talk with AskAI live")) { voiceCall() }
+                        NavRow(icon: "person.2", title: store.t("Agents"), subtitle: store.t("Your AI team")) { go(.team) }
+                        NavRow(icon: "folder", title: store.t("Projects"), subtitle: store.t("Code with live files")) { go(.projects) }
+                        NavRow(icon: "crown", title: store.t("AskAI+"), subtitle: store.t("Unlock more power")) { go(.plus) }
+                        NavRow(icon: "gearshape", title: store.t("Settings"), subtitle: store.t("Models, account, appearance")) { go(.settings) }
 
                         // Chats
                         HStack {
-                            Text("Chats").font(.system(size: 12, weight: .bold)).foregroundStyle(.secondary)
+                            Text(store.t("Chats")).font(.system(size: 12, weight: .bold)).foregroundStyle(.secondary)
                             Spacer()
                         }.padding(.horizontal, 4).padding(.top, 10)
 

@@ -136,7 +136,7 @@ struct TaskPill: View {
                 .font(.system(size: 13, weight: .bold))
                 .foregroundStyle(.primary)
                 .symbolEffect(.pulse, options: .repeating)
-            Text(label)
+            Text(store.t(label))
                 .font(.system(size: 13.5, weight: .semibold))
                 .foregroundStyle(.primary)
                 .lineLimit(1)

@@ -16,49 +16,49 @@ struct ModePickerSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    category("Attach") {
-                        row("camera.fill", "Take photo", "Snap a picture to attach", tint: .blue) {
+                    category(store.t("Attach")) {
+                        row("camera.fill", store.t("Take photo"), store.t("Snap a picture to attach"), tint: .blue) {
                             dismiss(); onCamera()
                         }
-                        row("photo.on.rectangle.angled", "Photo library", "Add images from your library", tint: .green) {
+                        row("photo.on.rectangle.angled", store.t("Photo library"), store.t("Add images from your library"), tint: .green) {
                             dismiss(); onPhotos()
                         }
-                        row("eye.fill", "Live camera", "Let AskAI see through your camera", tint: .purple) {
+                        row("eye.fill", store.t("Live camera"), store.t("Let AskAI see through your camera"), tint: .purple) {
                             dismiss(); onLiveCamera()
                         }
-                        row("rectangle.inset.filled.on.rectangle", "Share screen", "Let AskAI see your screen across apps", tint: .teal) {
+                        row("rectangle.inset.filled.on.rectangle", store.t("Share screen"), store.t("Let AskAI see your screen across apps"), tint: .teal) {
                             dismiss(); onScreenVision()
                         }
                     }
 
-                    category("Modes") {
-                        modeRow("bubble.left.and.bubble.right.fill", "Chat", "Standard conversation", tint: .gray,
+                    category(store.t("Modes")) {
+                        modeRow("bubble.left.and.bubble.right.fill", store.t("Chat"), store.t("Standard conversation"), tint: .gray,
                                 on: !store.webSearch && !store.imageMode && !store.agentMode) {
                             store.webSearch = false; store.imageMode = false; store.agentMode = false; dismiss()
                         }
-                        modeRow("globe", "Web search", "Answer with live results from the web", tint: .cyan,
+                        modeRow("globe", store.t("Web search"), store.t("Answer with live results from the web"), tint: .cyan,
                                 on: store.webSearch) {
                             store.webSearch = true; store.imageMode = false; store.agentMode = false; dismiss()
                         }
-                        modeRow("paintbrush.fill", "Create image", "Generate an image from a prompt", tint: .pink,
+                        modeRow("paintbrush.fill", store.t("Create image"), store.t("Generate an image from a prompt"), tint: .pink,
                                 on: store.imageMode) {
                             store.imageMode = true; store.webSearch = false; store.agentMode = false; dismiss()
                         }
-                        modeRow("pawprint.fill", "OpenClaw Agent", "Live browsing — searches, opens & reads pages", tint: .orange,
+                        modeRow("pawprint.fill", store.t("OpenClaw Agent"), store.t("Live browsing — searches, opens & reads pages"), tint: .orange,
                                 on: store.agentMode) {
                             store.agentMode = true; store.webSearch = false; store.imageMode = false; dismiss()
                         }
                     }
 
-                    category("Talk") {
-                        row("waveform", "Voice call", "Talk to AskAI hands-free", tint: .indigo) {
+                    category(store.t("Talk")) {
+                        row("waveform", store.t("Voice call"), store.t("Talk to AskAI hands-free"), tint: .indigo) {
                             dismiss(); onVoiceCall()
                         }
                     }
                 }
                 .padding(18)
             }
-            .navigationTitle("Tools")
+            .navigationTitle(store.t("Tools"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {

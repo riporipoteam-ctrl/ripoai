@@ -49,7 +49,7 @@ struct TeamScreen: View {
             HStack {
                 GlassIconButton(system: "chevron.left", action: back)
                 Spacer()
-                Text("Agents").font(.system(size: 17, weight: .bold))
+                Text(store.t("Agents")).font(.system(size: 17, weight: .bold))
                 Spacer()
                 HStack(spacing: -8) {
                     ForEach(TeamAgent.all.prefix(4)) { a in
@@ -66,8 +66,8 @@ struct TeamScreen: View {
                 VStack(spacing: 14) {
                     Spacer()
                     Text("🧭💻🎨🔎").font(.system(size: 34))
-                    Text("The team room").font(.system(size: 22, weight: .bold, design: .rounded))
-                    Text("Give your agents a task. The best-fit specialist picks it up and delivers.")
+                    Text(store.t("The team room")).font(.system(size: 22, weight: .bold, design: .rounded))
+                    Text(store.t("Give your agents a task. The best-fit specialist picks it up and delivers."))
                         .font(.system(size: 13)).foregroundStyle(.secondary)
                         .multilineTextAlignment(.center).padding(.horizontal, 40)
                     Spacer()
@@ -142,7 +142,7 @@ struct TeamScreen: View {
                         .foregroundStyle(.primary).frame(width: 36, height: 36)
                 }.padding(.leading, 6).padding(.bottom, 5)
 
-                TextField("Give the team a task…", text: $draft, axis: .vertical)
+                TextField(store.t("Give the team a task…"), text: $draft, axis: .vertical)
                     .font(.system(size: 16)).lineLimit(1...5)
                     .padding(.vertical, 13)
                 Button {

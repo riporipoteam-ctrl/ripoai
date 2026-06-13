@@ -10,7 +10,7 @@ struct SettingsScreen: View {
             HStack {
                 GlassIconButton(system: "chevron.left", action: back)
                 Spacer()
-                Text("Settings").font(.system(size: 17, weight: .bold))
+                Text(store.t("Settings")).font(.system(size: 17, weight: .bold))
                 Spacer()
                 Color.clear.frame(width: 42, height: 42)
             }
@@ -19,7 +19,7 @@ struct SettingsScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     // Account
-                    SectionLabel("Account")
+                    SectionLabel(store.t("Account"))
                     if let u = store.user {
                         HStack {
                             Image(systemName: "person.crop.circle.fill").font(.title2)
@@ -45,7 +45,7 @@ struct SettingsScreen: View {
                     }
 
                     // Personalization
-                    SectionLabel("Personalization")
+                    SectionLabel(store.t("Personalization"))
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Response length").font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
                         ChipRow(options: ["concise", "balanced", "detailed"], selected: store.verbosity) { store.setVerbosity($0) }
@@ -66,13 +66,13 @@ struct SettingsScreen: View {
                     .liquidGlass(cornerRadius: 20)
 
                     // Language
-                    SectionLabel("Language")
+                    SectionLabel(store.t("Language"))
                     VStack(spacing: 12) {
                         Button { showLanguagePicker = true } label: {
                             HStack {
                                 Image(systemName: "globe").foregroundStyle(.secondary)
                                 VStack(alignment: .leading, spacing: 1) {
-                                    Text("App language").font(.system(size: 15, weight: .semibold))
+                                    Text(store.t("App language")).font(.system(size: 15, weight: .semibold))
                                     Text(Languages.displayName(store.language))
                                         .font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
                                 }
@@ -88,9 +88,9 @@ struct SettingsScreen: View {
                     .liquidGlass(cornerRadius: 20)
 
                     // Web access
-                    SectionLabel("Web access")
+                    SectionLabel(store.t("Web access"))
                     VStack(spacing: 12) {
-                        Toggle("Auto web search", isOn: Binding(
+                        Toggle(store.t("Auto web search"), isOn: Binding(
                             get: { store.autoWebSearch }, set: { store.setAutoWebSearch($0) }))
                         Text("AskAI automatically searches the live web when a question needs current info (news, prices, weather, scores…).")
                             .font(.system(size: 11)).foregroundStyle(.secondary)
@@ -101,9 +101,9 @@ struct SettingsScreen: View {
                     .liquidGlass(cornerRadius: 20)
 
                     // Notifications & personalization
-                    SectionLabel("Notifications & Personalization")
+                    SectionLabel(store.t("Notifications & Personalization"))
                     VStack(spacing: 12) {
-                        Toggle("Notify when a task finishes", isOn: Binding(
+                        Toggle(store.t("Notify when a task finishes"), isOn: Binding(
                             get: { store.notifyOnComplete }, set: { store.setNotifyOnComplete($0) }))
                         Divider()
                         VStack(alignment: .leading, spacing: 8) {
@@ -113,7 +113,7 @@ struct SettingsScreen: View {
                                 .font(.system(size: 11)).foregroundStyle(.secondary)
                         }
                         Divider()
-                        Toggle("Use my location for personalization", isOn: Binding(
+                        Toggle(store.t("Use my location for personalization"), isOn: Binding(
                             get: { store.locationEnabled }, set: { store.setLocationEnabled($0) }))
                     }
                     .tint(Color.accentColor)
@@ -121,7 +121,7 @@ struct SettingsScreen: View {
                     .liquidGlass(cornerRadius: 20)
 
                     // Appearance
-                    SectionLabel("Appearance")
+                    SectionLabel(store.t("Appearance"))
                     HStack(spacing: 8) {
                         ForEach(["system", "light", "dark"], id: \.self) { v in
                             Button {
@@ -143,7 +143,7 @@ struct SettingsScreen: View {
                     }
 
                     // Default model
-                    SectionLabel("Model")
+                    SectionLabel(store.t("Model"))
                     VStack(spacing: 8) {
                         ForEach(AIModel.selectable) { m in
                             Button { store.setModel(m) } label: {

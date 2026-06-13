@@ -25,9 +25,9 @@ struct EmptyChat: View {
                 .opacity(appear ? 1 : 0)
 
             VStack(spacing: 2) {
-                Text(greeting)
+                Text(store.t(greeting))
                     .font(.system(size: 22, weight: .bold, design: .rounded))
-                Text("What are we making?")
+                Text(store.t("What are we making?"))
                     .font(.system(size: 22, weight: .bold, design: .rounded))
                     .foregroundStyle(.secondary)
             }
