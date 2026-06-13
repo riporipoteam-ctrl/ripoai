@@ -43,6 +43,7 @@ struct TeamScreen: View {
     @State private var photoItems: [PhotosPickerItem] = []
     @State private var openAgent: CustomAgent?
     @State private var editAgent: CustomAgent?
+    @State private var meetingMode = false
 
     private func agent(_ id: String?) -> TeamAgent? { TeamAgent.all.first { $0.id == id } }
 
@@ -159,12 +160,17 @@ struct TeamScreen: View {
 
             // Composer
             HStack(alignment: .bottom, spacing: 6) {
-                Button { showPhotos = true } label: {
-                    Image(systemName: "plus").font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(.primary).frame(width: 36, height: 36)
+                Button {
+                    meetingMode.toggle()
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                } label: {
+                    Image(systemName: meetingMode ? "person.3.fill" : "person.3")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(meetingMode ? Color.accentColor : .primary)
+                        .frame(width: 34, height: 34)
                 }.padding(.leading, 6).padding(.bottom, 5)
 
-                TextField("Give a task — or “make an agent that…”", text: $draft, axis: .vertical)
+                TextField(meetingMode ? "Topic for the team meeting…" : "Give a task — or “make an agent that…”", text: $draft, axis: .vertical)
                     .font(.system(size: 16)).lineLimit(1...5)
                     .padding(.vertical, 13)
                 Button {
@@ -173,7 +179,9 @@ struct TeamScreen: View {
                     let imgs = attachments
                     draft = ""; attachments = []
                     UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                    if imgs.isEmpty && store.looksLikeAgentRequest(t) {
+                    if meetingMode && !t.isEmpty {
+                        Task { await runMeeting(t) }
+                    } else if imgs.isEmpty && store.looksLikeAgentRequest(t) {
                         Task { if let a = await store.createAgent(from: t) { openAgent = a } }
                     } else {
                         Task { await run(t.isEmpty ? "Look at this." : t, images: imgs) }
@@ -258,6 +266,69 @@ struct TeamScreen: View {
             if idx < store.teamLog.count { store.teamLog[idx].text = "(\(picked.name) couldn't respond right now.)" }
         }
         store.saveTeamLog()
+        working = false
+    }
+
+    /// A real team MEETING: several agents discuss the task in turns, each
+    /// reacting to what teammates just said, then a lead wraps with next steps.
+    private func runMeeting(_ topic: String) async {
+        working = true
+        store.teamLog.append(TeamLogEntry(agentId: nil, text: "📋 Team meeting: \(topic)", fromUser: true))
+        store.saveTeamLog()
+
+        // Pick the most relevant specialists to attend.
+        let roster = TeamAgent.all.map { "\($0.id) = \($0.name) (\($0.role))" }.joined(separator: "\n")
+        var picks: [TeamAgent] = []
+        if let out = try? await GroqClient.shared.complete(
+            model: "llama-3.3-70b-versatile",
+            messages: [
+                Message(role: .system, text: "Pick the 3 best agents for a meeting on the task. Team:\n\(roster)\nReply with ONLY their ids separated by commas."),
+                Message(role: .user, text: topic),
+            ]) {
+            let ids = out.lowercased().split(whereSeparator: { ",； ".contains($0) }).map(String.init)
+            picks = ids.compactMap { id in TeamAgent.all.first { $0.id == id } }
+        }
+        if picks.count < 2 { picks = Array(TeamAgent.all.prefix(3)) }
+        picks = Array(picks.prefix(3))
+
+        var langNote = ""
+        if let lang = Languages.instructionName(store.language) { langNote = " Always respond in \(lang)." }
+
+        var transcript = "TASK: \(topic)\n"
+        for a in picks {
+            let entry = TeamLogEntry(agentId: a.id, text: "", fromUser: false)
+            store.teamLog.append(entry)
+            let idx = store.teamLog.count - 1
+            let sys = Message(role: .system, text:
+                "You are \(a.name), the \(a.role). \(a.persona) You're in a live team meeting. Read the discussion so far and add YOUR concrete contribution in 2-4 sentences — build on or respectfully push back on teammates, don't repeat them, and stay in character.\(langNote)")
+            let usr = Message(role: .user, text: "\(transcript)\nNow \(a.name), give your take and any concrete suggestion.")
+            var out = ""
+            do {
+                try await GroqClient.shared.stream(model: "openai/gpt-oss-120b", messages: [sys, usr]) { tok in
+                    out += tok
+                    if idx < store.teamLog.count { store.teamLog[idx].text = out }
+                }
+            } catch {
+                if idx < store.teamLog.count { store.teamLog[idx].text = "(stepped out of the meeting)" }
+            }
+            transcript += "\n\(a.name): \(out)\n"
+        }
+
+        // Lead wraps up with an action plan.
+        if let lead = picks.first {
+            let entry = TeamLogEntry(agentId: lead.id, text: "", fromUser: false)
+            store.teamLog.append(entry)
+            let idx = store.teamLog.count - 1
+            let sys = Message(role: .system, text: "You are \(lead.name), chairing the meeting. Summarize the decisions and give a short numbered action plan with who-does-what.\(langNote)")
+            var out = ""
+            try? await GroqClient.shared.stream(model: "openai/gpt-oss-120b",
+                                                messages: [sys, Message(role: .user, text: transcript)]) { tok in
+                out += tok
+                if idx < store.teamLog.count { store.teamLog[idx].text = out }
+            }
+        }
+        store.saveTeamLog()
+        if store.notifyOnComplete { NotificationManager.shared.taskDone("AskAI", "Your team finished their meeting.") }
         working = false
     }
 }
