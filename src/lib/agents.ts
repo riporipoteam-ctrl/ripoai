@@ -253,6 +253,21 @@ export async function ensureAgentAvatar(uid: string, agent: Agent): Promise<Agen
   return job
 }
 
+/** Proactively warm up avatars for every agent that still only has an emoji, so
+ *  pictures are ready by the time Settings/Team render. Runs sequentially and
+ *  swallows errors; cheap because ensureAgentAvatar no-ops once an avatar exists
+ *  or generation is in-flight/already tried this session. */
+export async function pregenerateAgentAvatars(uid: string): Promise<void> {
+  for (const a of loadAgents(uid)) {
+    if (a.avatar) continue
+    try {
+      await ensureAgentAvatar(uid, a)
+    } catch {
+      /* ignore — keep the emoji fallback */
+    }
+  }
+}
+
 export function getAgent(uid: string, id: string): Agent | null {
   return loadAgents(uid).find((a) => a.id === id) ?? null
 }
@@ -275,16 +290,25 @@ export function mentionedAgents(uid: string, text: string): Agent[] {
   return out
 }
 
-/** Agents whose NAME appears as a whole word in the message (case-insensitive),
- *  e.g. "Leon, do X" or "hi Leon". Used to route a directly-addressed message to
- *  just that agent. Ignores very short names (<3 chars) to avoid false hits. */
+/** Agents whose NAME is used to DIRECTLY ADDRESS the message (case-insensitive),
+ *  e.g. "Leon, do X", "Leon: do X", "Leon do X" (start of message), or after an
+ *  address word ("hi Leon", "hey Leon", "ok Leon", "@Leon"). A bare incidental
+ *  mention of the name in prose (e.g. an agent literally named "Max" appearing in
+ *  "the max value") does NOT count, so common-word names don't false-trigger.
+ *  Ignores very short names (<3 chars) to avoid false hits. */
 export function namedAgents(uid: string, text: string): Agent[] {
   const t = text || ''
   const out: Agent[] = []
   for (const a of loadAgents(uid)) {
     const name = a.name.trim()
     if (name.length < 3) continue
-    const re = new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i')
+    const esc = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    // Direct address only: at the very start of the message, or preceded by an
+    // address word / @, and immediately followed by a comma, colon, or space.
+    const re = new RegExp(
+      `(?:^\\s*|\\b(?:hi|hey|hello|yo|ok|okay|thanks|thank you|@)\\s*)${esc}(?=[\\s,:!?]|$)`,
+      'i',
+    )
     if (re.test(t) && !out.includes(a)) out.push(a)
   }
   return out

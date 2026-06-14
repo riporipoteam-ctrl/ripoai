@@ -19,7 +19,14 @@ import {
   X,
 } from 'lucide-react'
 import { useStore } from '../store'
-import { loadAgents, mentionedAgents, targetedAgent, ensureAgentAvatar, type Agent } from '../lib/agents'
+import {
+  loadAgents,
+  mentionedAgents,
+  targetedAgent,
+  ensureAgentAvatar,
+  setPendingAgentChat,
+  type Agent,
+} from '../lib/agents'
 import { runTeam, type TeamEvent } from '../lib/agentTeam'
 import {
   loadTeamSessions,
@@ -120,6 +127,12 @@ export default function TeamPage() {
     const el = scrollRef.current
     if (el) el.scrollTop = el.scrollHeight
   }, [events, deliverable])
+
+  /** Hand an agent off to a fresh 1-on-1 chat (mirrors Settings → Agents). */
+  function startChatWithAgent(agent: Agent) {
+    setPendingAgentChat(agent)
+    navigate('/')
+  }
 
   function pickLead(list: Agent[], leadId?: string): Agent {
     if (leadId) {
@@ -389,19 +402,27 @@ export default function TeamPage() {
         </div>
         <div className="ml-auto flex -space-x-2">
           {agents.slice(0, 8).map((a) => (
-            <button
-              key={a.id}
-              onClick={() => setDraft((d) => (d.includes(`@${a.name}`) ? d : `@${a.name} ${d}`))}
-              className="pressable flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border-2 border-[rgb(var(--surface))] text-sm transition hover:z-10 hover:scale-110"
-              style={{ background: a.color + '33' }}
-              title={`Message ${a.name} (${a.role}) directly`}
-            >
-              {a.avatar ? (
-                <img src={a.avatar} alt={a.name} className="h-full w-full rounded-full object-cover" />
-              ) : (
-                a.emoji
-              )}
-            </button>
+            <div key={a.id} className="group relative">
+              <button
+                onClick={() => setDraft((d) => (d.includes(`@${a.name}`) ? d : `@${a.name} ${d}`))}
+                className="pressable flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border-2 border-[rgb(var(--surface))] text-sm transition hover:z-10 hover:scale-110"
+                style={{ background: a.color + '33' }}
+                title={`Message ${a.name} (${a.role}) directly`}
+              >
+                {a.avatar ? (
+                  <img src={a.avatar} alt={a.name} className="h-full w-full rounded-full object-cover" />
+                ) : (
+                  a.emoji
+                )}
+              </button>
+              <button
+                onClick={() => startChatWithAgent(a)}
+                className="pressable absolute -bottom-1 -right-1 z-20 flex h-4 w-4 items-center justify-center rounded-full border border-[rgb(var(--surface))] bg-accent text-[rgb(var(--accent-ink))] opacity-0 shadow transition group-hover:opacity-100"
+                title={`Chat 1-on-1 with ${a.name}`}
+              >
+                <MessageSquare size={9} />
+              </button>
+            </div>
           ))}
         </div>
         {events.length > 0 && !running && (
