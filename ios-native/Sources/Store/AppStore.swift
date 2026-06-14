@@ -806,10 +806,13 @@ final class AppStore: ObservableObject {
     func deleteAgent(_ id: UUID) { agents.removeAll { $0.id == id }; saveAgents() }
 
     @Published var agentReplying = false
+    @Published var agentBrowser: OpenClawAgent?   // live OpenClaw run inside an agent room
 
     /// Send a message to one agent's room. The agent answers in character and,
-    /// when the task needs current info, actually browses the web (OpenClaw).
-    func messageAgent(_ id: UUID, text: String) {
+    /// when the task needs current info (or the user forces it), actually browses
+    /// the live web with its own OpenClaw browser and grounds the answer on what
+    /// it read — with a live browser trace shown in the room.
+    func messageAgent(_ id: UUID, text: String, forceBrowse: Bool = false) {
         guard let idx = agents.firstIndex(where: { $0.id == id }), !agentReplying else { return }
         agentReplying = true
         agents[idx].chat.append(Message(role: .user, text: text))
@@ -817,22 +820,32 @@ final class AppStore: ObservableObject {
         saveAgents()
         let aIdx = agents[idx].chat.count - 1
         let agent = agents[idx]
-        let browse = agent.canBrowse && wantsResearch(text)
+        let browse = agent.canBrowse && (forceBrowse || wantsResearch(text))
 
         var langNote = ""
         if let lang = Languages.instructionName(language) { langNote = " Always respond in \(lang)." }
         let sys = Message(role: .system, text:
-            "You are \(agent.name), a \(agent.role) on the user's AI team. \(agent.persona) Skills: \(agent.skills.joined(separator: ", ")). Speak in first person, be concise and genuinely useful, use Markdown when helpful.\(langNote)")
+            "You are \(agent.name), a \(agent.role) on the user's AI team. \(agent.persona) Skills: \(agent.skills.joined(separator: ", ")). You have a real OpenClaw web browser. Speak in first person, be concise and genuinely useful, use Markdown when helpful.\(langNote)")
         var history = [sys] + agent.chat.dropLast()
 
         streamTask = Task {
             let bg = UIApplication.shared.beginBackgroundTask(withName: "askai.agent.msg")
             defer { UIApplication.shared.endBackgroundTask(bg) }
             var sources: [(title: String, url: String)] = []
-            if browse, let r = await WebSearch.run(text) {
-                sources = r.sources
-                history.insert(Message(role: .system, text: r.context + "\n\nUse these live results; cite sources inline."), at: 1)
+
+            // Real OpenClaw browse — live trace in the room, then ground the reply.
+            if browse {
+                let oc = OpenClawAgent()
+                self.agentBrowser = oc
+                let findings = await oc.run(text)
+                sources = oc.sources
+                self.agentBrowser = nil
+                if !findings.trimmingCharacters(in: .whitespaces).isEmpty {
+                    history.insert(Message(role: .system, text:
+                        "You just used your OpenClaw browser to research this. What you found:\n\(findings)\n\nNow answer in character using these concrete facts, and cite the source links inline as Markdown."), at: 1)
+                }
             }
+
             do {
                 try await GroqClient.shared.stream(model: "llama-3.3-70b-versatile", messages: history) { [weak self] tok in
                     guard let self, let i = self.agents.firstIndex(where: { $0.id == id }), aIdx < self.agents[i].chat.count else { return }
@@ -840,9 +853,14 @@ final class AppStore: ObservableObject {
                 }
             } catch {}
             if !sources.isEmpty, let i = self.agents.firstIndex(where: { $0.id == id }), aIdx < self.agents[i].chat.count {
-                self.agents[i].chat[aIdx].text += "\n\n**Sources**\n" + sources.prefix(4).map { "- [\($0.title)](\($0.url))" }.joined(separator: "\n")
+                self.agents[i].chat[aIdx].text += "\n\n**Sources**\n" + sources.prefix(5).map { "- [\($0.title)](\($0.url))" }.joined(separator: "\n")
+            }
+            if let i = self.agents.firstIndex(where: { $0.id == id }), aIdx < self.agents[i].chat.count,
+               self.agents[i].chat[aIdx].text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                self.agents[i].chat[aIdx].text = "I couldn't pull that together just now — try asking again."
             }
             self.agentReplying = false
+            self.agentBrowser = nil
             self.saveAgents()
         }
     }

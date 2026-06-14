@@ -425,71 +425,308 @@ struct AgentRoomView: View {
     let agentID: UUID
     @State private var draft = ""
     @State private var showProfile = false
+    @State private var forceBrowse = false
+    @FocusState private var focused: Bool
+
+    private var agent: CustomAgent? { store.agents.first { $0.id == agentID } }
+
+    var body: some View {
+        Group {
+            if let agent {
+                VStack(spacing: 0) {
+                    header(agent)
+                    Divider().opacity(0.4)
+
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            LazyVStack(alignment: .leading, spacing: 14) {
+                                if agent.chat.isEmpty { emptyState(agent) }
+                                ForEach(agent.chat) { m in messageRow(agent, m) }
+                                if let oc = store.agentBrowser {
+                                    AgentBrowsingCard(agent: oc, name: agent.name)
+                                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                                }
+                                Color.clear.frame(height: 1).id("end")
+                            }
+                            .padding(16)
+                            .animation(.spring(response: 0.4, dampingFraction: 0.85), value: agent.chat.count)
+                        }
+                        .scrollDismissesKeyboard(.interactively)
+                        .onChange(of: agent.chat.last?.text) { _, _ in withAnimation { proxy.scrollTo("end", anchor: .bottom) } }
+                        .onChange(of: store.agentBrowser?.steps.count) { _, _ in withAnimation { proxy.scrollTo("end", anchor: .bottom) } }
+                    }
+
+                    composer(agent)
+                }
+            } else {
+                VStack { Spacer(); Text(store.t("Agent not found.")).foregroundStyle(.secondary); Spacer() }
+            }
+        }
+        .background(GlassBackground())
+        .sheet(isPresented: $showProfile) {
+            AgentProfileView(agentID: agentID).environmentObject(store)
+        }
+    }
+
+    // MARK: header
+    private func header(_ agent: CustomAgent) -> some View {
+        HStack(spacing: 11) {
+            Button { dismiss() } label: {
+                Image(systemName: "chevron.down").font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(.secondary).frame(width: 34, height: 34)
+                    .background(Color.primary.opacity(0.06), in: Circle())
+            }.buttonStyle(PressableButtonStyle())
+
+            Button { showProfile = true } label: {
+                HStack(spacing: 10) {
+                    ZStack(alignment: .bottomTrailing) {
+                        AgentAvatar(agent: agent, size: 40)
+                        Circle().fill(.green).frame(width: 11, height: 11)
+                            .overlay(Circle().strokeBorder(Color(uiColor: .systemBackground), lineWidth: 2))
+                    }
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(agent.name).font(.system(size: 16, weight: .bold)).foregroundStyle(.primary)
+                        Text(store.agentReplying
+                             ? (store.agentBrowser != nil ? store.t("browsing the web…") : store.t("typing…"))
+                             : (agent.canBrowse ? store.t("Online · can browse") : store.t("Online")))
+                            .font(.system(size: 11.5))
+                            .foregroundStyle(store.agentReplying ? Color.accentColor : .secondary)
+                    }
+                }
+            }.buttonStyle(.plain)
+
+            Spacer()
+            Button { showProfile = true } label: {
+                Image(systemName: "info.circle").font(.system(size: 18)).foregroundStyle(.secondary)
+                    .frame(width: 34, height: 34)
+            }.buttonStyle(PressableButtonStyle())
+        }
+        .padding(.horizontal, 14).padding(.top, 10).padding(.bottom, 8)
+    }
+
+    // MARK: message row
+    @ViewBuilder private func messageRow(_ agent: CustomAgent, _ m: Message) -> some View {
+        if m.role == .user {
+            HStack { Spacer(minLength: 50)
+                Text(m.text).font(.system(size: 16))
+                    .padding(.horizontal, 15).padding(.vertical, 11)
+                    .background(Color.primary, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                    .foregroundStyle(Color(uiColor: .systemBackground))
+            }
+            .transition(.move(edge: .trailing).combined(with: .opacity))
+        } else {
+            HStack(alignment: .top, spacing: 9) {
+                AgentAvatar(agent: agent, size: 30)
+                Group {
+                    if m.text.isEmpty && store.agentReplying {
+                        TypingDots().padding(.horizontal, 14).padding(.vertical, 13).liquidGlass(cornerRadius: 18)
+                    } else {
+                        MarkdownText(text: m.text.isEmpty ? "…" : m.text)
+                            .padding(.horizontal, 14).padding(.vertical, 11).liquidGlass(cornerRadius: 18)
+                    }
+                }
+                Spacer(minLength: 30)
+            }
+            .transition(.move(edge: .leading).combined(with: .opacity))
+        }
+    }
+
+    // MARK: empty state
+    private func emptyState(_ agent: CustomAgent) -> some View {
+        VStack(spacing: 10) {
+            AgentAvatar(agent: agent, size: 78)
+                .shadow(color: Color.accentColor.opacity(0.25), radius: 18)
+            Text(agent.name).font(.system(size: 20, weight: .bold, design: .rounded))
+            Text(agent.role).font(.system(size: 13, weight: .semibold)).foregroundStyle(.secondary)
+            VStack(spacing: 8) {
+                suggestionChip("Introduce yourself")
+                suggestionChip("What can you help me with?")
+                if agent.canBrowse { suggestionChip("Find the latest news on AI") }
+            }.padding(.top, 8)
+        }
+        .frame(maxWidth: .infinity).padding(.top, 26).padding(.bottom, 6)
+    }
+
+    private func suggestionChip(_ s: String) -> some View {
+        Button { send(s, browse: false) } label: {
+            Text(store.t(s)).font(.system(size: 14, weight: .medium))
+                .frame(maxWidth: .infinity).padding(.horizontal, 14).padding(.vertical, 11)
+                .liquidGlass(cornerRadius: 14)
+        }
+        .buttonStyle(PressableButtonStyle()).foregroundStyle(.primary)
+    }
+
+    // MARK: composer
+    private func composer(_ agent: CustomAgent) -> some View {
+        HStack(alignment: .bottom, spacing: 6) {
+            if agent.canBrowse {
+                Button {
+                    forceBrowse.toggle(); UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                } label: {
+                    Image(systemName: "globe")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundStyle(forceBrowse ? Color.accentColor : .secondary)
+                        .frame(width: 34, height: 34)
+                        .background(forceBrowse ? AnyShapeStyle(Color.accentColor.opacity(0.14)) : AnyShapeStyle(Color.clear), in: Circle())
+                }
+                .buttonStyle(PressableButtonStyle()).padding(.leading, 6).padding(.bottom, 5)
+            }
+            TextField("\(store.t("Message")) \(agent.name)…", text: $draft, axis: .vertical)
+                .focused($focused)
+                .font(.system(size: 16)).lineLimit(1...5).padding(.vertical, 11)
+                .padding(.leading, agent.canBrowse ? 0 : 8)
+            Button { send(draft, browse: forceBrowse) } label: {
+                Image(systemName: store.agentReplying ? "ellipsis" : "arrow.up")
+                    .font(.system(size: 17, weight: .bold)).foregroundStyle(Color(uiColor: .systemBackground))
+                    .frame(width: 40, height: 40)
+                    .background(Circle().fill(draft.isEmpty || store.agentReplying ? AnyShapeStyle(.secondary.opacity(0.4)) : AnyShapeStyle(Color.accentColor)))
+                    .scaleEffect(draft.isEmpty || store.agentReplying ? 0.92 : 1)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.6), value: draft.isEmpty)
+            }
+            .buttonStyle(PressableButtonStyle()).disabled(draft.isEmpty || store.agentReplying)
+            .padding(.trailing, 6).padding(.bottom, 5)
+        }
+        .liquidGlass(cornerRadius: 26, interactive: true)
+        .padding(.horizontal, 12).padding(.bottom, 8)
+    }
+
+    private func send(_ text: String, browse: Bool) {
+        let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !t.isEmpty, !store.agentReplying else { return }
+        draft = ""; focused = false
+        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        store.messageAgent(agentID, text: t, forceBrowse: browse)
+    }
+}
+
+/// A compact, live OpenClaw browser trace shown inside an agent room while the
+/// agent browses the web for an answer.
+struct AgentBrowsingCard: View {
+    @EnvironmentObject var store: AppStore
+    @ObservedObject var agent: OpenClawAgent
+    let name: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "pawprint.fill").font(.system(size: 14, weight: .bold)).foregroundStyle(.orange)
+                .symbolEffect(.pulse, options: .repeating)
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 7) {
+                    Text("\(name) · \(store.t("browsing the web"))")
+                        .font(.system(size: 13, weight: .bold)).foregroundStyle(.primary)
+                    ProgressView().scaleEffect(0.6)
+                }
+                if let url = agent.currentURL {
+                    HStack(spacing: 5) {
+                        Image(systemName: "globe").font(.system(size: 10, weight: .bold)).foregroundStyle(.secondary)
+                        Text(hostLabel(url)).font(.system(size: 11, weight: .medium))
+                            .foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+                    }
+                }
+                Text(agent.statusLine).font(.system(size: 12)).foregroundStyle(.secondary).lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12).frame(maxWidth: .infinity, alignment: .leading)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.orange.opacity(0.3), lineWidth: 1))
+    }
+
+    private func hostLabel(_ url: String) -> String {
+        URL(string: url)?.host?.replacingOccurrences(of: "www.", with: "") ?? url
+    }
+}
+
+/// A viewable agent profile — avatar, role, capabilities, persona and skills,
+/// with an Edit button. Opened by tapping the agent's header or info button.
+struct AgentProfileView: View {
+    @EnvironmentObject var store: AppStore
+    @Environment(\.dismiss) private var dismiss
+    let agentID: UUID
+    @State private var showEdit = false
 
     private var agent: CustomAgent? { store.agents.first { $0.id == agentID } }
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
+            ZStack {
+                GlassBackground()
                 if let agent {
-                    Button { showProfile = true } label: {
-                        HStack(spacing: 10) {
-                            AgentAvatar(agent: agent, size: 40)
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(agent.name).font(.system(size: 15, weight: .bold)).foregroundStyle(.primary)
-                                Text(store.agentReplying ? store.t("typing…") : agent.role)
-                                    .font(.system(size: 11)).foregroundStyle(.secondary)
+                    ScrollView {
+                        VStack(spacing: 16) {
+                            AgentAvatar(agent: agent, size: 110)
+                                .shadow(color: Color.accentColor.opacity(0.25), radius: 22)
+                                .padding(.top, 14)
+                            VStack(spacing: 3) {
+                                Text(agent.name).font(.system(size: 25, weight: .bold, design: .rounded))
+                                Text(agent.role).font(.system(size: 14, weight: .semibold)).foregroundStyle(.secondary)
                             }
-                            Spacer()
-                            Image(systemName: "info.circle").foregroundStyle(.secondary)
-                        }.padding(.horizontal, 16).padding(.vertical, 8)
-                    }.buttonStyle(.plain)
-                    Divider()
 
-                    ScrollViewReader { proxy in
-                        ScrollView {
-                            LazyVStack(alignment: .leading, spacing: 12) {
-                                ForEach(agent.chat) { m in
-                                    if m.role == .user {
-                                        HStack { Spacer(minLength: 40)
-                                            Text(m.text).padding(.horizontal, 14).padding(.vertical, 10)
-                                                .background(Color.primary, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                                                .foregroundStyle(Color(uiColor: .systemBackground)) }
-                                    } else {
-                                        MarkdownText(text: m.text.isEmpty ? "…" : m.text)
-                                            .padding(.horizontal, 13).padding(.vertical, 10).liquidGlass(cornerRadius: 16)
+                            HStack(spacing: 8) {
+                                capBadge("sparkles", store.t("AI agent"), .purple)
+                                if agent.canBrowse { capBadge("globe", store.t("OpenClaw browser"), .cyan) }
+                            }
+
+                            section(store.t("About")) {
+                                Text(agent.persona).font(.system(size: 14)).foregroundStyle(.primary)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+
+                            if !agent.skills.isEmpty {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Text(store.t("Skills").uppercased())
+                                        .font(.system(size: 11, weight: .bold)).foregroundStyle(.secondary)
+                                    ScrollView(.horizontal, showsIndicators: false) {
+                                        HStack(spacing: 8) {
+                                            ForEach(agent.skills, id: \.self) { skill in
+                                                Text(skill).font(.system(size: 13, weight: .semibold))
+                                                    .padding(.horizontal, 13).padding(.vertical, 8)
+                                                    .background(Color.primary.opacity(0.06), in: Capsule())
+                                            }
+                                        }
                                     }
-                                }.id("end")
-                            }.padding(16)
-                        }
-                        .onChange(of: agent.chat.last?.text) { _, _ in withAnimation { proxy.scrollTo("end", anchor: .bottom) } }
-                    }
+                                }.frame(maxWidth: .infinity, alignment: .leading)
+                            }
 
-                    HStack(alignment: .bottom, spacing: 8) {
-                        TextField("\(store.t("Message")) \(agent.name)…", text: $draft, axis: .vertical)
-                            .font(.system(size: 16)).lineLimit(1...5).padding(.vertical, 11).padding(.leading, 6)
-                        Button {
-                            let t = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-                            guard !t.isEmpty, !store.agentReplying else { return }
-                            draft = ""; UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                            store.messageAgent(agentID, text: t)
-                        } label: {
-                            Image(systemName: store.agentReplying ? "ellipsis" : "arrow.up")
-                                .font(.system(size: 17, weight: .bold)).foregroundStyle(Color(uiColor: .systemBackground))
-                                .frame(width: 40, height: 40)
-                                .background(Circle().fill(draft.isEmpty || store.agentReplying ? AnyShapeStyle(.secondary.opacity(0.4)) : AnyShapeStyle(Color.accentColor)))
-                        }.buttonStyle(.plain).disabled(draft.isEmpty || store.agentReplying).padding(.trailing, 6).padding(.bottom, 5)
+                            Button { showEdit = true } label: {
+                                Label(store.t("Edit agent"), systemImage: "pencil")
+                                    .font(.system(size: 15, weight: .bold))
+                                    .frame(maxWidth: .infinity).padding(.vertical, 13)
+                                    .background(Color.primary, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                    .foregroundStyle(Color(uiColor: .systemBackground))
+                            }.buttonStyle(PressableButtonStyle()).padding(.top, 4)
+                        }
+                        .padding(18)
                     }
-                    .liquidGlass(cornerRadius: 26, interactive: true).padding(.horizontal, 12).padding(.bottom, 8)
                 } else {
-                    Spacer(); Text(store.t("Agent not found.")).foregroundStyle(.secondary); Spacer()
+                    Text(store.t("Agent not found.")).foregroundStyle(.secondary)
                 }
             }
+            .navigationTitle(store.t("Profile"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button(store.t("Done")) { dismiss() } } }
-            .sheet(isPresented: $showProfile) {
+            .sheet(isPresented: $showEdit) {
                 if let agent { AgentEditView(agent: agent).environmentObject(store) }
             }
+        }
+    }
+
+    private func capBadge(_ icon: String, _ label: String, _ tint: Color) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon).font(.system(size: 12, weight: .bold))
+            Text(label).font(.system(size: 12.5, weight: .semibold))
+        }
+        .foregroundStyle(tint)
+        .padding(.horizontal, 12).padding(.vertical, 8)
+        .background(tint.opacity(0.14), in: Capsule())
+    }
+
+    @ViewBuilder private func section(_ title: String, @ViewBuilder _ content: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title.uppercased()).font(.system(size: 11, weight: .bold)).foregroundStyle(.secondary)
+            content()
+                .padding(14).frame(maxWidth: .infinity, alignment: .leading)
+                .liquidGlass(cornerRadius: 18)
         }
     }
 }

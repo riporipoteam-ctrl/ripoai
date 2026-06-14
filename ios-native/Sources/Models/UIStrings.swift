@@ -65,6 +65,9 @@ enum UIStrings {
         "typing…", "Message", "Agent not found.", "Agent profile",
         "Name", "Role", "Personality & how it works", "Skills (comma-separated)",
         "Can browse the web", "Persona",
+        "Online", "Online · can browse", "browsing the web", "browsing the web…",
+        "Introduce yourself", "What can you help me with?", "Find the latest news on AI",
+        "AI agent", "OpenClaw browser", "About", "Skills", "Edit agent", "Profile",
         "Topic for the team meeting…", "Give a task — or “make an agent that…”",
         "Creating your agent…",
         // Plus
