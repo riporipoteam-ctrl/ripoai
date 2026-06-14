@@ -16,6 +16,8 @@ export interface TeamEvent {
   agentId: string
   name: string
   emoji: string
+  /** AI-generated avatar image — shown instead of the emoji when present. */
+  avatar?: string
   color: string
   role: string
   phase: Phase
@@ -59,6 +61,7 @@ async function streamAgent(
     agentId: agent.id,
     name: agent.name,
     emoji: agent.emoji,
+    avatar: agent.avatar,
     color: agent.color,
     role: agent.role,
     phase,
