@@ -1220,5 +1220,5 @@ export function useChat(chatId: string | undefined) {
     void run(base, opts, chatId)
   }, [user, chatId, messages, streaming, run])
 
-  return { messages, streaming, steps, send, stop, regenerate, editAndResend, toggleBookmark, loadedModel }
+  return { messages, streaming, steps, send, stop, regenerate, editAndResend, toggleBookmark, loadedModel, chatAgent }
 }

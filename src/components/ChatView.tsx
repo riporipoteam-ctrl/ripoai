@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ChevronDown,
@@ -30,7 +30,7 @@ import type { Attachment } from '../lib/db'
 import { banActive, todaysMessageCount, bumpMessageCount } from '../lib/admin'
 import { wantsImageGeneration } from '../lib/imagegen'
 import { wantsWebImageSearch } from '../lib/webImages'
-import { mentionedAgents } from '../lib/agents'
+import { mentionedAgents, takePendingAgentChat, type Agent } from '../lib/agents'
 import { dispatchTeam } from '../pages/TeamPage'
 
 const ALL_SUGGESTIONS = [
@@ -78,6 +78,7 @@ function BanBanner({ ban }: { ban: { until: number; reason: string } }) {
 export default function ChatView() {
   const { chatId } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { settings, user, sidebarOpen, toggleSidebar, banStatus } = useStore()
   const t = useT()
   const ban = banStatus?.ban
@@ -89,7 +90,21 @@ export default function ChatView() {
   const [imageMode, setImageMode] = useState(false)
   const [imageStyle, setImageStyle] = useState('auto')
   const [voiceCall, setVoiceCall] = useState(false)
-  const { messages, streaming, send, stop, regenerate, editAndResend, toggleBookmark, loadedModel } = useChat(chatId)
+  const { messages, streaming, send, stop, regenerate, editAndResend, toggleBookmark, loadedModel, chatAgent } = useChat(chatId)
+  // When a 1-on-1 chat is started from the Agents list, the agent is handed off
+  // here so this chat is tagged + driven by their persona. Once the chat has a
+  // saved agent tag (chatAgent), that becomes the source of truth.
+  const [pendingAgent, setPendingAgent] = useState<Agent | null>(null)
+  useEffect(() => {
+    const a = takePendingAgentChat()
+    if (a) setPendingAgent(a)
+  }, [location.key])
+  // Once a real saved chat is open, drop the pending hand-off so opening an
+  // existing non-agent chat never shows a stale agent banner.
+  useEffect(() => {
+    if (chatId) setPendingAgent(null)
+  }, [chatId])
+  const activeAgent = chatAgent ?? pendingAgent
   const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const [atBottom, setAtBottom] = useState(true)
@@ -121,7 +136,8 @@ export default function ChatView() {
     if (banned) return
     // @mention any agent → hand off to the Team room (agents answer there, not
     // in the main chat). The room decides if it's a quick reply or a real build.
-    if (user) {
+    // Skipped inside a 1-on-1 agent chat — the active agent answers here.
+    if (user && !activeAgent) {
       const mentions = mentionedAgents(user.uid, text)
       if (mentions.length) {
         dispatchTeam(text, mentions[0].id)
@@ -138,7 +154,11 @@ export default function ChatView() {
     const autoImage = !imageMode && !autoWebImages && wantsImageGeneration(text)
     if (autoWebImages && imageMode) setImageMode(false)
     if (autoImage) setImageMode(true)
-    send(text, attachments, { ...opts, image: autoWebImages ? false : imageMode || autoImage })
+    send(text, attachments, {
+      ...opts,
+      image: autoWebImages ? false : imageMode || autoImage,
+      agentChat: activeAgent ?? undefined,
+    })
   }
 
   const empty = messages.length === 0
@@ -174,6 +194,29 @@ export default function ChatView() {
             <PenSquare size={20} />
           </button>
         </header>
+      )}
+      {/* 1-on-1 agent chat banner — marks this chat as a conversation with a
+          specific agent (its persona drives the replies). */}
+      {activeAgent && (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center px-3 pt-[calc(env(safe-area-inset-top,0px)+0.5rem)]">
+          <div
+            className="glass-strong pointer-events-auto flex items-center gap-2 rounded-full py-1.5 pl-1.5 pr-3.5 text-sm shadow-sm"
+            style={{ boxShadow: `0 0 0 1px ${activeAgent.color}44` }}
+          >
+            {activeAgent.avatar ? (
+              <img src={activeAgent.avatar} alt={activeAgent.name} className="h-6 w-6 rounded-full object-cover" />
+            ) : (
+              <span
+                className="flex h-6 w-6 items-center justify-center rounded-full text-sm"
+                style={{ background: activeAgent.color + '2a' }}
+              >
+                {activeAgent.emoji}
+              </span>
+            )}
+            <span className="font-semibold">{activeAgent.name}</span>
+            {activeAgent.role && <span className="text-xs text-muted">{activeAgent.role}</span>}
+          </div>
+        </div>
       )}
       <div ref={scrollRef} onScroll={onScroll} className="chat-scroll absolute inset-0 overflow-y-auto">
         {empty ? (

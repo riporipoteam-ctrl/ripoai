@@ -335,10 +335,19 @@ export default function Sidebar() {
                             >
                               {c.pinned ? (
                                 <Pin size={14} className="shrink-0 rotate-45 text-accent" />
+                              ) : c.agentId || c.agentName ? (
+                                <span className="shrink-0 text-sm leading-none" title={`Chat with ${c.agentName ?? 'agent'}`}>
+                                  {c.agentEmoji || '🤖'}
+                                </span>
                               ) : (
                                 <MessageSquare size={15} className="shrink-0 text-muted" />
                               )}
                               <span className="truncate">{c.title}</span>
+                              {(c.agentId || c.agentName) && (
+                                <span className="shrink-0 rounded-full bg-accent/15 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-accent">
+                                  Agent
+                                </span>
+                              )}
                               {unreadChats.includes(c.id) && (
                                 <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" title="New reply" />
                               )}
