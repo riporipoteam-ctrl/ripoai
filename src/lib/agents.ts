@@ -15,6 +15,25 @@ export interface Agent {
   avatar?: string
   /** What the agent is good at. */
   skills?: string[]
+  /** Live web browsing (OpenClaw) capability. Defaults to ON when undefined. */
+  browsing?: boolean
+}
+
+/** Is live web browsing (OpenClaw) enabled for this agent? Defaults to true so
+ *  every agent — new, default or already saved — can research the live web. */
+export function agentCanBrowse(agent: Pick<Agent, 'browsing'>): boolean {
+  return agent.browsing !== false
+}
+
+/** Does this message look like it needs current/live web info to answer well?
+ *  Mirrors the team router's needsWeb heuristic so agent chat browses the same
+ *  kinds of asks the rest of the app does. */
+export function agentWantsBrowse(text: string): boolean {
+  const t = text || ''
+  if (/https?:\/\//i.test(t)) return true
+  return /\b(cheapest|best|price|cost|book|hotel|flight|deal|near|today|tonight|current|currently|latest|recent|news|weather|score|who (is|are|was|won)|when (is|was|does|did)|where|find me|look up|research|compare|reviews?|buy|stock|crypto|menu|hours|open now|address|phone|how much|in 20\d\d|this (year|week|month)|trending|release date|schedule|live)\b/i.test(
+    t,
+  )
 }
 
 export const DEFAULT_AGENTS: Agent[] = [
@@ -157,6 +176,7 @@ export function newAgent(): Agent {
     role: '',
     personality: '',
     color: randomColor(),
+    browsing: true,
   }
 }
 
@@ -197,6 +217,7 @@ export async function aiDesignAgent(description: string): Promise<Agent> {
     personality: String(obj.personality || 'A capable, friendly AI specialist.'),
     color: randomColor(),
     skills: Array.isArray(obj.skills) ? obj.skills.map(String) : [],
+    browsing: true,
   }
   try {
     agent.avatar = await generateImage(

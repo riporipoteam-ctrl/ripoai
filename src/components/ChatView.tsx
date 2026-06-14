@@ -25,6 +25,9 @@ import Composer from './Composer'
 import VoiceCall from './VoiceCall'
 import Message from './Message'
 import Logo from './Logo'
+import AgentProfile from './AgentProfile'
+import { Globe2 } from 'lucide-react'
+import { agentCanBrowse } from '../lib/agents'
 import type { ModelTier } from '../lib/models'
 import type { Attachment } from '../lib/db'
 import { banActive, todaysMessageCount, bumpMessageCount } from '../lib/admin'
@@ -79,7 +82,7 @@ export default function ChatView() {
   const { chatId } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
-  const { settings, user, sidebarOpen, toggleSidebar, banStatus } = useStore()
+  const { settings, user, sidebarOpen, toggleSidebar, banStatus, openSettings } = useStore()
   const t = useT()
   const ban = banStatus?.ban
   const banned = banActive(ban)
@@ -105,6 +108,9 @@ export default function ChatView() {
     if (chatId) setPendingAgent(null)
   }, [chatId])
   const activeAgent = chatAgent ?? pendingAgent
+  const [profileOpen, setProfileOpen] = useState(false)
+  // Per-turn "browse the live web with OpenClaw" toggle, shown in agent chats.
+  const [forceBrowse, setForceBrowse] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const [atBottom, setAtBottom] = useState(true)
@@ -158,7 +164,9 @@ export default function ChatView() {
       ...opts,
       image: autoWebImages ? false : imageMode || autoImage,
       agentChat: activeAgent ?? undefined,
+      forceBrowse: activeAgent && agentCanBrowse(activeAgent) ? forceBrowse : false,
     })
+    setForceBrowse(false)
   }
 
   const empty = messages.length === 0
@@ -195,31 +203,145 @@ export default function ChatView() {
           </button>
         </header>
       )}
-      {/* 1-on-1 agent chat banner — marks this chat as a conversation with a
-          specific agent (its persona drives the replies). */}
+      {/* 1-on-1 agent chat header — a modern, tappable bar with the agent's
+          avatar, name, role and live status. Tapping it opens the profile. */}
       {activeAgent && (
         <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex justify-center px-3 pt-[calc(env(safe-area-inset-top,0px)+0.5rem)]">
-          <div
-            className="glass-strong pointer-events-auto flex items-center gap-2 rounded-full py-1.5 pl-1.5 pr-3.5 text-sm shadow-sm"
+          <button
+            onClick={() => setProfileOpen(true)}
+            className="glass-strong pressable pointer-events-auto flex max-w-[92%] items-center gap-2.5 rounded-full py-1.5 pl-1.5 pr-4 text-sm shadow-sm"
             style={{ boxShadow: `0 0 0 1px ${activeAgent.color}44` }}
+            title={`View ${activeAgent.name}'s profile`}
           >
-            {activeAgent.avatar ? (
-              <img src={activeAgent.avatar} alt={activeAgent.name} className="h-6 w-6 rounded-full object-cover" />
-            ) : (
-              <span
-                className="flex h-6 w-6 items-center justify-center rounded-full text-sm"
-                style={{ background: activeAgent.color + '2a' }}
-              >
-                {activeAgent.emoji}
+            <span className="relative shrink-0">
+              {activeAgent.avatar ? (
+                <img src={activeAgent.avatar} alt={activeAgent.name} className="h-8 w-8 rounded-full object-cover" />
+              ) : (
+                <span
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-base"
+                  style={{ background: activeAgent.color + '2a' }}
+                >
+                  {activeAgent.emoji}
+                </span>
+              )}
+              {/* online dot */}
+              <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[rgb(var(--surface))] bg-emerald-400" />
+            </span>
+            <span className="flex min-w-0 flex-col items-start leading-tight">
+              <span className="flex items-center gap-1.5">
+                <span className="truncate font-bold">{activeAgent.name}</span>
+                {activeAgent.role && <span className="truncate text-xs font-medium text-muted">{activeAgent.role}</span>}
               </span>
-            )}
-            <span className="font-semibold">{activeAgent.name}</span>
-            {activeAgent.role && <span className="text-xs text-muted">{activeAgent.role}</span>}
-          </div>
+              <span className="text-[11px] font-semibold text-emerald-400">
+                {streaming ? (
+                  <span className="flex items-center gap-1 text-accent">
+                    <span className="typing-dots flex gap-0.5">
+                      <span className="h-1 w-1 animate-pulse-dot rounded-full bg-accent" />
+                      <span className="h-1 w-1 animate-pulse-dot rounded-full bg-accent [animation-delay:150ms]" />
+                      <span className="h-1 w-1 animate-pulse-dot rounded-full bg-accent [animation-delay:300ms]" />
+                    </span>
+                    typing…
+                  </span>
+                ) : agentCanBrowse(activeAgent) ? (
+                  <span className="flex items-center gap-1">
+                    <Globe2 size={11} /> Online · can browse
+                  </span>
+                ) : (
+                  'Online'
+                )}
+              </span>
+            </span>
+          </button>
         </div>
       )}
       <div ref={scrollRef} onScroll={onScroll} className="chat-scroll absolute inset-0 overflow-y-auto">
-        {empty ? (
+        {empty && activeAgent ? (
+          <div
+            className={`empty-state relative flex h-full flex-col items-center justify-center px-4 pb-6 ${
+              sidebarOpen ? 'pt-6' : 'pt-[calc(env(safe-area-inset-top,0px)+5.5rem)]'
+            }`}
+          >
+            <motion.button
+              initial={{ opacity: 0, scale: 0.88, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+              onClick={() => setProfileOpen(true)}
+              className="relative"
+              title={`View ${activeAgent.name}'s profile`}
+            >
+              <span
+                className="pointer-events-none absolute inset-0 -z-10 -m-6 rounded-full blur-3xl"
+                style={{ background: activeAgent.color + '22' }}
+              />
+              {activeAgent.avatar ? (
+                <img
+                  src={activeAgent.avatar}
+                  alt={activeAgent.name}
+                  className="animate-float h-24 w-24 rounded-[1.7rem] object-cover"
+                  style={{ boxShadow: `0 0 0 2px ${activeAgent.color}55, 0 20px 50px -22px ${activeAgent.color}` }}
+                />
+              ) : (
+                <span
+                  className="animate-float flex h-24 w-24 items-center justify-center rounded-[1.7rem] text-5xl"
+                  style={{ background: activeAgent.color + '2a', boxShadow: `0 0 0 2px ${activeAgent.color}55` }}
+                >
+                  {activeAgent.emoji}
+                </span>
+              )}
+            </motion.button>
+            <motion.h1
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.08 }}
+              className="mt-5 text-center text-[1.6rem] font-extrabold leading-tight tracking-tight sm:text-3xl"
+            >
+              {activeAgent.name}
+            </motion.h1>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.14 }}
+              className="mt-1 max-w-md text-center text-sm text-muted"
+            >
+              {activeAgent.role ? `Your ${activeAgent.role}` : 'Your AI agent'}
+              {agentCanBrowse(activeAgent) && ' · can browse the live web'}
+            </motion.p>
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="mt-5 flex max-w-md flex-wrap justify-center gap-2"
+            >
+              {(agentCanBrowse(activeAgent)
+                ? [
+                    `What can you help me with, ${activeAgent.name}?`,
+                    'Research the latest on ',
+                    "Find me the best ",
+                  ]
+                : [
+                    `What can you help me with, ${activeAgent.name}?`,
+                    'Give me a few ideas for ',
+                    'Help me with ',
+                  ]
+              ).map((chip) => (
+                <button
+                  key={chip}
+                  onClick={() => {
+                    if (chip.endsWith(' ')) {
+                      // a starter prompt the user completes — drop it in the composer
+                      window.dispatchEvent(new CustomEvent('askai-prefill', { detail: chip }))
+                    } else {
+                      handleSend(chip, [])
+                    }
+                  }}
+                  className="glass pressable rounded-full border border-white/12 px-3.5 py-2 text-xs font-semibold hover:bg-white/10"
+                >
+                  {chip.trim()}
+                </button>
+              ))}
+            </motion.div>
+          </div>
+        ) : empty ? (
           <div
             className={`empty-state relative flex h-full flex-col items-center justify-center px-4 pb-6 ${
               sidebarOpen ? 'pt-6' : 'pt-[calc(env(safe-area-inset-top,0px)+4.5rem)]'
@@ -282,6 +404,8 @@ export default function ChatView() {
                     message={m}
                     streaming={streaming}
                     isLastAssistant={isLastAssistant}
+                    agent={activeAgent ?? undefined}
+                    onAgentClick={() => setProfileOpen(true)}
                     onRegenerate={isLastAssistant && !streaming ? () => regenerate(opts) : undefined}
                     onEdit={
                       m.role === 'user' && !streaming
@@ -344,11 +468,27 @@ export default function ChatView() {
                 if (text.trim()) dispatchTeam(text)
                 navigate('/team')
               }}
+              browseEnabled={!!activeAgent && agentCanBrowse(activeAgent)}
+              browseActive={forceBrowse}
+              onToggleBrowse={() => setForceBrowse((v) => !v)}
             />
           </div>
         )}
       </div>
       <VoiceCall open={voiceCall} onClose={() => setVoiceCall(false)} model={model} />
+      <AgentProfile
+        open={profileOpen}
+        agent={activeAgent}
+        onClose={() => setProfileOpen(false)}
+        onChat={() => {
+          // Already in a 1-on-1 chat with this agent — just close the profile.
+          setProfileOpen(false)
+        }}
+        onEdit={() => {
+          setProfileOpen(false)
+          openSettings()
+        }}
+      />
     </div>
   )
 }

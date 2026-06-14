@@ -50,6 +50,10 @@ interface Props {
   showModelSelector?: boolean
   onVoiceCall?: () => void
   onTeam?: (text: string) => void
+  /** When set, shows a "Browse web (OpenClaw)" toggle (1-on-1 agent chats). */
+  browseEnabled?: boolean
+  browseActive?: boolean
+  onToggleBrowse?: () => void
 }
 
 const PLACEHOLDER_HINTS = [
@@ -80,6 +84,9 @@ export default function Composer({
   showModelSelector = true,
   onVoiceCall,
   onTeam,
+  browseEnabled,
+  browseActive,
+  onToggleBrowse,
 }: Props) {
   const { user } = useStore()
   const t = useT()
@@ -155,9 +162,27 @@ export default function Composer({
       requestAnimationFrame(() => taRef.current?.focus())
     }
     window.addEventListener('askai-focus-composer', onFocusComposer)
+    // Quick-start chip → drop a starter prompt into the composer for the user
+    // to finish typing (agent chat empty-state suggestions).
+    function onPrefill(e: Event) {
+      const t = (e as CustomEvent).detail as string
+      if (typeof t !== 'string') return
+      setText(t)
+      requestAnimationFrame(() => {
+        const ta = taRef.current
+        if (ta) {
+          ta.focus()
+          autosize()
+          const end = ta.value.length
+          ta.setSelectionRange(end, end)
+        }
+      })
+    }
+    window.addEventListener('askai-prefill', onPrefill as EventListener)
     return () => {
       window.removeEventListener('ripoai-ask', onAsk as EventListener)
       window.removeEventListener('askai-focus-composer', onFocusComposer)
+      window.removeEventListener('askai-prefill', onPrefill as EventListener)
     }
   }, [])
   const [busy, setBusy] = useState(false)
@@ -556,6 +581,20 @@ export default function Composer({
               className="mode-chip pressable flex items-center gap-1.5 rounded-full accent-gradient-bg px-3 py-1.5 text-xs font-semibold text-white"
             >
               <Sparkles size={14} /> Image <X size={13} className="opacity-80" />
+            </button>
+          )}
+          {browseEnabled && onToggleBrowse && (
+            <button
+              onClick={() => { haptic('select'); onToggleBrowse() }}
+              className={`mode-chip pressable flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                browseActive
+                  ? 'bg-orange-500 text-white'
+                  : 'border border-white/15 text-muted hover:text-ink'
+              }`}
+              title="Browse the live web with OpenClaw for this message"
+            >
+              <Globe size={14} /> Browse
+              {browseActive && <Check size={13} className="opacity-90" />}
             </button>
           )}
 
