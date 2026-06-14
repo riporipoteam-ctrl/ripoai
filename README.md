@@ -54,6 +54,14 @@ web app — so every website feature works — and adds desktop-only powers:
   my Desktop", "make a folder and unzip this") and it acts via `pc-action` blocks. Safe file
   operations inside your folders run automatically; risky actions and shell commands ask you to
   confirm (tune the allowlist in Settings).
+- **iPhone updater (sideloader)** — **Settings → Update your iPhone**: plug an iPhone in over USB
+  and the app detects it, finds the latest AskAI `.ipa` on GitHub Releases, downloads it,
+  optionally re-signs it, and installs it to the device — AltStore/Sideloadly style. It drives
+  the standard iOS tooling: [`libimobiledevice`](https://github.com/libimobiledevice-win32/imobiledevice-net/releases)
+  (`idevice_id`, `ideviceinstaller`) to talk to the device, and optional [`zsign`](https://github.com/zhlynn/zsign)
+  to re-sign unsigned builds with your `.p12` + `.mobileprovision`. Point the app at the folder
+  holding those tools (or add them to PATH). Bundle them into `electron/build` /
+  `resources/tools` to ship a zero-setup installer.
 
 Build it locally:
 

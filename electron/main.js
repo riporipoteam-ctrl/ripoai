@@ -14,6 +14,7 @@ const fs = require('node:fs')
 const fsp = require('node:fs/promises')
 const os = require('node:os')
 const { exec } = require('node:child_process')
+const sideload = require('./sideload')
 
 // The web app the desktop shell loads. Override with ASKAI_URL for local dev
 // (e.g. http://localhost:5173).
@@ -274,6 +275,31 @@ function registerControlHandlers() {
         })
       })
     })
+  })
+
+  // ---- iOS sideloader (install/update the AskAI iOS app over USB) ----------
+  ipcMain.handle('sideload:tools', () => {
+    const s = loadSettings()
+    sideload.setToolsDir(s.iosToolsDir || '')
+    return sideload.checkTools()
+  })
+  ipcMain.handle('sideload:detect', () => {
+    const s = loadSettings()
+    sideload.setToolsDir(s.iosToolsDir || '')
+    return sideload.detectDevice()
+  })
+  ipcMain.handle('sideload:latest', () => sideload.checkLatestIpa())
+  ipcMain.handle('sideload:install', async (e, opts) => {
+    const s = loadSettings()
+    sideload.setToolsDir(s.iosToolsDir || '')
+    const send = (payload) => e.sender.send('sideload:progress', payload)
+    try {
+      const res = await sideload.installLatest(opts || {}, send)
+      return { ok: true, ...res }
+    } catch (err) {
+      send({ stage: 'error', message: String(err?.message || err) })
+      return { ok: false, error: String(err?.message || err) }
+    }
   })
 }
 

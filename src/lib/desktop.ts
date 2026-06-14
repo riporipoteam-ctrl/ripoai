@@ -33,13 +33,57 @@ export interface FsRequest {
   text?: string
 }
 
+export interface IosDevice {
+  connected: boolean
+  missingTools?: boolean
+  udid?: string
+  name?: string
+  productType?: string
+  iosVersion?: string
+  trusted?: boolean
+}
+export interface IosTools {
+  idevice_id: boolean
+  ideviceinstaller: boolean
+  zsign: boolean
+  ready: boolean
+}
+export interface IosLatest {
+  found: boolean
+  version?: string
+  name?: string
+  size?: number
+  url?: string
+  notes?: string
+  publishedAt?: string
+}
+export interface SideloadSigning {
+  p12?: string
+  p12Password?: string
+  mobileprovision?: string
+}
+export interface SideloadProgress {
+  stage: 'detect' | 'check' | 'download' | 'sign' | 'install' | 'done' | 'error'
+  percent?: number
+  message?: string
+}
+
+interface SideloadApi {
+  tools: () => Promise<IosTools>
+  detect: () => Promise<IosDevice>
+  latest: () => Promise<IosLatest>
+  install: (opts: { signing?: SideloadSigning }) => Promise<{ ok: boolean; version?: string; error?: string }>
+  onProgress: (cb: (p: SideloadProgress) => void) => () => void
+}
+
 interface DesktopApi {
   isAskAIDesktop: boolean
   info: () => Promise<DesktopInfo>
-  getSettings: () => Promise<{ allowCommands: string[]; autoRunFileOps: boolean }>
-  setSettings: (s: Partial<{ allowCommands: string[]; autoRunFileOps: boolean }>) => Promise<any>
+  getSettings: () => Promise<{ allowCommands: string[]; autoRunFileOps: boolean; iosToolsDir?: string }>
+  setSettings: (s: Partial<{ allowCommands: string[]; autoRunFileOps: boolean; iosToolsDir: string }>) => Promise<any>
   fs: (req: FsRequest) => Promise<any>
   exec: (req: { command: string; cwd?: string }) => Promise<any>
+  sideload: SideloadApi
   checkForUpdate: () => Promise<any>
   installUpdate: () => Promise<any>
   onUpdate: (cb: (u: DesktopUpdate) => void) => () => void
@@ -87,6 +131,44 @@ export async function setDesktopSettings(
   } catch {
     /* ignore */
   }
+}
+
+// ---- iOS sideloader --------------------------------------------------------
+export async function iosTools(): Promise<IosTools | null> {
+  const a = api()
+  if (!a) return null
+  try {
+    return await a.sideload.tools()
+  } catch {
+    return null
+  }
+}
+export async function iosDetect(): Promise<IosDevice | null> {
+  const a = api()
+  if (!a) return null
+  try {
+    return await a.sideload.detect()
+  } catch {
+    return null
+  }
+}
+export async function iosLatest(): Promise<IosLatest | null> {
+  const a = api()
+  if (!a) return null
+  try {
+    return await a.sideload.latest()
+  } catch {
+    return null
+  }
+}
+export async function iosInstall(opts: { signing?: SideloadSigning } = {}) {
+  const a = api()
+  if (!a) return { ok: false, error: 'Not running in the AskAI desktop app.' }
+  return a.sideload.install(opts)
+}
+export function onSideloadProgress(cb: (p: SideloadProgress) => void): () => void {
+  const a = api()
+  return a ? a.sideload.onProgress(cb) : () => {}
 }
 
 export async function checkForDesktopUpdate(): Promise<void> {

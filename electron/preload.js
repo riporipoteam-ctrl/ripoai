@@ -15,6 +15,19 @@ contextBridge.exposeInMainWorld('askaiDesktop', {
   // Shell command: { command, cwd? }
   exec: (req) => ipcRenderer.invoke('desktop:exec', req),
 
+  // iOS sideloader (install/update the AskAI iOS app on a USB-connected iPhone).
+  sideload: {
+    tools: () => ipcRenderer.invoke('sideload:tools'),
+    detect: () => ipcRenderer.invoke('sideload:detect'),
+    latest: () => ipcRenderer.invoke('sideload:latest'),
+    install: (opts) => ipcRenderer.invoke('sideload:install', opts),
+    onProgress: (cb) => {
+      const handler = (_e, payload) => cb(payload)
+      ipcRenderer.on('sideload:progress', handler)
+      return () => ipcRenderer.removeListener('sideload:progress', handler)
+    },
+  },
+
   // Auto-update.
   checkForUpdate: () => ipcRenderer.invoke('desktop:update-check'),
   installUpdate: () => ipcRenderer.invoke('desktop:update-install'),

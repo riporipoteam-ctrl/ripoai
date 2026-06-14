@@ -43,6 +43,7 @@ import {
 } from '../lib/desktop'
 import { loadAgents, upsertAgent, deleteAgent, newAgent, setPendingAgentChat, ensureAgentAvatar, agentCanBrowse, type Agent } from '../lib/agents'
 import AgentProfile from './AgentProfile'
+import IosUpdater from './IosUpdater'
 import { Bot, Plus as PlusIcon, MessageSquare, Globe2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
@@ -487,6 +488,8 @@ export default function Settings() {
                   </div>
                 </div>
               )}
+
+              {desktop && <IosUpdater />}
 
               <Field label="Language">
                 <select
