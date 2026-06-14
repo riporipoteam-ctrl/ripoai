@@ -4,6 +4,7 @@ import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from './firebase'
 import { useStore, applyAppearance } from './store'
 import { useI18n } from './lib/i18n'
+import { applyAutoTranslate } from './lib/autoTranslate'
 import { initNative, syncStatusBarTheme } from './lib/native'
 import { completeGoogleRedirect } from './lib/googleAuth'
 import SignIn from './pages/SignIn'
@@ -104,6 +105,9 @@ export default function App() {
   // Translate the whole UI into the chosen language (cached per language).
   useEffect(() => {
     useI18n.getState().apply(settings.language)
+    // Runtime DOM translator covers ALL visible UI chrome (not just wrapped
+    // strings) — non-blocking, cached, and excludes chat/AI/code content.
+    applyAutoTranslate(settings.language)
   }, [settings.language])
 
   return (

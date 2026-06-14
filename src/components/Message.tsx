@@ -85,6 +85,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
         exit={{ opacity: 0, y: 8, scale: 0.98 }}
         transition={{ type: 'spring', stiffness: 240, damping: 24 }}
         className="message-row user-message-row flex flex-col items-end gap-2"
+        data-no-translate
       >
         {!!message.attachments?.length && (
           <div className="flex max-w-[80%] flex-wrap justify-end gap-2">
@@ -170,6 +171,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
       exit={{ opacity: 0, y: 8, scale: 0.98 }}
       transition={{ type: 'spring', stiffness: 240, damping: 24 }}
       className={`message-row assistant-message-row flex gap-3 ${message.bookmarked ? 'rounded-2xl border-l-2 border-accent bg-accent/5 py-2 pl-3 pr-2' : ''}`}
+      data-no-translate
     >
       <div className="assistant-avatar mt-0.5 shrink-0">
         <div className="overflow-hidden rounded-xl shadow-[0_4px_12px_-6px_rgb(var(--ink)/0.5)] ring-1 ring-[rgb(var(--ink)/0.08)]">
