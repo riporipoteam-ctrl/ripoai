@@ -12,7 +12,7 @@ import { earnFromChat, tryImageGen } from '../lib/plus'
 import { wantsSlides, generateDeck } from '../lib/slides'
 import { getModel, resolveAutoModel, type ModelTier } from '../lib/models'
 import { buildSystemPrompt, buildAgentSystemPrompt, AGENT_SYSTEM, WEB3D_INSTRUCTIONS, wantsWebsite, needsDeepThinking } from '../lib/prompt'
-import { getAgent, type Agent } from '../lib/agents'
+import { getAgent, agentCanBrowse, agentWantsBrowse, type Agent } from '../lib/agents'
 import { extractSocialImages, buildSocialPrompt } from '../lib/social'
 import { searchModel, shouldAutoSearch } from '../lib/search'
 import { liveSearchContext } from '../lib/liveSearch'
@@ -44,6 +44,8 @@ export interface SendOptions {
   systemOverride?: string
   /** When set, this is a 1-on-1 chat with this agent — drives the persona + tag. */
   agentChat?: Agent
+  /** User explicitly asked this turn to browse the live web (composer toggle). */
+  forceBrowse?: boolean
 }
 
 const uid4 = () => crypto.randomUUID()
@@ -506,11 +508,14 @@ export function useChat(chatId: string | undefined) {
       // the compound model can't view images.
       const hasImages = (lastUser?.attachments ?? []).some((a) => a.kind === 'image' && a.url)
 
-      // Agent mode must never route through the compound web-search model.
-      // The real browser panel below is the source of truth when Agent is on.
+      // Agent mode (and 1-on-1 agent chats) must never route through the compound
+      // web-search model. The real OpenClaw browser panel below is the source of
+      // truth whenever an agent is browsing.
+      const isAgentChat = !!(opts.agentChat || agentTagRef.current.agentId || chatAgent)
       const wantsSearch =
         !opts.systemOverride &&
         !opts.agent &&
+        !isAgentChat &&
         (opts.webSearch ||
           (!opts.webSearch && shouldAutoSearch(history[history.length - 1]?.content ?? '')))
       const useCompound = !hasImages && wantsSearch
@@ -574,6 +579,22 @@ export function useChat(chatId: string | undefined) {
             : buildSystemPrompt(model, settings, memories))
 
       const lastText = lastUser?.content ?? ''
+
+      // 1-on-1 agent chat: let the agent actually browse the live web with
+      // OpenClaw. It browses when the agent has browsing enabled AND either the
+      // user force-browsed (composer toggle) or the message looks like it needs
+      // current/web info — mirroring how the main Agent mode browses.
+      const agentChatBrowse =
+        !opts.image &&
+        !opts.systemOverride &&
+        !hasImages &&
+        !!personaAgent &&
+        agentCanBrowse(personaAgent) &&
+        (opts.forceBrowse === true || agentWantsBrowse(lastText))
+
+      // Either the global Agent mode OR a browsing-enabled agent chat runs the
+      // live OpenClaw browser panel below.
+      const runBrowser = (opts.agent || agentChatBrowse) && (settings.agentBrowserPreview ?? true)
 
       // Ground the answer on the real search results we just fetched.
       if (groundedSearch) {
@@ -686,7 +707,7 @@ export function useChat(chatId: string | undefined) {
 
       const assistantId = uid4()
       const initialAgentBrowser: AgentBrowserState | undefined =
-        opts.agent && (settings.agentBrowserPreview ?? true)
+        runBrowser
           ? {
               status: 'running',
               events: [{ type: 'start', label: 'Starting real browser session', at: Date.now() }],
@@ -719,7 +740,7 @@ export function useChat(chatId: string | undefined) {
       const isLive = () => loadedId.current === id
 
       let agentBrowser: AgentBrowserState | undefined = initialAgentBrowser
-      if (opts.agent && (settings.agentBrowserPreview ?? true)) {
+      if (runBrowser) {
         const events: AgentBrowserEvent[] = [...(initialAgentBrowser?.events ?? [])]
         const applyAgentBrowser = (state: AgentBrowserState) => {
           agentBrowser = state

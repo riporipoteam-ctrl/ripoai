@@ -28,8 +28,9 @@ import { isGmailConnected, connectGmail, disconnectGmail } from '../lib/gmail'
 import { isCalendarConnected, connectCalendar, disconnectCalendar } from '../lib/calendar'
 import { Calendar as CalIcon, Cloud, Map as MapIcon, Bitcoin, Globe, Wand2 } from 'lucide-react'
 import { loadSkills, deleteSkill, installSkillFromUrl, type Skill } from '../lib/skills'
-import { loadAgents, upsertAgent, deleteAgent, newAgent, setPendingAgentChat, ensureAgentAvatar, type Agent } from '../lib/agents'
-import { Bot, Plus as PlusIcon, MessageSquare } from 'lucide-react'
+import { loadAgents, upsertAgent, deleteAgent, newAgent, setPendingAgentChat, ensureAgentAvatar, agentCanBrowse, type Agent } from '../lib/agents'
+import AgentProfile from './AgentProfile'
+import { Bot, Plus as PlusIcon, MessageSquare, Globe2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 const ACCENTS = ['#10a37f', '#4ea8ff', '#36e0c0', '#7c5cff', '#ff6b6b', '#ffa94d', '#f06595']
@@ -73,6 +74,7 @@ export default function Settings() {
   const [skillErr, setSkillErr] = useState('')
   const [agents, setAgents] = useState<Agent[]>([])
   const [editing, setEditing] = useState<Agent | null>(null)
+  const [viewing, setViewing] = useState<Agent | null>(null)
   const [aiDesc, setAiDesc] = useState('')
   const [aiBusy, setAiBusy] = useState(false)
 
@@ -707,6 +709,19 @@ export default function Settings() {
                     rows={3}
                     className="w-full resize-none rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm outline-none"
                   />
+                  <label className="flex items-center justify-between rounded-xl border border-white/12 bg-white/5 px-3 py-2.5">
+                    <span className="flex items-center gap-2 text-sm">
+                      <Globe2 size={15} className="text-orange-500" />
+                      <span className="font-semibold">Web browsing</span>
+                      <span className="rounded-full bg-orange-500/15 px-1.5 py-px text-[9px] font-extrabold uppercase tracking-wide text-orange-500">
+                        OpenClaw
+                      </span>
+                    </span>
+                    <Toggle
+                      on={agentCanBrowse(editing)}
+                      onClick={() => setEditing({ ...editing, browsing: !agentCanBrowse(editing) })}
+                    />
+                  </label>
                   <div className="flex gap-2">
                     <button
                       onClick={() => saveAgent(editing)}
@@ -728,27 +743,36 @@ export default function Settings() {
               <div className="space-y-2">
                 {agents.map((a) => (
                   <div key={a.id} className="flex items-center gap-3 rounded-2xl border border-white/10 p-3">
-                    {a.avatar ? (
-                      <img
-                        src={a.avatar}
-                        alt={a.name}
-                        className="h-10 w-10 shrink-0 rounded-xl object-cover"
-                        style={{ boxShadow: `0 0 0 1px ${a.color}55` }}
-                      />
-                    ) : (
-                      <span
-                        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg"
-                        style={{ background: a.color + '2a', boxShadow: `0 0 0 1px ${a.color}55` }}
-                      >
-                        {a.emoji}
-                      </span>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-semibold">
-                        {a.name} <span className="text-xs font-normal text-muted">{a.role}</span>
+                    <button
+                      onClick={() => setViewing(a)}
+                      className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                      title={`View ${a.name}'s profile`}
+                    >
+                      {a.avatar ? (
+                        <img
+                          src={a.avatar}
+                          alt={a.name}
+                          className="h-10 w-10 shrink-0 rounded-xl object-cover"
+                          style={{ boxShadow: `0 0 0 1px ${a.color}55` }}
+                        />
+                      ) : (
+                        <span
+                          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg"
+                          style={{ background: a.color + '2a', boxShadow: `0 0 0 1px ${a.color}55` }}
+                        >
+                          {a.emoji}
+                        </span>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-semibold">
+                          {a.name} <span className="text-xs font-normal text-muted">{a.role}</span>
+                          {agentCanBrowse(a) && (
+                            <Globe2 size={11} className="ml-1 inline-block text-orange-500" />
+                          )}
+                        </div>
+                        <div className="truncate text-xs text-muted">{a.personality}</div>
                       </div>
-                      <div className="truncate text-xs text-muted">{a.personality}</div>
-                    </div>
+                    </button>
                     <button
                       onClick={() => startChatWithAgent(a)}
                       className="pressable flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-accent hover:bg-white/10"
@@ -834,6 +858,19 @@ export default function Settings() {
           )}
         </div>
       </div>
+      <AgentProfile
+        open={!!viewing}
+        agent={viewing}
+        onClose={() => setViewing(null)}
+        onChat={(a) => {
+          setViewing(null)
+          startChatWithAgent(a)
+        }}
+        onEdit={(a) => {
+          setViewing(null)
+          setEditing(a)
+        }}
+      />
     </Modal>
   )
 }

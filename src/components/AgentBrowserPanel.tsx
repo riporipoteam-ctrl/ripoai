@@ -153,10 +153,13 @@ export default function AgentBrowserPanel({ browser, live }: { browser?: AgentBr
         <span className="h-2.5 w-2.5 rounded-full bg-red-400/85" />
         <span className="h-2.5 w-2.5 rounded-full bg-yellow-400/85" />
         <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/85" />
-        <div className="ml-1 flex min-w-0 flex-1 items-center gap-2 rounded-full border border-white/10 bg-white/35 px-3 py-1.5 text-xs font-semibold text-muted dark:bg-black/20">
+        <span className="ml-1 inline-flex shrink-0 items-center gap-1 rounded-full bg-orange-500/15 px-2 py-1 text-[11px] font-extrabold uppercase tracking-wide text-orange-500">
+          🐾 OpenClaw
+        </span>
+        <div className="flex min-w-0 flex-1 items-center gap-2 rounded-full border border-white/10 bg-white/35 px-3 py-1.5 text-xs font-semibold text-muted dark:bg-black/20">
           {running ? <Loader2 size={13} className="shrink-0 animate-spin text-accent" /> : <Globe2 size={13} className="shrink-0 text-accent" />}
           <span className="truncate">
-            {browser.currentUrl || browser.liveUrl || (unavailable ? 'Browser backend not connected' : 'Agent browser')}
+            {browser.currentUrl || browser.liveUrl || (unavailable ? 'Browser backend not connected' : 'OpenClaw browser')}
           </span>
         </div>
         {browser.liveUrl && (

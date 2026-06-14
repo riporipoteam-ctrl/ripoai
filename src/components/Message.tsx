@@ -28,6 +28,10 @@ interface Props {
   onEdit?: (text: string) => void
   onFollowup?: (text: string) => void
   onToggleBookmark?: () => void
+  /** When set, this is a 1-on-1 agent chat — assistant rows show the agent's
+   *  avatar + name instead of the generic AskAI mark. */
+  agent?: { name: string; emoji: string; color: string; avatar?: string } | null
+  onAgentClick?: () => void
 }
 
 const THINKING_PHRASES = ['Thinking', 'Reasoning', 'Working on it', 'Putting it together']
@@ -50,7 +54,7 @@ function ThinkingIndicator() {
   )
 }
 
-export default function Message({ message, streaming, isLastAssistant, onRegenerate, onEdit, onFollowup, onToggleBookmark }: Props) {
+export default function Message({ message, streaming, isLastAssistant, onRegenerate, onEdit, onFollowup, onToggleBookmark, agent, onAgentClick }: Props) {
   const { user } = useStore()
   const [installedSkill, setInstalledSkill] = useState('')
   const skillFromBlock =
@@ -174,13 +178,33 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
       data-no-translate
     >
       <div className="assistant-avatar mt-0.5 shrink-0">
-        <div className="overflow-hidden rounded-xl shadow-[0_4px_12px_-6px_rgb(var(--ink)/0.5)] ring-1 ring-[rgb(var(--ink)/0.08)]">
-          <Logo size={32} variant="icon" />
-        </div>
+        {agent ? (
+          <button
+            onClick={onAgentClick}
+            className="block overflow-hidden rounded-xl ring-1 ring-[rgb(var(--ink)/0.08)]"
+            style={{ boxShadow: `0 4px 12px -6px ${agent.color}` }}
+            title={`${agent.name}'s profile`}
+          >
+            {agent.avatar ? (
+              <img src={agent.avatar} alt={agent.name} className="h-8 w-8 object-cover" />
+            ) : (
+              <span
+                className="flex h-8 w-8 items-center justify-center text-lg"
+                style={{ background: agent.color + '2a' }}
+              >
+                {agent.emoji}
+              </span>
+            )}
+          </button>
+        ) : (
+          <div className="overflow-hidden rounded-xl shadow-[0_4px_12px_-6px_rgb(var(--ink)/0.5)] ring-1 ring-[rgb(var(--ink)/0.08)]">
+            <Logo size={32} variant="icon" />
+          </div>
+        )}
       </div>
       <div className="min-w-0 flex-1">
         <div className="mb-1.5 flex items-center gap-2">
-          <span className="font-display text-sm font-bold tracking-tight">AskAI</span>
+          <span className="font-display text-sm font-bold tracking-tight">{agent ? agent.name : 'AskAI'}</span>
           {modelName && (
             <span className="rounded-full border border-[rgb(var(--ink)/0.08)] bg-[rgb(var(--ink)/0.04)] px-2 py-0.5 text-[10px] font-semibold text-muted">
               {modelName}
