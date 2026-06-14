@@ -2,11 +2,14 @@
 // loaded from https://js.puter.com/v2/ in index.html. Powers the website-only
 // "AskAI 5o Pro" tier.
 //
-// Goal: real Fable 5 answers with NO credits and NO forced sign-up wall. Puter
-// auto-provisions a lightweight anonymous "temp user" the first time the page
-// touches its runtime, so for AI calls we DON'T pre-block on isSignedIn() — we
-// let Puter onboard silently and only fall back to Groq if it genuinely errors.
-// (The older, popup-shy behavior is still available via allowAuth: false.)
+// IMPORTANT — no surprise popups: Puter's free runtime requires a Puter account
+// (it shows a "Setting up your Puter.com account…" dialog on the first AI call).
+// We NEVER trigger that automatically. By default 5o Pro runs on a free frontier
+// fallback (no popup, no auth). Real Fable 5 via Puter is strictly OPT-IN: the
+// user flips a one-time switch (which performs the Puter setup on a click), and
+// only then do we route 5o Pro through Puter.
+
+const FABLE_OPT_IN_KEY = 'ripoai:puter-fable-enabled'
 
 function P(): any {
   return (window as any).puter
@@ -16,21 +19,60 @@ export function isPuterLoaded(): boolean {
   return typeof window !== 'undefined' && !!P()?.ai?.chat
 }
 
-/** Best-effort: make sure Puter has *some* identity (a silent temp user) before
- *  an AI call, so the first message doesn't surface an interactive popup. Never
- *  throws — if Puter has no quiet onboarding path we just proceed and let the
- *  chat call itself decide. */
-async function ensurePuterUser(p: any): Promise<void> {
+/** Has the user opted in to real Fable 5 via Puter (accepting the one-time
+ *  Puter account setup)? Off by default → no popup, ever. */
+export function isPuterFableEnabled(): boolean {
   try {
-    if (p?.auth?.isSignedIn?.()) return
-    // Newer Puter builds expose a quiet, popup-free temp-user onboarding. Try the
-    // known entry points; ignore anything that isn't present.
-    if (typeof p?.auth?.getUser === 'function') {
-      await Promise.resolve(p.auth.getUser()).catch(() => {})
-    }
+    return localStorage.getItem(FABLE_OPT_IN_KEY) === '1'
   } catch {
-    /* ignore — proceed and let ai.chat provision on demand */
+    return false
   }
+}
+
+/** Is a Puter session already established (so AI calls won't pop a dialog)? */
+export function isPuterSignedIn(): boolean {
+  try {
+    const p = P()
+    return !!(p?.auth?.isSignedIn && p.auth.isSignedIn())
+  } catch {
+    return false
+  }
+}
+
+/** Opt in to real Fable 5. MUST be called from a user gesture (e.g. a click) so
+ *  the browser allows Puter's one-time setup popup. Resolves true once a Puter
+ *  session exists. Turning it off just clears the preference. */
+export async function setPuterFableEnabled(on: boolean): Promise<boolean> {
+  try {
+    if (!on) {
+      localStorage.removeItem(FABLE_OPT_IN_KEY)
+      return false
+    }
+    const p = P()
+    if (!p?.ai?.chat) throw new Error('Puter is still loading — try again in a moment.')
+    // Establish the Puter session now, while we have a user gesture, so later
+    // chats never surface an unexpected popup.
+    if (!isPuterSignedIn() && typeof p.auth?.signIn === 'function') {
+      await p.auth.signIn()
+    }
+    localStorage.setItem(FABLE_OPT_IN_KEY, '1')
+    return isPuterSignedIn()
+  } catch (e) {
+    // Setup dismissed/failed — leave the preference off so we stay popup-free.
+    try {
+      localStorage.removeItem(FABLE_OPT_IN_KEY)
+    } catch {
+      /* ignore */
+    }
+    throw e
+  }
+}
+
+/** Should 5o Pro actually use Puter Fable 5 this turn? Only when the user opted
+ *  in AND a session already exists — guaranteeing we never trigger a popup mid-
+ *  chat. Otherwise the caller falls back to the free frontier model. */
+export function shouldUsePuterFable(): boolean {
+  return isPuterLoaded() && isPuterFableEnabled() && isPuterSignedIn()
 }
 
 export interface PuterStreamOpts {
@@ -38,21 +80,14 @@ export interface PuterStreamOpts {
   messages: { role: string; content: any }[]
   signal?: AbortSignal
   onToken?: (delta: string) => void
-  /** When true (the 5o Pro tier), allow Puter to silently onboard a temp user
-   *  instead of throwing when not signed in. */
-  allowAuth?: boolean
 }
 
 export async function streamPuter(opts: PuterStreamOpts): Promise<{ content: string }> {
   const p = P()
   if (!p?.ai?.chat) throw new Error('Puter not loaded')
-
-  if (opts.allowAuth) {
-    await ensurePuterUser(p)
-  } else if (p.auth?.isSignedIn && !p.auth.isSignedIn()) {
-    // Legacy popup-averse path: only use Puter when already signed in.
-    throw new Error('puter-not-signed-in')
-  }
+  // Never trigger Puter's account popup from a chat turn: only proceed when a
+  // session is already established (the user opted in earlier via a click).
+  if (!isPuterSignedIn()) throw new Error('puter-not-signed-in')
 
   let content = ''
   // Puter accepts a bare model id ("claude-fable-5") or the vendor-qualified one

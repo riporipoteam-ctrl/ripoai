@@ -16,7 +16,7 @@ Firestore, Tailwind, Framer Motion and an iOS‑26 "Liquid Glass" design. Deploy
   | AskAI 2o instant | `meta-llama/llama-4-scout-17b-16e-instruct` (vision) |
   | AskAI 1o Pro | `llama-3.3-70b-versatile` |
   | AskAI 2o Pro (flagship) | `openai/gpt-oss-120b` |
-  | AskAI 5o Pro (web only) | Claude **Fable 5** via [Puter](https://puter.com) — free user‑pays runtime, with automatic Groq fallback. Hidden inside the iOS/Android shells. |
+  | AskAI 5o Pro (web only) | Free & unlimited with **no sign‑up** — runs on a frontier fallback (Kimi 2.6 / `gpt-oss-120b`) by default. Optionally route it through Claude **Fable 5** via [Puter](https://puter.com) by enabling it in Settings (one‑time Puter setup; no popups after). Hidden inside the iOS/Android shells. |
 - **Subagents** — for big, multi‑part asks AskAI silently spins up a few focused
   specialist subagents, runs them in parallel, and folds their findings into one
   unified answer. You only ever see the live status pills ("Created subagent:

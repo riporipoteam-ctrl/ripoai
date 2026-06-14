@@ -155,7 +155,7 @@ export const MODELS: Record<ModelTier, RipoModel> = {
   'ripoai-5o-pro': {
     id: 'ripoai-5o-pro',
     name: 'AskAI 5o Pro',
-    tagline: 'Frontier reasoning — our smartest model (web only)',
+    tagline: 'Our smartest — frontier reasoning, free & no sign-up (web)',
     provider: 'puter',
     // Free, unlimited frontier model via Puter's user-pays runtime. Served only
     // in a real browser tab; falls back to gpt-oss-120b on Groq if Puter is

@@ -28,6 +28,8 @@ import { isGmailConnected, connectGmail, disconnectGmail } from '../lib/gmail'
 import { isCalendarConnected, connectCalendar, disconnectCalendar } from '../lib/calendar'
 import { Calendar as CalIcon, Cloud, Map as MapIcon, Bitcoin, Globe, Wand2 } from 'lucide-react'
 import { loadSkills, deleteSkill, installSkillFromUrl, type Skill } from '../lib/skills'
+import { isNative } from '../lib/native'
+import { isPuterFableEnabled, setPuterFableEnabled, isPuterLoaded } from '../lib/puter'
 import { loadAgents, upsertAgent, deleteAgent, newAgent, setPendingAgentChat, ensureAgentAvatar, agentCanBrowse, type Agent } from '../lib/agents'
 import AgentProfile from './AgentProfile'
 import { Bot, Plus as PlusIcon, MessageSquare, Globe2 } from 'lucide-react'
@@ -72,6 +74,31 @@ export default function Settings() {
   const [skillUrl, setSkillUrl] = useState('')
   const [skillBusy, setSkillBusy] = useState(false)
   const [skillErr, setSkillErr] = useState('')
+  const [fableOn, setFableOn] = useState(isPuterFableEnabled())
+  const [fableBusy, setFableBusy] = useState(false)
+  const [fableErr, setFableErr] = useState('')
+
+  async function toggleFable() {
+    if (fableBusy) return
+    setFableErr('')
+    if (fableOn) {
+      await setPuterFableEnabled(false).catch(() => {})
+      setFableOn(false)
+      return
+    }
+    setFableBusy(true)
+    try {
+      // Runs inside a user click → Puter's one-time setup is allowed once, here.
+      const ok = await setPuterFableEnabled(true)
+      setFableOn(ok)
+      if (!ok) setFableErr("Couldn't connect to Puter. You can still use 5o Pro — it'll use our free frontier model.")
+    } catch (e: any) {
+      setFableOn(false)
+      setFableErr(e?.message || "Couldn't connect to Puter just now.")
+    } finally {
+      setFableBusy(false)
+    }
+  }
   const [agents, setAgents] = useState<Agent[]>([])
   const [editing, setEditing] = useState<Agent | null>(null)
   const [viewing, setViewing] = useState<Agent | null>(null)
@@ -338,13 +365,41 @@ export default function Settings() {
                   onChange={(e) => updateSettings({ defaultModel: e.target.value as any })}
                   className="w-full rounded-2xl border border-white/15 bg-white/5 px-3 py-2.5 outline-none focus:border-accent"
                 >
-                  {MODEL_LIST.map((m) => (
+                  {MODEL_LIST.filter((m) => !(isNative && m.webOnly)).map((m) => (
                     <option key={m.id} value={m.id} className="bg-surface text-ink">
                       {m.name} — {m.tagline}
                     </option>
                   ))}
                 </select>
               </Field>
+
+              {!isNative && (
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3.5">
+                  <div className="flex items-start gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 text-sm font-semibold">
+                        Real Fable 5 for 5o Pro
+                        <span className="rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-1.5 py-px text-[9px] font-bold text-white">
+                          MAX
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-muted">
+                        AskAI 5o Pro is free and unlimited with no sign-up — it runs on our best
+                        frontier model by default. Turn this on to route it through Claude{' '}
+                        <strong>Fable 5</strong> via Puter (free, user-pays). This needs a{' '}
+                        <strong>one-time Puter setup</strong> the first time — after that there are no
+                        more popups. Leave it off to stay completely popup-free.
+                      </p>
+                      {fableErr && <p className="mt-1.5 text-xs text-amber-400">{fableErr}</p>}
+                      {fableOn && !fableErr && (
+                        <p className="mt-1.5 text-xs text-emerald-400">Connected — 5o Pro now uses Fable 5.</p>
+                      )}
+                    </div>
+                    <Toggle on={fableOn} onClick={isPuterLoaded() ? toggleFable : () => setFableErr('Puter is still loading — try again in a moment.')} />
+                  </div>
+                  {fableBusy && <p className="mt-2 text-xs text-muted">Setting up Puter…</p>}
+                </div>
+              )}
 
               <Field label="Language">
                 <select

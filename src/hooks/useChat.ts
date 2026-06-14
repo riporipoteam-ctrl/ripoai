@@ -6,7 +6,7 @@ import { wantsPlaces, searchPlaces, getUserLocation, getUserPlace, wantsLocation
 import { wantsWeather, getWeather } from '../lib/weather'
 import { wantsCurrency, convertCurrency } from '../lib/currency'
 import { wantsDefine, getDefinition, wantsWiki, getWiki, wantsUnits, convertUnits } from '../lib/tools'
-import { streamPuter } from '../lib/puter'
+import { streamPuter, shouldUsePuterFable } from '../lib/puter'
 import { MAX_IMAGES_PER_MESSAGE } from '../lib/files'
 import { earnFromChat, tryImageGen } from '../lib/plus'
 import { wantsSlides, generateDeck } from '../lib/slides'
@@ -898,7 +898,12 @@ export function useChat(chatId: string | undefined) {
       // Ordered fallback chain — try the best model, then progressively more
       // reliable/faster ones, so a rate-limit never shows as the answer.
       type Attempt = { provider?: 'openrouter' | 'groq' | 'puter' | 'nvidia'; model: string; maxTokens: number; reasoningEffort?: string }
-      const usePuter = model.provider === 'puter' && !!model.puterModel && !hasImages && !useCompound
+      const isFableTier = model.provider === 'puter' && !hasImages && !useCompound
+      // Only route through Puter when the user opted in AND a Puter session
+      // already exists — so a chat turn NEVER triggers Puter's account popup.
+      const usePuter = isFableTier && !!model.puterModel && shouldUsePuterFable()
+      // 5o Pro without Puter → a free, no-auth, no-popup frontier fallback.
+      const useFableFree = isFableTier && !usePuter
       const useNvidia = model.provider === 'nvidia' && !!model.nvModel && !hasImages && !useCompound
       const attempts: Attempt[] = []
       if (groundedSearch) {
@@ -916,10 +921,23 @@ export function useChat(chatId: string | undefined) {
         attempts.push({ provider: 'groq', model: 'meta-llama/llama-4-maverick-17b-128e-instruct', maxTokens: 2048 })
         attempts.push({ provider: 'groq', model: visionModel.groqModel, maxTokens: 2048 })
       } else if (usePuter) {
-        // 5o Pro: real Fable 5 via Puter first, then a strong Groq fallback so an
-        // answer always lands even if Puter is unavailable in this browser.
+        // 5o Pro (opted in + signed in): real Fable 5 via Puter first, then a
+        // strong frontier fallback so an answer always lands.
         attempts.push({ provider: 'puter', model: model.puterModel!, maxTokens: model.maxTokens })
+        attempts.push({ provider: 'nvidia', model: 'moonshotai/kimi-k2.6', maxTokens: bigOutput ? 8192 : Math.min(model.maxTokens, 4096) })
         attempts.push({ provider: 'groq', model: model.groqModel, maxTokens: bigOutput ? Math.max(model.maxTokens, 8000) : Math.min(model.maxTokens, 5120), reasoningEffort: model.reasoningEffort })
+        attempts.push({ provider: 'groq', model: 'llama-3.3-70b-versatile', maxTokens: 4096 })
+      } else if (useFableFree) {
+        // 5o Pro, free path (no Puter, no popup, no auth): a genuine frontier
+        // experience via the Kimi 2.6 proxy for hard/long asks, and fast Groq for
+        // simple ones, all on the owner's free, unlimited backends.
+        const deepThink = needsDeepThinking(lastText)
+        if (deepThink || bigOutput) {
+          attempts.push({ provider: 'nvidia', model: 'moonshotai/kimi-k2.6', maxTokens: bigOutput ? 8192 : Math.min(model.maxTokens, 4096) })
+          attempts.push({ provider: 'groq', model: model.groqModel, maxTokens: bigOutput ? Math.max(model.maxTokens, 8000) : Math.min(model.maxTokens, 5120), reasoningEffort: model.reasoningEffort })
+        } else {
+          attempts.push({ provider: 'groq', model: model.groqModel, maxTokens: Math.min(model.maxTokens, 5120), reasoningEffort: model.reasoningEffort })
+        }
         attempts.push({ provider: 'groq', model: 'llama-3.3-70b-versatile', maxTokens: 4096 })
         attempts.push({ provider: 'groq', model: 'llama-3.1-8b-instant', maxTokens: 2048 })
       } else if (useNvidia) {
@@ -957,7 +975,7 @@ export function useChat(chatId: string | undefined) {
             localSteps.length = 0
             let res: { content: string; reasoning: string; finishReason?: string }
             if (a.provider === 'puter') {
-              const pr = await streamPuter({ model: a.model, messages: groqMessages as any, signal: ac.signal, onToken, allowAuth: true })
+              const pr = await streamPuter({ model: a.model, messages: groqMessages as any, signal: ac.signal, onToken })
               res = { content: pr.content, reasoning: '' }
             } else {
               res = await streamChat({
