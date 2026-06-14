@@ -37,6 +37,53 @@ description: <one line>
 After the block, tell the user they can tap "Install skill" or copy it into Settings → Skills.`,
 }
 
+// Curated, always-available skills shipped with AskAI — usable in any chat (and
+// by agents) via their slash trigger, e.g. `/proofread`, or by name. Each is a
+// focused instruction pack the model loads for that turn.
+const B = (
+  name: string,
+  slug: string,
+  description: string,
+  content: string,
+): Skill => ({ id: `builtin-${slug}`, name, slug, description, content, source: 'builtin', createdAt: 0 })
+
+export const BUILTIN_SKILLS: Skill[] = [
+  B('Proofread', 'proofread', 'Fix grammar, spelling & clarity — keep the voice.',
+    'Act as a meticulous copy editor. Correct grammar, spelling, punctuation and awkward phrasing while preserving the author\'s voice, meaning and formatting. Return ONLY the corrected text first. Then, under a short "Changes" heading, list the notable fixes as brief bullets. Do not rewrite content that is already correct.'),
+  B('Summarize', 'summarize', 'Tight, faithful summary of any text or link.',
+    'Summarize the provided content faithfully and concisely. Lead with a one-sentence TL;DR, then 3-6 bullet points capturing the key facts, arguments or steps — no fluff, no invented details. Preserve names, numbers and dates exactly. Match the summary length to the source: short input → short summary.'),
+  B('Explain Like I\'m 5', 'eli5', 'Explain anything in simple, friendly terms.',
+    'Explain the topic as if to a curious beginner. Use plain language, short sentences, and one vivid everyday analogy. Avoid jargon; if a technical term is unavoidable, define it in a few words. Keep it warm and encouraging, and end with a one-line "In short:" recap.'),
+  B('Code Review', 'code-review', 'Senior-engineer review of code for bugs & quality.',
+    'Act as a staff software engineer reviewing the provided code. Identify correctness bugs, security issues, edge cases, performance problems and readability concerns. For each finding: name the issue, why it matters, and a concrete fix (with a short code snippet). Order findings by severity. End with a brief "Looks good" list of what is already done well. Be direct and specific; never invent APIs.'),
+  B('Debug Helper', 'debug', 'Diagnose an error and propose a fix.',
+    'Act as a debugging partner. Given an error message, stack trace or misbehaving code: (1) state the most likely root cause in one line, (2) explain the reasoning briefly, (3) give the exact fix as a minimal diff or corrected snippet, (4) list 1-2 things to check if that does not resolve it. Ask for the specific missing detail only if you truly cannot proceed.'),
+  B('Regex Builder', 'regex', 'Build & explain a regular expression.',
+    'Produce a correct regular expression for the user\'s requirement. Output: the regex in a fenced block, a plain-English explanation of each part, 2-3 matching examples and 2-3 non-matching examples, and any flags needed. Note dialect differences (JS/PCRE/Python) if relevant. Prefer clarity over cleverness.'),
+  B('SQL Helper', 'sql', 'Write & optimize SQL queries.',
+    'Act as a SQL expert. Write a correct, readable query for the request using standard SQL (note the dialect if it matters). Explain what it does in one or two sentences, call out indexes or performance considerations, and warn about anything destructive (UPDATE/DELETE without WHERE). Format SQL in a fenced ```sql block.'),
+  B('Email Writer', 'email', 'Draft a clear, professional email.',
+    'Write a polished email for the user\'s goal. Ask for the recipient/tone only if essential; otherwise infer a sensible professional-but-friendly tone. Provide a concise subject line, a tight body (greeting, purpose, key points, clear ask, sign-off), and keep it skimmable. Offer a shorter variant if the draft runs long.'),
+  B('Translate', 'translate', 'Translate accurately, preserving tone.',
+    'Translate the provided text into the requested target language (ask which language only if not given). Preserve meaning, tone, formatting and proper nouns. Produce natural, idiomatic phrasing rather than a literal word-for-word rendering. Output only the translation unless the user asks for notes.'),
+  B('Brainstorm', 'brainstorm', 'Generate diverse, high-quality ideas.',
+    'Act as a creative strategist. Generate a diverse set of 8-12 distinct ideas for the user\'s prompt, ranging from safe to bold. Group them if helpful, give each a punchy one-line description, and mark your top 3 picks with why. Avoid repetition and obvious filler; favor originality and usefulness.'),
+  B('Study Notes', 'study', 'Turn material into clean study notes.',
+    'Transform the provided material into clear study notes: a short overview, key concepts as headed bullet points with crisp definitions, any formulas or steps, and a 5-question self-quiz at the end (questions only, answers in a collapsible "Answers" list). Keep it accurate and well-structured for revision.'),
+  B('Flashcards', 'flashcards', 'Create Q&A flashcards from any topic.',
+    'Create 10-20 high-quality flashcards from the provided topic or text. Format each as a bullet "**Q:** … — **A:** …". Cover the most important, testable facts; keep questions specific and answers concise. Avoid duplicates and trivia. If the source is short, generate fewer but sharper cards.'),
+  B('Resume Polish', 'resume', 'Sharpen resume bullets with impact & metrics.',
+    'Act as an expert resume coach. Rewrite the provided experience into strong, results-oriented bullet points using action verbs and quantified impact (add a [metric] placeholder where numbers are unknown). Keep each bullet to one line, cut filler and clichés, and match the target role if given. Return the polished bullets, then 2-3 quick tips.'),
+  B('Meeting Notes', 'meeting', 'Turn a transcript into notes & action items.',
+    'Convert the provided meeting transcript or notes into a clean summary: a one-line purpose, key decisions, discussion highlights as bullets, and a clear "Action items" list formatted as "- [ ] Owner — task — due". Be faithful; do not invent owners or dates. Keep it brief and scannable.'),
+  B('Social Post', 'social', 'Write platform-ready social posts.',
+    'Write engaging social media copy for the user\'s goal. Ask for the platform only if unclear; otherwise tailor length and tone (X/Twitter: punchy; LinkedIn: professional + insight; Instagram: warm + emoji). Provide the post, a few relevant hashtags, and a strong hook first line. Offer 1-2 alternative angles.'),
+  B('Recipe Chef', 'recipe', 'Create a recipe from ingredients or a craving.',
+    'Act as a friendly chef. From the user\'s ingredients, cuisine or craving, produce a single appealing recipe: a short intro, an ingredients list with quantities, numbered steps, approximate time and servings, and one tip or variation. Keep it practical and accurate; suggest substitutions for anything unusual.'),
+  B('Plan My Day', 'plan', 'Turn goals into a realistic schedule.',
+    'Act as a productivity coach. Turn the user\'s tasks and goals into a realistic, time-blocked plan for the day (or stated period). Prioritize ruthlessly (most important first), batch similar work, include short breaks, and flag anything that likely won\'t fit. Present it as a simple time-ordered list with a one-line rationale for the ordering.'),
+]
+
 function slugify(s: string): string {
   return s
     .toLowerCase()
@@ -61,10 +108,14 @@ function write(uid: string, skills: Skill[]) {
   }
 }
 
-/** All skills (built-ins first), newest custom on top. */
+/** All skills (built-ins first), newest custom on top. The Skill Creator leads,
+ *  followed by the curated prebuilt skills, then the user's own. */
 export function loadSkills(uid: string): Skill[] {
   const custom = read(uid).sort((a, b) => b.createdAt - a.createdAt)
-  return [SKILL_CREATOR, ...custom]
+  // A user-saved skill with the same slug as a builtin overrides it.
+  const taken = new Set(custom.map((s) => s.slug))
+  const builtins = BUILTIN_SKILLS.filter((s) => !taken.has(s.slug))
+  return [SKILL_CREATOR, ...builtins, ...custom]
 }
 
 export function saveSkill(uid: string, skill: Skill) {

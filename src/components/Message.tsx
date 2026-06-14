@@ -4,6 +4,7 @@ import { Copy, Check, RefreshCw, Pencil, FileText, Volume2, Square, Bookmark, Ar
 import { Markdown } from './Markdown'
 import Reasoning from './Reasoning'
 import AgentTrace from './AgentTrace'
+import SubagentTrace from './SubagentTrace'
 import AgentBrowserPanel from './AgentBrowserPanel'
 import ImageCard from './ImageCard'
 import WebImagesCard from './WebImagesCard'
@@ -70,6 +71,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
     message as StoredMessage & { webImages?: { query: string; images: WebImageResult[] } }
   ).webImages
   const agentBrowser = (message as StoredMessage & { agentBrowser?: AgentBrowserState }).agentBrowser
+  const subagents = message.subagents
 
   function copy() {
     navigator.clipboard.writeText(message.content)
@@ -79,7 +81,8 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
 
   const modelName = message.model ? MODELS[message.model]?.name : undefined
   const liveStreaming = streaming && isLastAssistant
-  const emptyStreaming = liveStreaming && !message.content && !message.reasoning && !(message.steps?.length)
+  const emptyStreaming =
+    liveStreaming && !message.content && !message.reasoning && !(message.steps?.length) && !(subagents?.length)
 
   if (isUser) {
     return (
@@ -215,6 +218,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
           )}
         </div>
         <AgentBrowserPanel browser={agentBrowser} live={liveStreaming && agentBrowser?.status === 'running'} />
+        {!!subagents?.length && <SubagentTrace subagents={subagents} live={liveStreaming} />}
         {!!message.steps?.length && (
           <AgentTrace steps={message.steps} live={emptyStreaming} />
         )}

@@ -10,7 +10,7 @@ import { streamPuter } from '../lib/puter'
 import { MAX_IMAGES_PER_MESSAGE } from '../lib/files'
 import { earnFromChat, tryImageGen } from '../lib/plus'
 import { wantsSlides, generateDeck } from '../lib/slides'
-import { getModel, resolveAutoModel, type ModelTier } from '../lib/models'
+import { getModel, resolveAutoModel, DEFAULT_MODEL, type ModelTier } from '../lib/models'
 import { buildSystemPrompt, buildAgentSystemPrompt, AGENT_SYSTEM, WEB3D_INSTRUCTIONS, wantsWebsite, needsDeepThinking } from '../lib/prompt'
 import { getAgent, agentCanBrowse, agentWantsBrowse, type Agent } from '../lib/agents'
 import { extractSocialImages, buildSocialPrompt } from '../lib/social'
@@ -21,8 +21,10 @@ import { searchWebImages, wantsWebImageSearch, webImageQuery } from '../lib/webI
 import { runAgentBrowserTask, type AgentBrowserEvent, type AgentBrowserState } from '../lib/agentBrowser'
 import { extractMemories } from '../lib/memory'
 import { installSkillFromUrl, detectSkillInstall, detectSlashSkill, findSkill, autoPickSkill } from '../lib/skills'
+import { wantsSubagents, runSubagents, type SubagentStatus } from '../lib/subagents'
 import { markPending, clearPending, isPending, loadPendingRuns } from '../lib/pendingRuns'
 import { haptic } from './useSpeech'
+import { isNative } from '../lib/native'
 import { useStore } from '../store'
 import {
   loadChat,
@@ -239,7 +241,10 @@ export function useChat(chatId: string | undefined) {
       })
       // Auto mode → pick the best real model for this task.
       const autoHasImages = (lastUser?.attachments ?? []).some((a) => a.kind === 'image' && a.url)
-      const effModel = opts.model === 'auto' ? resolveAutoModel(lastUser?.content ?? '', autoHasImages) : opts.model
+      let effModel = opts.model === 'auto' ? resolveAutoModel(lastUser?.content ?? '', autoHasImages) : opts.model
+      // Web-only tiers (e.g. the Puter-backed 5o Pro) can't run inside the native
+      // iOS/Android shell — fall back to the flagship there.
+      if (isNative && getModel(effModel).webOnly) effModel = DEFAULT_MODEL
       const model = getModel(effModel)
 
       // Skill install — "install this skill: <url>" fetches + saves a skill.
@@ -796,6 +801,46 @@ export function useChat(chatId: string | undefined) {
         }
       }
 
+      // Subagents: for a genuinely large task, AskAI silently spins up a few
+      // focused specialist subagents, runs them, and folds their findings into
+      // ONE unified answer. The user only ever sees the lightweight status pills
+      // ("Created subagent: Researcher" → ✓) — never the subagents' own output.
+      let subagentsState: SubagentStatus[] | undefined
+      const useSubagents =
+        !opts.image &&
+        !opts.systemOverride &&
+        !opts.agent &&
+        !opts.projectId &&
+        !useCompound &&
+        !groundedSearch &&
+        !hasImages &&
+        !runBrowser &&
+        !buildingSite &&
+        wantsSubagents(lastText)
+      if (useSubagents) {
+        try {
+          const result = await runSubagents({
+            task: lastText,
+            signal: ac.signal,
+            onUpdate: (subs) => {
+              subagentsState = subs
+              if (!isLive()) return
+              setMessages((m) => m.map((x) => (x.id === assistantId ? { ...x, subagents: subs } : x)))
+            },
+          })
+          if (result?.findings) {
+            subagentsState = result.subagents
+            system +=
+              `\n\nYou are the team lead. You dispatched specialist subagents who each completed part of this task. Here is their combined work:\n\n${result.findings}\n\n` +
+              'Using these findings, write the FINAL, unified answer for the user yourself — polished, complete and well-structured. Do NOT mention the subagents, the team, or this internal process; just deliver the result as your own.'
+            groqMessages[0] = { role: 'system', content: system }
+          }
+        } catch (e: any) {
+          if (e?.name === 'AbortError') throw e
+          // Subagents are best-effort — on any failure just answer normally.
+        }
+      }
+
       let finalContent = ''
       let finalReasoning = ''
       let thinkStart = 0
@@ -871,8 +916,11 @@ export function useChat(chatId: string | undefined) {
         attempts.push({ provider: 'groq', model: 'meta-llama/llama-4-maverick-17b-128e-instruct', maxTokens: 2048 })
         attempts.push({ provider: 'groq', model: visionModel.groqModel, maxTokens: 2048 })
       } else if (usePuter) {
+        // 5o Pro: real Fable 5 via Puter first, then a strong Groq fallback so an
+        // answer always lands even if Puter is unavailable in this browser.
         attempts.push({ provider: 'puter', model: model.puterModel!, maxTokens: model.maxTokens })
-        attempts.push({ provider: 'groq', model: model.groqModel, maxTokens: Math.min(model.maxTokens, 4096) })
+        attempts.push({ provider: 'groq', model: model.groqModel, maxTokens: bigOutput ? Math.max(model.maxTokens, 8000) : Math.min(model.maxTokens, 5120), reasoningEffort: model.reasoningEffort })
+        attempts.push({ provider: 'groq', model: 'llama-3.3-70b-versatile', maxTokens: 4096 })
         attempts.push({ provider: 'groq', model: 'llama-3.1-8b-instant', maxTokens: 2048 })
       } else if (useNvidia) {
         // 4o Pro: only use the (slower, deeper) GLM model when the task is hard
@@ -909,7 +957,7 @@ export function useChat(chatId: string | undefined) {
             localSteps.length = 0
             let res: { content: string; reasoning: string; finishReason?: string }
             if (a.provider === 'puter') {
-              const pr = await streamPuter({ model: a.model, messages: groqMessages as any, signal: ac.signal, onToken })
+              const pr = await streamPuter({ model: a.model, messages: groqMessages as any, signal: ac.signal, onToken, allowAuth: true })
               res = { content: pr.content, reasoning: '' }
             } else {
               res = await streamChat({
@@ -1120,6 +1168,7 @@ export function useChat(chatId: string | undefined) {
         thinkMs: thinkStart ? (thinkEnd || Date.now()) - thinkStart : undefined,
         model: effModel,
         steps: localSteps.length ? [...localSteps] : undefined,
+        subagents: subagentsState,
         map: placesData ?? undefined,
         weather: weatherData ?? undefined,
         agentBrowser,

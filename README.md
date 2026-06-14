@@ -16,6 +16,16 @@ Firestore, Tailwind, Framer Motion and an iOS‑26 "Liquid Glass" design. Deploy
   | AskAI 2o instant | `meta-llama/llama-4-scout-17b-16e-instruct` (vision) |
   | AskAI 1o Pro | `llama-3.3-70b-versatile` |
   | AskAI 2o Pro (flagship) | `openai/gpt-oss-120b` |
+  | AskAI 5o Pro (web only) | Claude **Fable 5** via [Puter](https://puter.com) — free user‑pays runtime, with automatic Groq fallback. Hidden inside the iOS/Android shells. |
+- **Subagents** — for big, multi‑part asks AskAI silently spins up a few focused
+  specialist subagents, runs them in parallel, and folds their findings into one
+  unified answer. You only ever see the live status pills ("Created subagent:
+  Researcher" → ✓), never their individual output. Trigger it with a large
+  request, or say "use subagents".
+- **Prebuilt skills** — 16 ready‑to‑use skills ship built in (`/proofread`,
+  `/summarize`, `/eli5`, `/code-review`, `/debug`, `/regex`, `/sql`, `/email`,
+  `/translate`, `/brainstorm`, `/study`, `/flashcards`, `/resume`, `/meeting`,
+  `/social`, `/recipe`, `/plan`). Type `/` in chat to use one; agents can use them too.
 - **Web Search mode** — live, cited answers via Groq's `compound` model. When off, AskAI
   auto‑decides whether a query needs the web.
 - **Web image search** - ask for real images/photos/logos from the web and AskAI shows a

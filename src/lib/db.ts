@@ -36,6 +36,8 @@ export interface StoredMessage {
   attachments?: Attachment[]
   /** Tool/search steps surfaced during generation. */
   steps?: { type: string; detail?: string }[]
+  /** Silent subagents AskAI spun up for a larger task (status pills only). */
+  subagents?: { name: string; task: string; status: 'thinking' | 'done' | 'error' }[]
   /** Set when this is an image-generation result. */
   image?: { prompt: string; url: string }
   /** True while an image is being generated (shows the animated placeholder). */

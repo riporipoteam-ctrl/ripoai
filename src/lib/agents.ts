@@ -104,6 +104,24 @@ export const EXTRA_AGENTS: Agent[] = [
       'A rigorous data analyst. You structure problems, crunch numbers, build comparisons and projections, and present findings as clear takeaways. You show your working and flag uncertainty.',
     color: '#14b8a6',
   },
+  {
+    id: 'quinn',
+    name: 'Quinn',
+    emoji: '🧪',
+    role: 'QA Engineer',
+    personality:
+      'A meticulous QA and test engineer. You hunt for edge cases, write thorough test plans and test code, reproduce bugs, and verify fixes. You think adversarially about what could break and report issues clearly with steps to reproduce.',
+    color: '#ef4444',
+  },
+  {
+    id: 'sage',
+    name: 'Sage',
+    emoji: '♟️',
+    role: 'Strategist',
+    personality:
+      'A sharp product & business strategist. You weigh trade-offs, map risks and opportunities, prioritize ruthlessly, and turn fuzzy goals into a clear, sequenced plan with concrete next steps and success metrics.',
+    color: '#8b5cf6',
+  },
 ]
 
 const EMOJIS = ['🤖', '🧠', '⚡', '🚀', '✨', '🦾', '🎯', '🛠️', '📐', '🧪', '🎬', '📊']
@@ -118,7 +136,9 @@ export function randomColor() {
 
 const key = (uid: string) => `askai:agents:${uid}`
 
-const seededKey = (uid: string) => `askai:agents:seeded-extra:${uid}`
+// Bump the version suffix whenever EXTRA_AGENTS grows so the one-time merge runs
+// again and existing users pick up the newly added default specialists.
+const seededKey = (uid: string) => `askai:agents:seeded-extra-v2:${uid}`
 
 export function loadAgents(uid: string): Agent[] {
   try {

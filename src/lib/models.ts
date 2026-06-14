@@ -11,6 +11,7 @@ export type ModelTier =
   | 'ripoai-3o-pro'
   | 'ripoai-4o-instant'
   | 'ripoai-4o-pro'
+  | 'ripoai-5o-pro'
   | 'ripoai-search'
 
 export interface RipoModel {
@@ -39,6 +40,9 @@ export interface RipoModel {
   maxTokens: number
   topP: number
   badge?: string
+  /** Website-only tier (hidden inside the iOS/Android shells). Used by the
+   *  Puter-backed Fable tier, which only works in a real browser tab. */
+  webOnly?: boolean
 }
 
 export const MODELS: Record<ModelTier, RipoModel> = {
@@ -147,6 +151,25 @@ export const MODELS: Record<ModelTier, RipoModel> = {
     maxTokens: 6000,
     topP: 1,
     badge: 'MAX',
+  },
+  'ripoai-5o-pro': {
+    id: 'ripoai-5o-pro',
+    name: 'AskAI 5o Pro',
+    tagline: 'Frontier reasoning — our smartest model (web only)',
+    provider: 'puter',
+    // Free, unlimited frontier model via Puter's user-pays runtime. Served only
+    // in a real browser tab; falls back to gpt-oss-120b on Groq if Puter is
+    // unavailable so an answer always lands.
+    puterModel: 'claude-fable-5',
+    groqModel: 'openai/gpt-oss-120b',
+    vision: false,
+    reasoning: true,
+    reasoningEffort: 'low',
+    temperature: 0.7,
+    maxTokens: 8000,
+    topP: 1,
+    badge: 'MAX',
+    webOnly: true,
   },
   'ripoai-search': {
     id: 'ripoai-search',

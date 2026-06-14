@@ -2,11 +2,14 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, Check, Zap, Sparkles, Gauge, Wand2 } from 'lucide-react'
-import { MODEL_LIST, type ModelTier, type RipoModel } from '../lib/models'
+import { MODEL_LIST, MODELS, type ModelTier, type RipoModel } from '../lib/models'
+import { isNative } from '../lib/native'
 
-// 4o Pro is featured on top; the rest live in categories that are collapsed by
-// default — tap a category to reveal its (older) models.
-const FEATURED: ModelTier[] = ['auto', 'ripoai-4o-pro', 'ripoai-4o-instant']
+// 5o Pro (web only) + 4o Pro are featured on top; the rest live in categories
+// that are collapsed by default — tap a category to reveal its (older) models.
+const FEATURED_ALL: ModelTier[] = ['auto', 'ripoai-5o-pro', 'ripoai-4o-pro', 'ripoai-4o-instant']
+// Web-only tiers (e.g. the Puter-backed 5o Pro) are hidden in the native shell.
+const FEATURED: ModelTier[] = FEATURED_ALL.filter((id) => !(isNative && MODELS[id]?.webOnly))
 const GROUPS: { label: string; ids: ModelTier[] }[] = [
   { label: 'AskAI 3o', ids: ['ripoai-3o-pro', 'ripoai-3o-instant'] },
   { label: 'AskAI 2o', ids: ['ripoai-2o-pro', 'ripoai-2o-instant'] },
