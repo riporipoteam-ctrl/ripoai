@@ -231,6 +231,30 @@ export function mentionedAgents(uid: string, text: string): Agent[] {
   return out
 }
 
+/* --- 1-on-1 agent chat handoff -------------------------------------------
+   Stash an agent so the next freshly-opened chat becomes a 1-on-1 chat with
+   them (mirrors dispatchTeam's sessionStorage handoff). */
+const PENDING_AGENT_KEY = 'askai:chat:agent'
+
+export function setPendingAgentChat(agent: Agent) {
+  try {
+    sessionStorage.setItem(PENDING_AGENT_KEY, JSON.stringify(agent))
+  } catch {
+    /* ignore */
+  }
+}
+
+export function takePendingAgentChat(): Agent | null {
+  try {
+    const raw = sessionStorage.getItem(PENDING_AGENT_KEY)
+    if (!raw) return null
+    sessionStorage.removeItem(PENDING_AGENT_KEY)
+    return JSON.parse(raw) as Agent
+  } catch {
+    return null
+  }
+}
+
 /** Does this message ask to dispatch / mobilize the team of agents? */
 export function wantsTeamDispatch(text: string): boolean {
   return /\b(dispatch|mobiliz|assemble|the (whole|hole|entire) team|all (the )?agents|whole team|team of agents|get the team|whole squad)\b/i.test(

@@ -28,8 +28,9 @@ import { isGmailConnected, connectGmail, disconnectGmail } from '../lib/gmail'
 import { isCalendarConnected, connectCalendar, disconnectCalendar } from '../lib/calendar'
 import { Calendar as CalIcon, Cloud, Map as MapIcon, Bitcoin, Globe, Wand2 } from 'lucide-react'
 import { loadSkills, deleteSkill, installSkillFromUrl, type Skill } from '../lib/skills'
-import { loadAgents, upsertAgent, deleteAgent, newAgent, type Agent } from '../lib/agents'
-import { Bot, Plus as PlusIcon } from 'lucide-react'
+import { loadAgents, upsertAgent, deleteAgent, newAgent, setPendingAgentChat, type Agent } from '../lib/agents'
+import { Bot, Plus as PlusIcon, MessageSquare } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 
 const ACCENTS = ['#10a37f', '#4ea8ff', '#36e0c0', '#7c5cff', '#ff6b6b', '#ffa94d', '#f06595']
 const TABS = [
@@ -58,6 +59,7 @@ export default function Settings() {
     resync,
   } = useStore()
   const tr = useT()
+  const navigate = useNavigate()
   const [tab, setTab] = useState<(typeof TABS)[number]['id']>('general')
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [vp, setVp] = useState(getVoicePrefs())
@@ -73,6 +75,13 @@ export default function Settings() {
   const [editing, setEditing] = useState<Agent | null>(null)
   const [aiDesc, setAiDesc] = useState('')
   const [aiBusy, setAiBusy] = useState(false)
+
+  function startChatWithAgent(agent: Agent) {
+    // Hand the agent off to a fresh chat, then close Settings and open it.
+    setPendingAgentChat(agent)
+    closeSettings()
+    navigate('/')
+  }
 
   async function createAgentWithAI() {
     if (!user || !aiDesc.trim() || aiBusy) return
@@ -720,6 +729,13 @@ export default function Settings() {
                       </div>
                       <div className="truncate text-xs text-muted">{a.personality}</div>
                     </div>
+                    <button
+                      onClick={() => startChatWithAgent(a)}
+                      className="pressable flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-accent hover:bg-white/10"
+                      title={`Chat 1-on-1 with ${a.name}`}
+                    >
+                      <MessageSquare size={13} /> Chat
+                    </button>
                     <button onClick={() => setEditing(a)} className="pressable rounded-lg px-2 py-1 text-xs font-semibold text-accent hover:bg-white/10">
                       Edit
                     </button>

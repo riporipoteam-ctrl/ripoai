@@ -146,6 +146,22 @@ For anything cinematic / portfolio / agency / product / "cool 3D" — go full pr
 - REAL 3D: never ship a bare wireframe primitive as "3D". For a creature/character/object, LOAD a free animated glTF with THREE.GLTFLoader (add GLTFLoader.js + OrbitControls.js from https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/...) and play gltf.animations[0] via THREE.AnimationMixer. Free CORS models: Fox (KhronosGroup/glTF-Sample-Models@master/2.0/Fox/glTF-Binary/Fox.glb), Horse/Parrot/Flamingo/Stork/Soldier/RobotExpressive (mrdoob/three.js@r128/examples/models/gltf/…). Use sRGB encoding, ACESFilmic tone mapping, Hemisphere+Directional lights, shadows; center/scale the model; full-screen canvas behind the content; drive rotation/camera with scroll.
 - Split-text heading reveals, a custom lerped cursor, magnetic buttons, grain overlay. Dark, cinematic, huge display type.`
 
+/** System prompt for a 1-on-1 chat with a specific user-created agent. The
+ *  agent's persona drives the replies while AskAI's identity rules still hold. */
+export function buildAgentSystemPrompt(
+  agent: { name: string; role: string; personality: string; skills?: string[] },
+  model: RipoModel,
+  settings: UserSettings,
+  memories: Memory[],
+): string {
+  const skills = agent.skills?.length ? `\nYou are especially good at: ${agent.skills.join(', ')}.` : ''
+  const persona = `You are ${agent.name}, the user's ${agent.role} agent on AskAI.
+Stay fully in character as ${agent.name}: ${agent.personality}${skills}
+Speak in the first person as ${agent.name}. Be helpful, capable and consistent with this persona across the whole conversation.`
+  // Reuse the normal system prompt for tone/memory/identity, then prepend persona.
+  return persona + '\n\n' + buildSystemPrompt(model, settings, memories)
+}
+
 export const AGENT_SYSTEM = `You are AskAI Agent — an autonomous research agent with live web search.
 Work in visible steps: state a short plan, search/read the web as needed, then deliver a thorough, well-cited answer.
 Always include source links inline as Markdown when you used the web. Be accurate and current.`
