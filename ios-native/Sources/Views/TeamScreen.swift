@@ -8,6 +8,19 @@ struct TeamAgent: Identifiable {
     let role: String
     let persona: String
 
+    /// Image prompt for a real generated portrait (instead of an emoji).
+    var portraitPrompt: String {
+        switch role {
+        case "Engineer": return "a warm, smiling young software engineer"
+        case "Designer": return "a stylish, creative product designer"
+        case "Researcher": return "a sharp, friendly researcher wearing glasses"
+        case "Writer": return "a thoughtful, friendly writer"
+        case "Marketer": return "an energetic, friendly marketer"
+        case "Analyst": return "a focused, friendly data analyst"
+        default: return "a confident, friendly team lead"
+        }
+    }
+
     static let all: [TeamAgent] = [
         TeamAgent(id: "bob", name: "Bob", emoji: "🧭", role: "Team Lead",
                   persona: "A decisive coordinator. Concise and action-oriented."),
@@ -47,6 +60,22 @@ struct TeamScreen: View {
 
     private func agent(_ id: String?) -> TeamAgent? { TeamAgent.all.first { $0.id == id } }
 
+    /// Real generated portrait for a built-in team agent (emoji while it paints).
+    @ViewBuilder private func teamAvatar(_ a: TeamAgent, size: CGFloat) -> some View {
+        if let url = store.teamAvatars[a.id], let u = URL(string: url) {
+            AsyncImage(url: u) { phase in
+                if let img = phase.image { img.resizable().scaledToFill() }
+                else { Text(a.emoji).font(.system(size: size * 0.5)) }
+            }
+            .frame(width: size, height: size).clipShape(Circle())
+            .overlay(Circle().strokeBorder(Color.primary.opacity(0.1), lineWidth: 1))
+        } else {
+            Text(a.emoji).font(.system(size: size * 0.5))
+                .frame(width: size, height: size)
+                .background(Color.primary.opacity(0.06), in: Circle())
+        }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             HStack {
@@ -56,9 +85,7 @@ struct TeamScreen: View {
                 Spacer()
                 HStack(spacing: -8) {
                     ForEach(TeamAgent.all.prefix(4)) { a in
-                        Text(a.emoji).font(.system(size: 14))
-                            .frame(width: 28, height: 28)
-                            .background(Color.primary.opacity(0.06), in: Circle())
+                        teamAvatar(a, size: 28)
                             .overlay(Circle().strokeBorder(Color(uiColor: .systemBackground), lineWidth: 2))
                     }
                 }
@@ -110,9 +137,7 @@ struct TeamScreen: View {
                                     }
                                 } else if let a = agent(ev.agentId) {
                                     HStack(alignment: .top, spacing: 10) {
-                                        Text(a.emoji).font(.system(size: 18))
-                                            .frame(width: 34, height: 34)
-                                            .background(Color.primary.opacity(0.06), in: Circle())
+                                        teamAvatar(a, size: 34)
                                         VStack(alignment: .leading, spacing: 3) {
                                             HStack(spacing: 6) {
                                                 Text(a.name).font(.system(size: 13, weight: .bold))
@@ -200,6 +225,7 @@ struct TeamScreen: View {
             .liquidGlass(cornerRadius: 28, interactive: true)
             .padding(.horizontal, 12).padding(.bottom, 8)
         }
+        .onAppear { store.ensureTeamAvatars() }
         .photosPicker(isPresented: $showPhotos, selection: $photoItems, maxSelectionCount: 4, matching: .images)
         .onChange(of: photoItems) { _, items in
             guard !items.isEmpty else { return }

@@ -33,6 +33,7 @@ final class AppStore: ObservableObject {
     @Published var teamLog: [TeamLogEntry] = []         // persisted Agents room
     @Published var i18n: [String: String] = [:]         // English UI string -> translated
     @Published var agents: [CustomAgent] = []           // user-created AI agents
+    @Published var teamAvatars: [String: String] = [:]  // built-in team agent id -> portrait URL
 
     // Account / cloud sync
     @Published var user: AuthUser?
@@ -73,6 +74,7 @@ final class AppStore: ObservableObject {
         loadProjects()
         loadTeamLog()
         loadAgents()
+        loadTeamAvatars()
         applyTranslations()
         // Screenshot/demo mode for CI: seed content, skip auth.
         let args = ProcessInfo.processInfo.arguments
@@ -669,6 +671,30 @@ final class AppStore: ObservableObject {
 
     func saveAgents() {
         if let data = try? JSONEncoder().encode(agents) { UserDefaults.standard.set(data, forKey: agentsKey) }
+    }
+
+    // MARK: Built-in team agent portraits (real generated avatars, not emoji)
+    private let teamAvatarsKey = "askai.teamavatars.v1"
+    private var teamAvatarBusy = false
+
+    func ensureTeamAvatars() {
+        let missing = TeamAgent.all.filter { teamAvatars[$0.id] == nil }
+        guard !missing.isEmpty, !teamAvatarBusy else { return }
+        teamAvatarBusy = true
+        Task {
+            for a in missing {
+                let url = await ImageGen.generate(prompt: "\(a.portraitPrompt). Friendly, warm, realistic avatar portrait, head-and-shoulders, soft studio lighting, centered, clean background.")
+                if !url.isEmpty { self.teamAvatars[a.id] = url; self.saveTeamAvatars() }
+            }
+            self.teamAvatarBusy = false
+        }
+    }
+    func saveTeamAvatars() {
+        if let d = try? JSONEncoder().encode(teamAvatars) { UserDefaults.standard.set(d, forKey: teamAvatarsKey) }
+    }
+    private func loadTeamAvatars() {
+        if let d = UserDefaults.standard.data(forKey: teamAvatarsKey),
+           let m = try? JSONDecoder().decode([String: String].self, from: d) { teamAvatars = m }
     }
     private func loadAgents() {
         guard let data = UserDefaults.standard.data(forKey: agentsKey),
