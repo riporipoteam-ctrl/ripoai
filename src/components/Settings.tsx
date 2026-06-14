@@ -28,7 +28,7 @@ import { isGmailConnected, connectGmail, disconnectGmail } from '../lib/gmail'
 import { isCalendarConnected, connectCalendar, disconnectCalendar } from '../lib/calendar'
 import { Calendar as CalIcon, Cloud, Map as MapIcon, Bitcoin, Globe, Wand2 } from 'lucide-react'
 import { loadSkills, deleteSkill, installSkillFromUrl, type Skill } from '../lib/skills'
-import { loadAgents, upsertAgent, deleteAgent, newAgent, setPendingAgentChat, type Agent } from '../lib/agents'
+import { loadAgents, upsertAgent, deleteAgent, newAgent, setPendingAgentChat, ensureAgentAvatar, type Agent } from '../lib/agents'
 import { Bot, Plus as PlusIcon, MessageSquare } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
@@ -129,6 +129,26 @@ export default function Settings() {
       setAgents(loadAgents(user.uid))
     }
   }, [settingsOpen, tab, user])
+
+  // Lazily paint a real AI avatar for any agent that still only has an emoji,
+  // then refresh the list so the generated picture replaces the emoji.
+  useEffect(() => {
+    if (!settingsOpen || tab !== 'agents' || !user) return
+    let cancelled = false
+    const uid = user.uid
+    const missing = agents.filter((a) => !a.avatar)
+    if (!missing.length) return
+    ;(async () => {
+      for (const a of missing) {
+        const updated = await ensureAgentAvatar(uid, a)
+        if (cancelled) return
+        if (updated.avatar) setAgents(loadAgents(uid))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [settingsOpen, tab, user, agents])
 
   function saveAgent(a: Agent) {
     if (!user || !a.name.trim()) return

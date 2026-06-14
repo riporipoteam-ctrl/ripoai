@@ -209,6 +209,50 @@ export async function aiDesignAgent(description: string): Promise<Agent> {
   return agent
 }
 
+/** Build a friendly, realistic portrait prompt from an agent's role/personality. */
+function avatarPromptFor(agent: Agent): string {
+  const persona = (agent.personality || '').replace(/\s+/g, ' ').slice(0, 220)
+  return `A friendly, realistic professional portrait avatar of ${agent.name}, a ${
+    agent.role || 'specialist'
+  }. ${persona} Warm approachable expression, soft studio lighting, clean simple background, centered head-and-shoulders, high-quality avatar portrait.`
+}
+
+// Guards so the same agent's avatar isn't generated twice concurrently (and so a
+// failed generation doesn't retry in a tight render loop within the same session).
+const avatarInFlight = new Map<string, Promise<Agent>>()
+const avatarTried = new Set<string>()
+
+/** Lazily generate a realistic AI avatar for an agent that only has an emoji.
+ *  Idempotent: generates once, caches the result on the agent via upsertAgent,
+ *  and returns the (possibly updated) agent. While generating, callers keep the
+ *  emoji as a fallback. */
+export async function ensureAgentAvatar(uid: string, agent: Agent): Promise<Agent> {
+  if (agent.avatar) return agent
+  const guardKey = `${uid}:${agent.id}`
+  const existing = avatarInFlight.get(guardKey)
+  if (existing) return existing
+  if (avatarTried.has(guardKey)) return agent
+  const job = (async () => {
+    avatarTried.add(guardKey)
+    try {
+      const { generateImage } = await import('./imagegen')
+      const url = await generateImage(avatarPromptFor(agent), { w: 512, h: 512 })
+      // Re-read the latest copy so we don't clobber concurrent edits.
+      const latest = getAgent(uid, agent.id) ?? agent
+      if (latest.avatar) return latest
+      const updated: Agent = { ...latest, avatar: url }
+      upsertAgent(uid, updated)
+      return updated
+    } catch {
+      return agent
+    } finally {
+      avatarInFlight.delete(guardKey)
+    }
+  })()
+  avatarInFlight.set(guardKey, job)
+  return job
+}
+
 export function getAgent(uid: string, id: string): Agent | null {
   return loadAgents(uid).find((a) => a.id === id) ?? null
 }
@@ -229,6 +273,32 @@ export function mentionedAgents(uid: string, text: string): Agent[] {
     if (a && !out.includes(a)) out.push(a)
   }
   return out
+}
+
+/** Agents whose NAME appears as a whole word in the message (case-insensitive),
+ *  e.g. "Leon, do X" or "hi Leon". Used to route a directly-addressed message to
+ *  just that agent. Ignores very short names (<3 chars) to avoid false hits. */
+export function namedAgents(uid: string, text: string): Agent[] {
+  const t = text || ''
+  const out: Agent[] = []
+  for (const a of loadAgents(uid)) {
+    const name = a.name.trim()
+    if (name.length < 3) continue
+    const re = new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i')
+    if (re.test(t) && !out.includes(a)) out.push(a)
+  }
+  return out
+}
+
+/** If the message clearly addresses exactly ONE agent — by @mention OR by name —
+ *  return that agent so only they reply. Returns null when zero or several agents
+ *  are referenced (let the normal router decide). */
+export function targetedAgent(uid: string, text: string): Agent | null {
+  const mentioned = mentionedAgents(uid, text)
+  if (mentioned.length === 1) return mentioned[0]
+  if (mentioned.length > 1) return null
+  const named = namedAgents(uid, text)
+  return named.length === 1 ? named[0] : null
 }
 
 /* --- 1-on-1 agent chat handoff -------------------------------------------

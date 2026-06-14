@@ -19,7 +19,7 @@ import {
   X,
 } from 'lucide-react'
 import { useStore } from '../store'
-import { loadAgents, mentionedAgents, type Agent } from '../lib/agents'
+import { loadAgents, mentionedAgents, targetedAgent, ensureAgentAvatar, type Agent } from '../lib/agents'
 import { runTeam, type TeamEvent } from '../lib/agentTeam'
 import {
   loadTeamSessions,
@@ -70,11 +70,34 @@ export default function TeamPage() {
   const eventsRef = useRef<TeamEvent[]>([])
   const deliverableRef = useRef('')
 
-  const agents = user ? loadAgents(user.uid) : []
+  const [agents, setAgents] = useState<Agent[]>(() => (user ? loadAgents(user.uid) : []))
 
   useEffect(() => {
-    if (user) setHistory(loadTeamSessions(user.uid))
+    if (user) {
+      setHistory(loadTeamSessions(user.uid))
+      setAgents(loadAgents(user.uid))
+    }
   }, [user])
+
+  // Lazily paint a real AI avatar for any agent that still only has an emoji, so
+  // the team room (and its @mention picker) shows generated pictures, not emojis.
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    const uid = user.uid
+    const missing = agents.filter((a) => !a.avatar)
+    if (!missing.length) return
+    ;(async () => {
+      for (const a of missing) {
+        const updated = await ensureAgentAvatar(uid, a)
+        if (cancelled) return
+        if (updated.avatar) setAgents(loadAgents(uid))
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [user, agents])
 
   // Pick up a queued dispatch from chat on mount.
   useEffect(() => {
@@ -162,9 +185,14 @@ export default function TeamPage() {
     if (!user || (!t.trim() && !atts.length) || running) return
     const list = loadAgents(user.uid)
     if (!list.length) return
-    // Honor @mentions for the lead; otherwise the natural lead.
+    // Honor @mentions for the lead; otherwise, if the message clearly addresses
+    // ONE agent by name (e.g. "Leon, do X" or "hi Leon"), route to just them so
+    // other agents don't butt in. Falls through to the normal lead/router.
     const mentioned = mentionedAgents(user.uid, t)
-    const lead = mentioned[0] ?? pickLead(list, leadId)
+    const directlyAddressed = mentioned.length ? null : targetedAgent(user.uid, t)
+    // The single set of responders we force, if the user targeted someone.
+    const targeted = mentioned.length ? mentioned : directlyAddressed ? [directlyAddressed] : []
+    const lead = targeted[0] ?? pickLead(list, leadId)
     const cleanTask = t.replace(/@[a-z0-9_-]+/gi, '').trim() || t
     const taskForTeam = withAttachments(cleanTask, atts)
 
@@ -196,8 +224,8 @@ export default function TeamPage() {
         color: '#888',
         role: 'system',
         phase: 'system',
-        text: mentioned.length
-          ? `Routing to ${mentioned.map((a) => a.name).join(', ')}…`
+        text: targeted.length
+          ? `Routing to ${targeted.map((a) => a.name).join(', ')}…`
           : context
             ? `The team is picking up where they left off…`
             : `The team is reading your message…`,
@@ -211,7 +239,7 @@ export default function TeamPage() {
         agents: list,
         lead,
         context,
-        preselected: mentioned.length ? mentioned : undefined,
+        preselected: targeted.length ? targeted : undefined,
         signal: ac.signal,
         onEvent: (ev) =>
           setEventsTracked((prev) => {
@@ -364,11 +392,15 @@ export default function TeamPage() {
             <button
               key={a.id}
               onClick={() => setDraft((d) => (d.includes(`@${a.name}`) ? d : `@${a.name} ${d}`))}
-              className="pressable flex h-7 w-7 items-center justify-center rounded-full border-2 border-[rgb(var(--surface))] text-sm transition hover:z-10 hover:scale-110"
+              className="pressable flex h-7 w-7 items-center justify-center overflow-hidden rounded-full border-2 border-[rgb(var(--surface))] text-sm transition hover:z-10 hover:scale-110"
               style={{ background: a.color + '33' }}
               title={`Message ${a.name} (${a.role}) directly`}
             >
-              {a.emoji}
+              {a.avatar ? (
+                <img src={a.avatar} alt={a.name} className="h-full w-full rounded-full object-cover" />
+              ) : (
+                a.emoji
+              )}
             </button>
           ))}
         </div>
@@ -474,10 +506,14 @@ export default function TeamPage() {
                 ) : (
                   <>
                     <span
-                      className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-lg shadow-[0_4px_12px_-6px_rgb(var(--ink)/0.5)]"
+                      className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl text-lg shadow-[0_4px_12px_-6px_rgb(var(--ink)/0.5)]"
                       style={{ background: ev.color + '2a', boxShadow: `0 0 0 1px ${ev.color}55` }}
                     >
-                      {ev.emoji}
+                      {ev.avatar ? (
+                        <img src={ev.avatar} alt={ev.name} className="h-full w-full object-cover" />
+                      ) : (
+                        ev.emoji
+                      )}
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="mb-1.5 flex items-center gap-2 text-sm">
