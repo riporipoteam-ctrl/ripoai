@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react'
+import { useEffect, useRef, useState, useMemo, type DragEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -9,10 +9,14 @@ import {
   FolderGit2,
   Square,
   PanelLeftOpen,
-  Send,
+  ArrowUp,
   Plus,
   Trash2,
   MessageSquare,
+  ImageIcon,
+  Paperclip,
+  FileText,
+  X,
 } from 'lucide-react'
 import { useStore } from '../store'
 import { loadAgents, mentionedAgents, type Agent } from '../lib/agents'
@@ -25,7 +29,9 @@ import {
   type TeamSession,
 } from '../lib/teamSessions'
 import { parseCodeFiles } from '../lib/parseCode'
-import { saveProject } from '../lib/db'
+import { saveProject, type Attachment } from '../lib/db'
+import { fileToAttachment, MAX_IMAGES_PER_MESSAGE } from '../lib/files'
+import { haptic } from '../lib/native'
 import { Markdown } from '../components/Markdown'
 import Logo from '../components/Logo'
 
@@ -46,6 +52,10 @@ export default function TeamPage() {
   const navigate = useNavigate()
   const { user, sidebarOpen, toggleSidebar } = useStore()
   const [draft, setDraft] = useState('')
+  const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [attachBusy, setAttachBusy] = useState(false)
+  const [attachErr, setAttachErr] = useState('')
+  const [dragging, setDragging] = useState(false)
   const [events, setEvents] = useState<TeamEvent[]>([])
   const [running, setRunning] = useState(false)
   const [deliverable, setDeliverable] = useState('')
@@ -53,6 +63,9 @@ export default function TeamPage() {
   const [history, setHistory] = useState<TeamSession[]>([])
   const acRef = useRef<AbortController | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const imgInput = useRef<HTMLInputElement>(null)
+  const fileInput = useRef<HTMLInputElement>(null)
+  const taRef = useRef<HTMLTextAreaElement>(null)
   // Refs mirror state so persist() sees fresh values inside async runs.
   const eventsRef = useRef<TeamEvent[]>([])
   const deliverableRef = useRef('')
@@ -128,14 +141,32 @@ export default function TeamPage() {
     return parts.join('\n\n')
   }
 
-  async function start(t: string, leadId?: string) {
-    if (!user || !t.trim() || running) return
+  /** Fold attached files/images into the task text the agents receive. The team
+   * agents run on text models, so file text is inlined and images are noted by
+   * name (the user bubble still shows the real thumbnails). */
+  function withAttachments(task: string, atts: Attachment[]): string {
+    if (!atts.length) return task
+    const parts: string[] = [task]
+    const files = atts.filter((a) => a.kind === 'file' && a.text?.trim())
+    const images = atts.filter((a) => a.kind === 'image')
+    for (const f of files) {
+      parts.push(`\n\nAttached file "${f.name}":\n${f.text!.slice(0, 8000)}`)
+    }
+    if (images.length) {
+      parts.push(`\n\n(The user also attached ${images.length} image${images.length === 1 ? '' : 's'}: ${images.map((i) => i.name).join(', ')}.)`)
+    }
+    return parts.join('')
+  }
+
+  async function start(t: string, leadId?: string, atts: Attachment[] = []) {
+    if (!user || (!t.trim() && !atts.length) || running) return
     const list = loadAgents(user.uid)
     if (!list.length) return
     // Honor @mentions for the lead; otherwise the natural lead.
     const mentioned = mentionedAgents(user.uid, t)
     const lead = mentioned[0] ?? pickLead(list, leadId)
     const cleanTask = t.replace(/@[a-z0-9_-]+/gi, '').trim() || t
+    const taskForTeam = withAttachments(cleanTask, atts)
 
     const context = buildContext(eventsRef.current, deliverableRef.current)
 
@@ -155,6 +186,7 @@ export default function TeamPage() {
         phase: 'user',
         text: cleanTask,
         done: true,
+        attachments: atts.length ? atts : undefined,
       },
       {
         id: 'sys-' + uid4(),
@@ -175,7 +207,7 @@ export default function TeamPage() {
 
     try {
       const { deliverable: d } = await runTeam({
-        task: cleanTask,
+        task: taskForTeam,
         agents: list,
         lead,
         context,
@@ -206,6 +238,59 @@ export default function TeamPage() {
     acRef.current?.abort()
     setRunning(false)
     persist()
+  }
+
+  function autosize() {
+    const ta = taRef.current
+    if (!ta) return
+    ta.style.height = 'auto'
+    ta.style.height = Math.min(ta.scrollHeight, 160) + 'px'
+  }
+
+  async function handleFiles(files: FileList | null) {
+    if (!files?.length) return
+    setAttachErr('')
+    setAttachBusy(true)
+    try {
+      const next: Attachment[] = []
+      let imagesSoFar = attachments.filter((a) => a.kind === 'image').length
+      let dropped = 0
+      for (const f of Array.from(files)) {
+        const att = await fileToAttachment(f)
+        if (att.kind === 'image') {
+          if (imagesSoFar >= MAX_IMAGES_PER_MESSAGE) {
+            dropped++
+            continue
+          }
+          imagesSoFar++
+        }
+        next.push(att)
+      }
+      setAttachments((a) => [...a, ...next])
+      if (dropped > 0)
+        setAttachErr(`You can attach up to ${MAX_IMAGES_PER_MESSAGE} images per message — extra ${dropped === 1 ? 'image was' : 'images were'} skipped.`)
+    } catch (e: any) {
+      setAttachErr(e?.message ?? 'Could not read that file.')
+    } finally {
+      setAttachBusy(false)
+    }
+  }
+
+  function handleDrop(e: DragEvent<HTMLDivElement>) {
+    e.preventDefault()
+    setDragging(false)
+    void handleFiles(e.dataTransfer.files)
+  }
+
+  /** Send the current draft + attachments to the team and clear the composer. */
+  function sendDraft() {
+    if (running || attachBusy) return
+    if (!draft.trim() && !attachments.length) return
+    haptic('medium')
+    start(draft, undefined, attachments)
+    setDraft('')
+    setAttachments([])
+    if (taRef.current) taRef.current.style.height = 'auto'
   }
 
   function newSession() {
@@ -358,25 +443,50 @@ export default function TeamPage() {
                 className={`mb-4 flex gap-3 ${ev.phase === 'system' ? 'justify-center' : ''} ${ev.phase === 'user' ? 'justify-end' : ''}`}
               >
                 {ev.phase === 'system' ? (
-                  <div className="rounded-full bg-white/5 px-3 py-1 text-xs text-muted">{ev.text}</div>
+                  <div className="glass rounded-full px-3.5 py-1.5 text-xs font-medium text-muted">{ev.text}</div>
                 ) : ev.phase === 'user' ? (
-                  <div className="user-bubble max-w-[82%] whitespace-pre-wrap rounded-[22px] rounded-tr-md bg-gradient-to-br from-[rgb(var(--accent))] to-[rgb(var(--accent)/0.82)] px-4 py-2.5 text-sm font-medium text-[rgb(var(--accent-ink))] shadow-[0_8px_22px_-12px_rgb(var(--ink)/0.5)]">
-                    {ev.text}
+                  <div className="flex max-w-[82%] flex-col items-end gap-2">
+                    {!!ev.attachments?.length && (
+                      <div className="flex flex-wrap justify-end gap-2">
+                        {ev.attachments.map((a, i) =>
+                          a.kind === 'image' && a.url ? (
+                            <img
+                              key={i}
+                              src={a.url}
+                              alt={a.name}
+                              className="h-24 w-24 rounded-2xl border border-white/15 object-cover"
+                            />
+                          ) : (
+                            <div key={i} className="glass flex items-center gap-2 rounded-2xl px-3 py-2 text-xs">
+                              <FileText size={14} className="text-accent" />
+                              <span className="max-w-[160px] truncate">{a.name}</span>
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    )}
+                    {ev.text && (
+                      <div className="user-bubble whitespace-pre-wrap rounded-[22px] rounded-tr-md bg-gradient-to-br from-[rgb(var(--accent))] to-[rgb(var(--accent)/0.82)] px-4 py-2.5 text-sm font-medium text-[rgb(var(--accent-ink))] shadow-[0_8px_22px_-12px_rgb(var(--ink)/0.5)]">
+                        {ev.text}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <>
                     <span
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-lg"
+                      className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-lg shadow-[0_4px_12px_-6px_rgb(var(--ink)/0.5)]"
                       style={{ background: ev.color + '2a', boxShadow: `0 0 0 1px ${ev.color}55` }}
                     >
                       {ev.emoji}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <div className="mb-1 flex items-center gap-2 text-sm">
-                        <span className="font-bold" style={{ color: ev.color }}>
+                      <div className="mb-1.5 flex items-center gap-2 text-sm">
+                        <span className="font-display font-bold tracking-tight" style={{ color: ev.color }}>
                           {ev.name}
                         </span>
-                        <span className="text-xs text-muted">{ev.role}</span>
+                        <span className="rounded-full border border-[rgb(var(--ink)/0.08)] bg-[rgb(var(--ink)/0.04)] px-2 py-0.5 text-[10px] font-semibold text-muted">
+                          {ev.role}
+                        </span>
                         {!ev.done && <Loader2 size={12} className="animate-spin text-muted" />}
                         {ev.phase === 'final' && (
                           <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[10px] font-bold uppercase text-accent">
@@ -384,7 +494,11 @@ export default function TeamPage() {
                           </span>
                         )}
                       </div>
-                      <div className="glass rounded-2xl rounded-tl-sm p-3 text-sm leading-relaxed">
+                      <div
+                        className={`glass-strong rounded-[20px] rounded-tl-md p-3.5 text-sm leading-relaxed ${
+                          ev.phase === 'final' ? 'ring-1 ring-accent/30' : ''
+                        }`}
+                      >
                         {ev.text ? <Markdown>{ev.text}</Markdown> : <span className="text-muted">…</span>}
                       </div>
                     </div>
@@ -409,18 +523,63 @@ export default function TeamPage() {
 
       {/* Composer */}
       <div className="border-t border-white/10 p-3">
-        <div className="mx-auto flex max-w-3xl items-end gap-2">
-          <div className="composer-shell flex flex-1 items-end gap-2 rounded-[24px] border border-white/[0.12] p-2 pl-4">
+        <div className="mx-auto w-full max-w-3xl">
+          {attachErr && <p className="mb-2 px-2 text-xs text-red-400">{attachErr}</p>}
+
+          {/* Attachment previews */}
+          {!!attachments.length && (
+            <motion.div layout className="mb-2 flex flex-wrap gap-2 px-1">
+              {attachments.map((a, i) => (
+                <motion.div
+                  key={i}
+                  layout
+                  initial={{ opacity: 0, y: 6, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 6, scale: 0.96 }}
+                  className="glass relative flex items-center gap-2 rounded-2xl p-1.5 pr-7"
+                >
+                  {a.kind === 'image' && a.url ? (
+                    <img src={a.url} alt={a.name} className="h-12 w-12 rounded-xl object-cover" />
+                  ) : (
+                    <div className="flex items-center gap-2 px-2 py-1.5 text-xs">
+                      <FileText size={16} className="text-accent" />
+                      <span className="max-w-[140px] truncate">{a.name}</span>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => setAttachments((arr) => arr.filter((_, j) => j !== i))}
+                    className="absolute right-1.5 top-1.5 rounded-full bg-black/50 p-0.5 text-white hover:bg-black/70"
+                  >
+                    <X size={12} />
+                  </button>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+
+          <motion.div
+            layout
+            className={`composer-shell floating-composer relative z-20 rounded-[28px] border border-white/[0.12] p-2 backdrop-blur-2xl ${dragging ? 'composer-drop-hot' : ''}`}
+            onDragOver={(e) => {
+              e.preventDefault()
+              setDragging(true)
+            }}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false)
+            }}
+            onDrop={handleDrop}
+          >
             <textarea
+              ref={taRef}
               value={draft}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(e) => {
+                setDraft(e.target.value)
+                autosize()
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault()
-                  if (!running && draft.trim()) {
-                    start(draft)
-                    setDraft('')
-                  }
+                  sendDraft()
                 }
               }}
               rows={1}
@@ -429,26 +588,78 @@ export default function TeamPage() {
                   ? 'Follow up — e.g. make it darker, add a pricing page…'
                   : 'Give the team a goal — e.g. build a portfolio site for my dad…'
               }
-              className="no-scrollbar max-h-32 flex-1 resize-none bg-transparent py-2 text-sm outline-none placeholder:text-muted"
+              className="no-scrollbar max-h-[160px] w-full resize-none bg-transparent px-3 py-2 text-[0.975rem] outline-none placeholder:text-muted"
             />
-            <button
-              onClick={() => {
-                if (!running && draft.trim()) {
-                  start(draft)
-                  setDraft('')
-                }
-              }}
-              disabled={running || !draft.trim()}
-              className="accent-gradient-bg pressable flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white disabled:opacity-40"
-            >
-              {running ? <Loader2 size={18} className="animate-spin" /> : <Send size={17} />}
-            </button>
-          </div>
+
+            <div className="flex items-center gap-1.5 px-1">
+              <button
+                onClick={() => imgInput.current?.click()}
+                disabled={attachBusy}
+                className="pressable flex h-9 w-9 items-center justify-center rounded-full text-muted transition hover:bg-white/10 hover:text-ink disabled:opacity-40"
+                title="Upload image"
+              >
+                {attachBusy ? <Loader2 size={18} className="animate-spin" /> : <ImageIcon size={18} />}
+              </button>
+              <button
+                onClick={() => fileInput.current?.click()}
+                disabled={attachBusy}
+                className="pressable flex h-9 w-9 items-center justify-center rounded-full text-muted transition hover:bg-white/10 hover:text-ink disabled:opacity-40"
+                title="Upload file"
+              >
+                <Paperclip size={18} />
+              </button>
+
+              <div className="ml-auto flex items-center gap-1.5">
+                {running ? (
+                  <button
+                    onClick={stop}
+                    className="pressable flex h-10 w-10 items-center justify-center rounded-full bg-ink text-surface"
+                    title="Stop"
+                  >
+                    <Square size={15} fill="currentColor" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={sendDraft}
+                    disabled={attachBusy || (!draft.trim() && !attachments.length)}
+                    className="pressable accent-gradient-bg flex h-10 w-10 items-center justify-center rounded-full text-white shadow-[0_8px_20px_-8px_rgb(var(--ink)/0.6)] disabled:opacity-30"
+                    title="Send"
+                  >
+                    <ArrowUp size={20} strokeWidth={2.5} />
+                  </button>
+                )}
+              </div>
+            </div>
+          </motion.div>
         </div>
         <p className="mt-2 text-center text-xs text-muted">
           <Sparkles size={11} className="mr-1 inline" /> Tip: @mention an agent to make them the lead. Chats save automatically.
         </p>
       </div>
+
+      {/* Hidden file inputs */}
+      <input
+        ref={imgInput}
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        onChange={(e) => {
+          handleFiles(e.target.files)
+          e.target.value = ''
+        }}
+      />
+      <input
+        ref={fileInput}
+        type="file"
+        accept=".txt,.md,.json,.csv,.js,.ts,.tsx,.jsx,.py,.html,.css,.pdf,text/*"
+        multiple
+        hidden
+        onChange={(e) => {
+          handleFiles(e.target.files)
+          e.target.value = ''
+        }}
+      />
     </div>
   )
 }
