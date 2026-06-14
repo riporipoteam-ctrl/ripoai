@@ -7,6 +7,7 @@
 import { streamChat, complete } from './groq'
 import { CODER_MODEL, COMPOUND_MODEL } from './models'
 import type { Agent } from './agents'
+import type { Attachment } from './db'
 
 export type Phase = 'plan' | 'work' | 'final' | 'system' | 'chat' | 'user'
 
@@ -21,6 +22,8 @@ export interface TeamEvent {
   text: string
   done: boolean
   to?: string
+  /** Files/images the user attached to this turn (user events only). */
+  attachments?: Attachment[]
 }
 
 export interface RunTeamArgs {
