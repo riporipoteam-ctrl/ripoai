@@ -524,10 +524,15 @@ export function useChat(chatId: string | undefined) {
 
       // REAL web search: actually search + read pages and ground the answer on
       // the results (reliable), instead of trusting the compound tool to do it.
+      // Cap the whole search+read at ~18s so a slow page-read can never hang the
+      // turn — on timeout we just answer without the grounding context.
       let searchGrounding = ''
       if (useCompound) {
         try {
-          const r = await liveSearchContext(history[history.length - 1]?.content ?? '')
+          const r = await Promise.race([
+            liveSearchContext(history[history.length - 1]?.content ?? ''),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 18000)),
+          ])
           if (r?.context) searchGrounding = r.context
         } catch {
           /* fall back to compound */
@@ -914,6 +919,72 @@ export function useChat(chatId: string | undefined) {
           } catch (err: any) {
             if (err?.name === 'AbortError') throw err
             // try the next model in the chain
+          }
+        }
+
+        // Graceful degradation for the grounded web-search branch: the live
+        // search context can be large, and the grounded models occasionally
+        // return a 5xx/524/timeout on follow-ups. If every grounded attempt
+        // failed (no content), retry ONCE with a fast model on a SHORTER
+        // context, then — as a last resort — answer WITHOUT the search context
+        // at all, so the user gets a real answer instead of a "524" error.
+        if (groundedSearch && !finalContent.trim() && !ac.signal.aborted) {
+          // (1) Same grounding, but trimmed + a small/fast model.
+          const trimmedGrounding = searchGrounding.slice(0, 4000)
+          const shortSystem =
+            (opts.systemOverride ??
+              (personaAgent
+                ? buildAgentSystemPrompt(personaAgent, model, settings, memories)
+                : buildSystemPrompt(model, settings, memories))) +
+            '\n\n' +
+            trimmedGrounding +
+            '\n\nAnswer the user using these live results. Be specific (names, numbers, steps). Cite sources inline as Markdown links where relevant.'
+          const degraded: { messages: ChatMessage[]; model: string }[] = [
+            {
+              model: 'llama-3.3-70b-versatile',
+              messages: [
+                { role: 'system', content: shortSystem },
+                ...toGroqMessages(trimHistory(history), visionCapable),
+              ],
+            },
+            // (2) Last resort: drop the search grounding entirely and just
+            // answer from the model's own knowledge with a fast model.
+            {
+              model: 'llama-3.1-8b-instant',
+              messages: [
+                { role: 'system', content: opts.systemOverride ?? buildSystemPrompt(model, settings, memories) },
+                ...toGroqMessages(trimHistory(history), visionCapable),
+              ],
+            },
+          ]
+          for (const d of degraded) {
+            if (ac.signal.aborted || finalContent.trim()) break
+            try {
+              clearStreamed()
+              finalContent = ''
+              finalReasoning = ''
+              const res = await streamChat({
+                provider: 'groq',
+                model: d.model,
+                messages: d.messages,
+                temperature: model.temperature,
+                maxTokens: 2048,
+                topP: model.topP,
+                signal: ac.signal,
+                onToken,
+                onReasoning,
+                onTool,
+              })
+              finalContent = res.content
+              finalReasoning = res.reasoning
+              if (finalContent.trim() || finalReasoning.trim()) {
+                usedAttempt = { provider: 'groq', model: d.model, maxTokens: 2048 }
+                lastFinish = res.finishReason
+              }
+            } catch (err: any) {
+              if (err?.name === 'AbortError') throw err
+              // try the next degraded step
+            }
           }
         }
 
