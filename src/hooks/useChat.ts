@@ -11,7 +11,8 @@ import { MAX_IMAGES_PER_MESSAGE } from '../lib/files'
 import { earnFromChat, tryImageGen } from '../lib/plus'
 import { wantsSlides, generateDeck } from '../lib/slides'
 import { getModel, resolveAutoModel, type ModelTier } from '../lib/models'
-import { buildSystemPrompt, AGENT_SYSTEM, WEB3D_INSTRUCTIONS, wantsWebsite, needsDeepThinking } from '../lib/prompt'
+import { buildSystemPrompt, buildAgentSystemPrompt, AGENT_SYSTEM, WEB3D_INSTRUCTIONS, wantsWebsite, needsDeepThinking } from '../lib/prompt'
+import { getAgent, type Agent } from '../lib/agents'
 import { extractSocialImages, buildSocialPrompt } from '../lib/social'
 import { searchModel, shouldAutoSearch } from '../lib/search'
 import { liveSearchContext } from '../lib/liveSearch'
@@ -41,6 +42,8 @@ export interface SendOptions {
   projectId?: string
   /** Override system prompt (used by Projects coding agent). */
   systemOverride?: string
+  /** When set, this is a 1-on-1 chat with this agent — drives the persona + tag. */
+  agentChat?: Agent
 }
 
 const uid4 = () => crypto.randomUUID()
@@ -106,6 +109,9 @@ export function useChat(chatId: string | undefined) {
   const titleRef = useRef<string>('New chat')
   const modelRef = useRef<ModelTier>(settings.defaultModel)
   const createdAtRef = useRef<number>(0)
+  // Agent tag for a 1-on-1 agent chat (kept across saves so it survives reloads).
+  const agentTagRef = useRef<{ agentId?: string; agentName?: string; agentEmoji?: string }>({})
+  const [chatAgent, setChatAgent] = useState<Agent | null>(null)
 
   // Load (or reset) when the active chat id changes.
   useEffect(() => {
@@ -118,12 +124,26 @@ export function useChat(chatId: string | undefined) {
       loadedId.current = undefined
       titleRef.current = 'New chat'
       createdAtRef.current = 0
+      agentTagRef.current = {}
+      setChatAgent(null)
       setMessages([])
       return
     }
     if (!user) return
     loadedId.current = chatId
+    agentTagRef.current = {}
+    setChatAgent(null)
     clearUnread(chatId) // opening a chat clears its blue dot
+    // Restore the agent tag (if any) so this chat keeps driving the agent persona
+    // and shows its badge after a reload.
+    const applyAgentTag = (c: { agentId?: string; agentName?: string; agentEmoji?: string }) => {
+      if (!c.agentId && !c.agentName) return
+      agentTagRef.current = { agentId: c.agentId, agentName: c.agentName, agentEmoji: c.agentEmoji }
+      const full = c.agentId ? getAgent(user.uid, c.agentId) : null
+      setChatAgent(
+        full ?? { id: c.agentId ?? '', name: c.agentName ?? 'Agent', emoji: c.agentEmoji ?? '🤖', role: 'Agent', personality: '', color: '#6366f1' },
+      )
+    }
     // Show the cached chat INSTANTLY (no awaiting Firestore), then reconcile.
     const cached = readLocalChat(user.uid, chatId)
     if (cached) {
@@ -132,6 +152,7 @@ export function useChat(chatId: string | undefined) {
       modelRef.current = cached.model
       createdAtRef.current = cached.createdAt || Date.now()
       if (cached.model) setLoadedModel(cached.model)
+      applyAgentTag(cached)
     }
     loadChat(user.uid, chatId)
       .then((c) => {
@@ -142,6 +163,7 @@ export function useChat(chatId: string | undefined) {
           modelRef.current = c.model
           createdAtRef.current = c.createdAt || Date.now()
           if (c.model) setLoadedModel(c.model) // restore the chat's last model
+          applyAgentTag(c)
         }
       })
       .catch(() => {
@@ -166,6 +188,10 @@ export function useChat(chatId: string | undefined) {
         model,
         messages: msgs,
         projectId,
+        // Carry the agent tag so this stays a 1-on-1 agent chat after a reload.
+        agentId: agentTagRef.current.agentId,
+        agentName: agentTagRef.current.agentName,
+        agentEmoji: agentTagRef.current.agentEmoji,
         updatedAt: Date.now(),
         createdAt: createdAtRef.current,
       }
@@ -191,6 +217,16 @@ export function useChat(chatId: string | undefined) {
   const run = useCallback(
     async (history: StoredMessage[], opts: SendOptions, id: string) => {
       if (!user) return
+      // 1-on-1 agent chat: tag the chat (so it saves + shows the badge) and keep
+      // the agent on screen. The tag persists across reloads via persist().
+      if (opts.agentChat) {
+        agentTagRef.current = {
+          agentId: opts.agentChat.id,
+          agentName: opts.agentChat.name,
+          agentEmoji: opts.agentChat.emoji,
+        }
+        setChatAgent(opts.agentChat)
+      }
       const lastUser = [...history].reverse().find((m) => m.role === 'user')
       // Record this run so it can be resumed if the app is closed mid-flight.
       markPending(user.uid, {
@@ -517,11 +553,20 @@ export function useChat(chatId: string | undefined) {
       // the vision model when we auto-switch to it.
       const reasoningEffort = usingCompound || hasImages ? undefined : fallback.reasoningEffort
 
+      // For a 1-on-1 agent chat, the agent's persona drives the reply. Resolve
+      // the agent from this turn's option, else the tag restored on reload.
+      const personaAgent: Agent | null =
+        opts.agentChat ??
+        (agentTagRef.current.agentId ? getAgent(user.uid, agentTagRef.current.agentId) : null) ??
+        chatAgent
+
       let system =
         opts.systemOverride ??
-        (opts.agent
-          ? AGENT_SYSTEM + '\n\n' + buildSystemPrompt(model, settings, memories)
-          : buildSystemPrompt(model, settings, memories))
+        (personaAgent
+          ? buildAgentSystemPrompt(personaAgent, model, settings, memories)
+          : opts.agent
+            ? AGENT_SYSTEM + '\n\n' + buildSystemPrompt(model, settings, memories)
+            : buildSystemPrompt(model, settings, memories))
 
       const lastText = lastUser?.content ?? ''
 
@@ -1060,7 +1105,7 @@ export function useChat(chatId: string | undefined) {
       }
       void finalReasoning
     },
-    [user, settings, memories, persist, refreshMemories],
+    [user, settings, memories, persist, refreshMemories, chatAgent],
   )
 
   const send = useCallback(

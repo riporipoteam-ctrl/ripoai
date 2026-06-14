@@ -63,6 +63,10 @@ export interface Chat {
   model: ModelTier
   messages: StoredMessage[]
   projectId?: string
+  /** When set, this is a 1-on-1 chat with a specific agent (its persona drives replies). */
+  agentId?: string
+  agentName?: string
+  agentEmoji?: string
   updatedAt: number
   createdAt: number
 }
@@ -73,6 +77,10 @@ export interface ChatMeta {
   updatedAt: number
   projectId?: string
   pinned?: boolean
+  /** Agent tag — marks the chat as a 1-on-1 agent chat in the sidebar. */
+  agentId?: string
+  agentName?: string
+  agentEmoji?: string
 }
 
 export interface Project {
@@ -412,6 +420,9 @@ export function watchChats(uid: string, cb: (chats: ChatMeta[]) => void) {
             updatedAt: Math.max(cloudUpdated, existing?.updatedAt ?? 0),
             projectId: data.projectId ?? existing?.projectId,
             pinned: data.pinned ?? existing?.pinned ?? false,
+            agentId: data.agentId ?? existing?.agentId,
+            agentName: data.agentName ?? existing?.agentName,
+            agentEmoji: data.agentEmoji ?? existing?.agentEmoji,
           })
           // Cache the full chat only when the cloud copy is at least as fresh
           // as the local one (don't clobber newer local edits with stale cloud).
@@ -424,6 +435,9 @@ export function watchChats(uid: string, cb: (chats: ChatMeta[]) => void) {
                 model: data.model,
                 messages: data.messages,
                 projectId: data.projectId ?? undefined,
+                agentId: data.agentId ?? undefined,
+                agentName: data.agentName ?? undefined,
+                agentEmoji: data.agentEmoji ?? undefined,
                 updatedAt: cloudUpdated,
                 createdAt: tsMs(data.createdAt),
               })
@@ -472,6 +486,9 @@ export async function loadChat(uid: string, chatId: string): Promise<Chat | null
         model: data.model,
         messages: data.messages ?? [],
         projectId: data.projectId ?? undefined,
+        agentId: data.agentId ?? undefined,
+        agentName: data.agentName ?? undefined,
+        agentEmoji: data.agentEmoji ?? undefined,
         updatedAt: cloudUpdated,
         createdAt: tsMs(data.createdAt),
       }
@@ -487,7 +504,16 @@ export async function saveChat(uid: string, chat: Chat) {
   const prev = read<ChatMeta[]>(uid, 'chats', [])
   const wasPinned = prev.find((c) => c.id === chat.id)?.pinned
   const metas = prev.filter((c) => c.id !== chat.id)
-  metas.push({ id: chat.id, title: chat.title, updatedAt: chat.updatedAt, projectId: chat.projectId, pinned: wasPinned })
+  metas.push({
+    id: chat.id,
+    title: chat.title,
+    updatedAt: chat.updatedAt,
+    projectId: chat.projectId,
+    pinned: wasPinned,
+    agentId: chat.agentId,
+    agentName: chat.agentName,
+    agentEmoji: chat.agentEmoji,
+  })
   write(uid, 'chats', metas)
   emit()
   bgWrite('saveChat', () =>
@@ -497,6 +523,9 @@ export async function saveChat(uid: string, chat: Chat) {
       messages: clean(chat.messages),
       projectId: chat.projectId ?? null,
       pinned: !!wasPinned,
+      agentId: chat.agentId ?? null,
+      agentName: chat.agentName ?? null,
+      agentEmoji: chat.agentEmoji ?? null,
       updatedAt: serverTimestamp(),
       createdAt: chat.createdAt || Date.now(),
     }),
