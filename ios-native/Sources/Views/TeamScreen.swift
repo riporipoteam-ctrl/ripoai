@@ -255,7 +255,7 @@ struct TeamScreen: View {
         let system = Message(role: .system, text:
             "You are \(picked.name), the \(picked.role) on the AskAI team. \(picked.persona) Speak in first person, do the task fully and concisely. No status updates, no filler. Use Markdown when helpful.\(langNote)")
         let userMsg = Message(role: .user, text: task, attachments: images)
-        let model = images.isEmpty ? "openai/gpt-oss-120b" : AIModel.visionModel.backend
+        let model = images.isEmpty ? "llama-3.3-70b-versatile" : AIModel.visionModel.backend
         let provider: Provider = images.isEmpty ? .groq : AIModel.visionModel.provider
         do {
             try await GroqClient.shared.stream(model: model, provider: provider,
@@ -304,7 +304,7 @@ struct TeamScreen: View {
             let usr = Message(role: .user, text: "\(transcript)\nNow \(a.name), give your take and any concrete suggestion.")
             var out = ""
             do {
-                try await GroqClient.shared.stream(model: "openai/gpt-oss-120b", messages: [sys, usr]) { tok in
+                try await GroqClient.shared.stream(model: "llama-3.3-70b-versatile", messages: [sys, usr]) { tok in
                     out += tok
                     if idx < store.teamLog.count { store.teamLog[idx].text = out }
                 }
@@ -321,7 +321,7 @@ struct TeamScreen: View {
             let idx = store.teamLog.count - 1
             let sys = Message(role: .system, text: "You are \(lead.name), chairing the meeting. Summarize the decisions and give a short numbered action plan with who-does-what.\(langNote)")
             var out = ""
-            try? await GroqClient.shared.stream(model: "openai/gpt-oss-120b",
+            try? await GroqClient.shared.stream(model: "llama-3.3-70b-versatile",
                                                 messages: [sys, Message(role: .user, text: transcript)]) { tok in
                 out += tok
                 if idx < store.teamLog.count { store.teamLog[idx].text = out }

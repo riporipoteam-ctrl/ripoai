@@ -605,7 +605,7 @@ final class AppStore: ObservableObject {
             repeat {
                 var chunk = ""
                 do {
-                    try await GroqClient.shared.stream(model: "openai/gpt-oss-120b", messages: convo) { [weak self] tok in
+                    try await GroqClient.shared.stream(model: "llama-3.3-70b-versatile", messages: convo) { [weak self] tok in
                         chunk += tok; full += tok
                         if let self, pIdx < self.projects.count, aIdx < self.projects[pIdx].chat.count {
                             self.projects[pIdx].chat[aIdx].text = full
@@ -695,7 +695,7 @@ final class AppStore: ObservableObject {
         {"name":"<a short first name; use the one the user gave, else invent a fitting one>","role":"<2-4 word role>","persona":"<2-3 sentence personality + how it works>","skills":["skill1","skill2","skill3"],"avatar":"<a vivid 1-line image prompt for a friendly, realistic avatar portrait — e.g. 'a friendly golden retriever wearing glasses, studio portrait' or 'a warm smiling young engineer, soft studio light'>"}
         """)
         guard let out = try? await GroqClient.shared.complete(
-            model: "openai/gpt-oss-120b",
+            model: "llama-3.3-70b-versatile",
             messages: [sys, Message(role: .user, text: request)]),
               let start = out.firstIndex(of: "{"), let end = out.lastIndex(of: "}"),
               let data = String(out[start...end]).data(using: .utf8),
@@ -755,7 +755,7 @@ final class AppStore: ObservableObject {
                 history.insert(Message(role: .system, text: r.context + "\n\nUse these live results; cite sources inline."), at: 1)
             }
             do {
-                try await GroqClient.shared.stream(model: "openai/gpt-oss-120b", messages: history) { [weak self] tok in
+                try await GroqClient.shared.stream(model: "llama-3.3-70b-versatile", messages: history) { [weak self] tok in
                     guard let self, let i = self.agents.firstIndex(where: { $0.id == id }), aIdx < self.agents[i].chat.count else { return }
                     self.agents[i].chat[aIdx].text += tok
                 }
