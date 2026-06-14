@@ -48,10 +48,10 @@ struct RootView: View {
             VoiceCallScreen().environmentObject(store)
         }
         .fullScreenCover(isPresented: $store.requestLiveCamera) {
-            CameraVisionView()
+            CameraVisionView().environmentObject(store)
         }
         .fullScreenCover(isPresented: $store.requestScreenVision) {
-            ScreenVisionView()
+            ScreenVisionView().environmentObject(store)
         }
         .sheet(isPresented: $store.showAgentPanel) {
             if let agent = store.agent {

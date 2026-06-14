@@ -13,6 +13,7 @@ struct VoiceCallScreen: View {
     @State private var state: CallState = .listening
     @State private var lastReply = ""
     @State private var animate = false
+    @State private var ring = 0.0
     @State private var cameraOn = false
     @State private var convo: [Message] = [
         Message(role: .system, text: "You are AskAI on a live voice call. Reply in short, natural, spoken sentences — no markdown, no lists, no long monologues."),
@@ -48,13 +49,23 @@ struct VoiceCallScreen: View {
                         .frame(width: 160, height: 160)
                         .scaleEffect(state == .speaking ? (animate ? 1.08 : 0.96) : 1)
                         .shadow(color: orbColors.first!.opacity(0.6), radius: 40)
+                    // Rotating conic ring — gives the orb a lively, "thinking" energy.
+                    Circle()
+                        .strokeBorder(
+                            AngularGradient(colors: orbColors + [orbColors.first!], center: .center,
+                                            startAngle: .degrees(0), endAngle: .degrees(360)),
+                            lineWidth: 4)
+                        .frame(width: 184, height: 184)
+                        .rotationEffect(.degrees(ring))
+                        .opacity(0.8)
+                        .blur(radius: 0.5)
                     Image(systemName: stateIcon)
                         .font(.system(size: 42, weight: .bold))
                         .foregroundStyle(.white)
                         .symbolEffect(.pulse, isActive: state != .speaking)
                 }
 
-                Text(stateLabel).font(.system(size: 16, weight: .semibold)).foregroundStyle(.white.opacity(0.85))
+                Text(store.t(stateLabel)).font(.system(size: 16, weight: .semibold)).foregroundStyle(.white.opacity(0.85))
                 if !lastReply.isEmpty {
                     Text(lastReply).font(.system(size: 15)).foregroundStyle(.white.opacity(0.7))
                         .multilineTextAlignment(.center).padding(.horizontal, 36).lineLimit(4)
@@ -101,6 +112,7 @@ struct VoiceCallScreen: View {
         }
         .onAppear {
             animate = true
+            withAnimation(.linear(duration: 6).repeatForever(autoreverses: false)) { ring = 360 }
             speech.start()
             if let lang = Languages.instructionName(store.language), !convo.isEmpty {
                 convo[0] = Message(role: .system, text: convo[0].text + " Always respond in \(lang).")

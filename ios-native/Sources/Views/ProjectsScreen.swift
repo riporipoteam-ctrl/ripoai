@@ -58,10 +58,10 @@ struct ProjectsScreen: View {
                                 .frame(maxWidth: .infinity)
                                 .liquidGlass(cornerRadius: 18)
                             }
-                            .buttonStyle(.plain).foregroundStyle(.primary)
+                            .buttonStyle(PressableButtonStyle()).foregroundStyle(.primary)
                             .contextMenu {
                                 Button(role: .destructive) { store.deleteProject(p.id) } label: {
-                                    Label("Delete", systemImage: "trash")
+                                    Label(store.t("Delete"), systemImage: "trash")
                                 }
                             }
                         }
@@ -74,17 +74,17 @@ struct ProjectsScreen: View {
             ProjectFilesSheet(projectID: p.id).environmentObject(store)
                 .presentationDetents([.large])
         }
-        .alert("New project", isPresented: $creating) {
-            TextField("Project name", text: $newName)
-            Button("Create") {
+        .alert(store.t("New project"), isPresented: $creating) {
+            TextField(store.t("Project name"), text: $newName)
+            Button(store.t("Create")) {
                 let p = store.createProject(name: newName)
                 newName = ""
                 UINotificationFeedbackGenerator().notificationOccurred(.success)
                 opened = p
             }
-            Button("Cancel", role: .cancel) { newName = "" }
+            Button(store.t("Cancel"), role: .cancel) { newName = "" }
         } message: {
-            Text("Creates a starter web project saved on your device.")
+            Text(store.t("Creates a starter web project saved on your device."))
         }
     }
 }
@@ -104,7 +104,7 @@ private struct ProjectFilesSheet: View {
         NavigationStack {
             VStack(spacing: 0) {
                 Picker("", selection: $tab) {
-                    Text("Build").tag(0); Text("Files").tag(1); Text("Preview").tag(2)
+                    Text(store.t("Build")).tag(0); Text(store.t("Files")).tag(1); Text(store.t("Preview")).tag(2)
                 }
                 .pickerStyle(.segmented).padding(.horizontal, 14).padding(.top, 8)
 
@@ -115,10 +115,10 @@ private struct ProjectFilesSheet: View {
                     default: ProjectPreview(html: Self.bundle(project))
                     }
                 } else {
-                    Spacer(); Text("Project not found.").foregroundStyle(.secondary); Spacer()
+                    Spacer(); Text(store.t("Project not found.")).foregroundStyle(.secondary); Spacer()
                 }
             }
-            .navigationTitle(project?.name ?? "Project")
+            .navigationTitle(project?.name ?? store.t("Project"))
             .navigationBarTitleDisplayMode(.inline)
             .sheet(item: Binding(get: { openFile.map { FileID(path: $0) } },
                                  set: { openFile = $0?.path })) { fid in
@@ -136,8 +136,8 @@ private struct ProjectFilesSheet: View {
                         if project.chat.isEmpty {
                             VStack(spacing: 8) {
                                 Image(systemName: "hammer.fill").font(.system(size: 30)).foregroundStyle(.orange)
-                                Text("Tell AskAI what to build").font(.system(size: 16, weight: .bold))
-                                Text("e.g. “A landing page for my coffee shop with a hero, menu and contact form.”")
+                                Text(store.t("Tell AskAI what to build")).font(.system(size: 16, weight: .bold))
+                                Text(store.t("e.g. “A landing page for my coffee shop with a hero, menu and contact form.”"))
                                     .font(.system(size: 12)).foregroundStyle(.secondary)
                                     .multilineTextAlignment(.center).padding(.horizontal, 30)
                             }.frame(maxWidth: .infinity).padding(.top, 40)
@@ -160,7 +160,7 @@ private struct ProjectFilesSheet: View {
                 .onChange(of: project.chat.last?.text) { _, _ in withAnimation { proxy.scrollTo("end", anchor: .bottom) } }
             }
             HStack(alignment: .bottom, spacing: 8) {
-                TextField("Describe what to build or change…", text: $draft, axis: .vertical)
+                TextField(store.t("Describe what to build or change…"), text: $draft, axis: .vertical)
                     .focused($composerFocused).font(.system(size: 16)).lineLimit(1...5).padding(.vertical, 11)
                 Button {
                     let t = draft.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -241,7 +241,7 @@ private struct FileEditor: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button("Save") {
+                        Button(store.t("Save")) {
                             store.updateProjectFile(projectID, path: path, content: text)
                             UINotificationFeedbackGenerator().notificationOccurred(.success)
                             dismiss()

@@ -61,7 +61,7 @@ struct MenuSheet: View {
                         }.padding(.horizontal, 4).padding(.top, 10)
 
                         if filtered.isEmpty {
-                            Text("No chats found").font(.caption).foregroundStyle(.secondary).padding(.top, 12)
+                            Text(store.t("No chats found")).font(.caption).foregroundStyle(.secondary).padding(.top, 12)
                         }
                         ForEach(filtered) { s in
                             Button { store.select(s.id); go(.chat) } label: {
@@ -80,10 +80,10 @@ struct MenuSheet: View {
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .liquidGlass(cornerRadius: 18)
                             }
-                            .buttonStyle(.plain).foregroundStyle(.primary)
+                            .buttonStyle(PressableButtonStyle()).foregroundStyle(.primary)
                             .contextMenu {
                                 Button(role: .destructive) { store.delete(s.id) } label: {
-                                    Label("Delete", systemImage: "trash")
+                                    Label(store.t("Delete"), systemImage: "trash")
                                 }
                             }
                         }
@@ -121,6 +121,6 @@ private struct NavRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .liquidGlass(cornerRadius: 18)
         }
-        .buttonStyle(.plain).foregroundStyle(.primary)
+        .buttonStyle(PressableButtonStyle()).foregroundStyle(.primary)
     }
 }

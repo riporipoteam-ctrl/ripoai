@@ -31,9 +31,9 @@ struct Composer: View {
             // Mode chips
             if store.webSearch || store.imageMode || store.agentMode {
                 HStack(spacing: 6) {
-                    if store.webSearch { ModeChip(label: "Web search", icon: "globe") { store.webSearch = false } }
-                    if store.imageMode { ModeChip(label: "Create image", icon: "paintbrush") { store.imageMode = false } }
-                    if store.agentMode { ModeChip(label: "OpenClaw", icon: "pawprint.fill") { store.agentMode = false } }
+                    if store.webSearch { ModeChip(label: store.t("Web search"), icon: "globe") { store.webSearch = false } }
+                    if store.imageMode { ModeChip(label: store.t("Create image"), icon: "paintbrush") { store.imageMode = false } }
+                    if store.agentMode { ModeChip(label: store.t("OpenClaw"), icon: "pawprint.fill") { store.agentMode = false } }
                     Spacer()
                 }
                 .padding(.horizontal, 18)
@@ -66,8 +66,10 @@ struct Composer: View {
                         .font(.system(size: 19, weight: .semibold))
                         .foregroundStyle(.primary)
                         .frame(width: 38, height: 38)
+                        .rotationEffect(.degrees(showModeSheet ? 45 : 0))
+                        .animation(.spring(response: 0.3, dampingFraction: 0.6), value: showModeSheet)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressableButtonStyle())
                 .padding(.leading, 6).padding(.bottom, 5)
 
                 TextField(store.t(placeholder), text: $draft, axis: .vertical)
@@ -88,7 +90,8 @@ struct Composer: View {
                             .frame(width: 34, height: 34)
                             .symbolEffect(.pulse, isActive: speech.isRecording)
                     }
-                    .buttonStyle(.plain).padding(.bottom, 7)
+                    .buttonStyle(PressableButtonStyle()).padding(.bottom, 7)
+                    .transition(.scale.combined(with: .opacity))
                 }
 
                 // Send / Stop — big, high-contrast, always visible
@@ -104,11 +107,12 @@ struct Composer: View {
                             Circle().fill(canSend || store.isStreaming ? Color.accentColor : Color.secondary.opacity(0.45))
                         )
                         .shadow(color: .black.opacity(0.2), radius: 6, y: 3)
+                        .scaleEffect(canSend || store.isStreaming ? 1 : 0.9)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressableButtonStyle())
                 .disabled(!canSend && !store.isStreaming)
                 .padding(.trailing, 5).padding(.bottom, 4)
-                .animation(.spring(response: 0.3), value: canSend)
+                .animation(.spring(response: 0.32, dampingFraction: 0.6), value: canSend)
             }
             .liquidGlass(cornerRadius: 26, interactive: true)
             .padding(.horizontal, 12)

@@ -47,6 +47,37 @@ enum UIStrings {
         // Status
         "Thinking", "Searching the web", "Writing the answer", "Creating image", "Working",
         // Menu
-        "Search chats", "Library", "Help", "Upgrade",
+        "Search chats", "Library", "Help", "Upgrade", "Chats", "No chats found",
+        "Talk with AskAI live", "Your AI team", "Code with live files",
+        "Unlock more power", "Models, account, appearance",
+        // Common actions
+        "Copy", "Copied", "Regenerate", "Share", "Edit", "Auto",
+        "Creating your image…", "Couldn’t load image",
+        // Settings extras
+        "Sign out", "Sign in to sync your chats", "Synced across web, Android & iOS",
+        "e.g. Always answer in short bullet points", "Search 180+ languages",
+        // Empty-chat chips
+        "Agent", "Image", "Web", "Voice",
+        // Projects
+        "Build", "Files", "Preview", "Project not found.", "Tell AskAI what to build",
+        "Describe what to build or change…", "Project name",
+        // Team / agents
+        "typing…", "Message", "Agent not found.", "Agent profile",
+        "Name", "Role", "Personality & how it works", "Skills (comma-separated)",
+        "Can browse the web", "Persona",
+        "Topic for the team meeting…", "Give a task — or “make an agent that…”",
+        "Creating your agent…",
+        // Plus
+        "Everything in AskAI, supercharged.", "Manage on the web",
+        "Higher limits", "Priority models", "More image generations",
+        "Full agent team", "Early features",
+        // Auth
+        "Welcome back", "Create your account", "Sign in to continue to AskAI.",
+        "Join AskAI — chats sync across web, Android & iOS.", "Email", "Password",
+        "Sign in", "Create account", "I already have an account",
+        "New to AskAI? Create an account", "Continue without an account",
+        // Vision
+        "LIVE", "Looking…", "Ask about what you see…", "Ask about your screen…",
+        "Start live narration", "Stop live narration", "Narrate my screen live",
     ]
 }

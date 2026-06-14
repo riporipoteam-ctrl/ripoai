@@ -51,8 +51,8 @@ struct MessageBubble: View {
                     .contextMenu {
                         Button {
                             UIPasteboard.general.string = message.text
-                        } label: { Label("Copy", systemImage: "doc.on.doc") }
-                        ShareLink(item: message.text) { Label("Share", systemImage: "square.and.arrow.up") }
+                        } label: { Label(store.t("Copy"), systemImage: "doc.on.doc") }
+                        ShareLink(item: message.text) { Label(store.t("Share"), systemImage: "square.and.arrow.up") }
                     }
                 }
 
@@ -64,13 +64,13 @@ struct MessageBubble: View {
                             copied = true
                             DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) { copied = false }
                         } label: {
-                            Label(copied ? "Copied" : "Copy", systemImage: copied ? "checkmark" : "doc.on.doc")
+                            Label(copied ? store.t("Copied") : store.t("Copy"), systemImage: copied ? "checkmark" : "doc.on.doc")
                         }
                         if isLast {
                             Button {
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                                 store.regenerate()
-                            } label: { Label("Regenerate", systemImage: "arrow.clockwise") }
+                            } label: { Label(store.t("Regenerate"), systemImage: "arrow.clockwise") }
                         }
                     }
                     .font(.system(size: 12, weight: .semibold))
@@ -96,15 +96,21 @@ struct MessageBubble: View {
 
 /// Generated image card: tap to open a zoomable full-screen viewer (save/share).
 struct GeneratedImage: View {
+    @EnvironmentObject var store: AppStore
     let source: String
     @State private var showViewer = false
 
     var body: some View {
         Group {
             if source == "pending" {
-                VStack(spacing: 8) {
-                    ProgressView()
-                    Text("Creating your image…").font(.caption).foregroundStyle(.secondary)
+                ZStack {
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(Color.primary.opacity(0.06))
+                        .shimmer()
+                    VStack(spacing: 8) {
+                        ProgressView()
+                        Text(store.t("Creating your image…")).font(.caption).foregroundStyle(.secondary)
+                    }
                 }
                 .frame(maxWidth: .infinity, minHeight: 260)
             } else if source.hasPrefix("data:"), let img = UIImage.fromDataURL(source) {
@@ -116,7 +122,7 @@ struct GeneratedImage: View {
                     case .failure:
                         VStack(spacing: 6) {
                             Image(systemName: "photo").font(.title2)
-                            Text("Couldn’t load image").font(.caption)
+                            Text(store.t("Couldn’t load image")).font(.caption)
                         }.frame(maxWidth: .infinity, minHeight: 200).foregroundStyle(.secondary)
                     default:
                         ProgressView().frame(maxWidth: .infinity, minHeight: 240)

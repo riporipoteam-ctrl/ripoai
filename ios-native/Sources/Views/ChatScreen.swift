@@ -101,6 +101,7 @@ struct ChatScreen: View {
 /// bar while a task runs (works regardless of OS Live Activity availability).
 struct TaskPill: View {
     @EnvironmentObject var store: AppStore
+    @State private var glow = false
 
     private var label: String {
         if let a = store.agent, a.running { return a.statusLine }
@@ -142,8 +143,15 @@ struct TaskPill: View {
         .padding(.horizontal, 14).padding(.vertical, 8)
         .frame(maxWidth: .infinity)
         .background(.ultraThinMaterial, in: Capsule())
-        .overlay(Capsule().strokeBorder(Color.primary.opacity(0.08), lineWidth: 1))
-        .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
+        .overlay(
+            Capsule().strokeBorder(
+                LinearGradient(colors: [Color.accentColor, Color.cyan],
+                               startPoint: .leading, endPoint: .trailing),
+                lineWidth: 1.4)
+                .opacity(glow ? 0.9 : 0.35)
+        )
+        .shadow(color: Color.accentColor.opacity(glow ? 0.28 : 0.12), radius: 12, y: 4)
+        .onAppear { withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) { glow = true } }
     }
 }
 
@@ -240,7 +248,7 @@ struct GlassIconButton: View {
                 .frame(width: 42, height: 42)
                 .liquidGlass(cornerRadius: 21)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableButtonStyle())
         .foregroundStyle(.primary)
     }
 }

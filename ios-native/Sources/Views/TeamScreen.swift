@@ -102,10 +102,10 @@ struct TeamScreen: View {
                                     AgentAvatar(agent: a, size: 52)
                                     Text(a.name).font(.system(size: 11, weight: .semibold)).lineLimit(1)
                                 }.frame(width: 64)
-                            }.buttonStyle(.plain).foregroundStyle(.primary)
+                            }.buttonStyle(PressableButtonStyle()).foregroundStyle(.primary)
                             .contextMenu {
-                                Button { editAgent = a } label: { Label("Edit", systemImage: "pencil") }
-                                Button(role: .destructive) { store.deleteAgent(a.id) } label: { Label("Delete", systemImage: "trash") }
+                                Button { editAgent = a } label: { Label(store.t("Edit"), systemImage: "pencil") }
+                                Button(role: .destructive) { store.deleteAgent(a.id) } label: { Label(store.t("Delete"), systemImage: "trash") }
                             }
                         }
                     }.padding(.horizontal, 16).padding(.bottom, 8)
@@ -195,7 +195,7 @@ struct TeamScreen: View {
                         .frame(width: 34, height: 34)
                 }.padding(.leading, 6).padding(.bottom, 5)
 
-                TextField(meetingMode ? "Topic for the team meeting…" : "Give a task — or “make an agent that…”", text: $draft, axis: .vertical)
+                TextField(meetingMode ? store.t("Topic for the team meeting…") : store.t("Give a task — or “make an agent that…”"), text: $draft, axis: .vertical)
                     .font(.system(size: 16)).lineLimit(1...5)
                     .padding(.vertical, 13)
                 Button {
@@ -437,7 +437,7 @@ struct AgentRoomView: View {
                             AgentAvatar(agent: agent, size: 40)
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(agent.name).font(.system(size: 15, weight: .bold)).foregroundStyle(.primary)
-                                Text(store.agentReplying ? "typing…" : agent.role)
+                                Text(store.agentReplying ? store.t("typing…") : agent.role)
                                     .font(.system(size: 11)).foregroundStyle(.secondary)
                             }
                             Spacer()
@@ -466,7 +466,7 @@ struct AgentRoomView: View {
                     }
 
                     HStack(alignment: .bottom, spacing: 8) {
-                        TextField("Message \(agent.name)…", text: $draft, axis: .vertical)
+                        TextField("\(store.t("Message")) \(agent.name)…", text: $draft, axis: .vertical)
                             .font(.system(size: 16)).lineLimit(1...5).padding(.vertical, 11).padding(.leading, 6)
                         Button {
                             let t = draft.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -482,11 +482,11 @@ struct AgentRoomView: View {
                     }
                     .liquidGlass(cornerRadius: 26, interactive: true).padding(.horizontal, 12).padding(.bottom, 8)
                 } else {
-                    Spacer(); Text("Agent not found.").foregroundStyle(.secondary); Spacer()
+                    Spacer(); Text(store.t("Agent not found.")).foregroundStyle(.secondary); Spacer()
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("Done") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button(store.t("Done")) { dismiss() } } }
             .sheet(isPresented: $showProfile) {
                 if let agent { AgentEditView(agent: agent).environmentObject(store) }
             }
@@ -509,23 +509,23 @@ struct AgentEditView: View {
                     HStack { Spacer(); AgentAvatar(agent: agent, size: 96); Spacer() }
                         .listRowBackground(Color.clear)
                 }
-                Section("Name") { TextField("Name", text: $agent.name) }
-                Section("Role") { TextField("Role", text: $agent.role) }
-                Section("Personality & how it works") {
-                    TextField("Persona", text: $agent.persona, axis: .vertical).lineLimit(3...8)
+                Section(store.t("Name")) { TextField(store.t("Name"), text: $agent.name) }
+                Section(store.t("Role")) { TextField(store.t("Role"), text: $agent.role) }
+                Section(store.t("Personality & how it works")) {
+                    TextField(store.t("Persona"), text: $agent.persona, axis: .vertical).lineLimit(3...8)
                 }
-                Section("Skills (comma-separated)") {
-                    TextField("research, coding, writing", text: $skillsText, axis: .vertical).lineLimit(1...4)
+                Section(store.t("Skills (comma-separated)")) {
+                    TextField(store.t("research, coding, writing"), text: $skillsText, axis: .vertical).lineLimit(1...4)
                 }
-                Section { Toggle("Can browse the web", isOn: $agent.canBrowse) }
+                Section { Toggle(store.t("Can browse the web"), isOn: $agent.canBrowse) }
             }
-            .navigationTitle("Agent profile")
+            .navigationTitle(store.t("Agent profile"))
             .navigationBarTitleDisplayMode(.inline)
             .onAppear { skillsText = agent.skills.joined(separator: ", ") }
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .topBarLeading) { Button(store.t("Cancel")) { dismiss() } }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Save") {
+                    Button(store.t("Save")) {
                         agent.skills = skillsText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
                         store.updateAgent(agent)
                         UINotificationFeedbackGenerator().notificationOccurred(.success)

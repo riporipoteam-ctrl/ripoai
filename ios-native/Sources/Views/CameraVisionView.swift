@@ -5,6 +5,7 @@ import AVFoundation
 /// about what it sees — tap to ask, or turn on Live to have it narrate
 /// continuously. Streams the answer and can speak it aloud.
 struct CameraVisionView: View {
+    @EnvironmentObject var store: AppStore
     @Environment(\.dismiss) private var dismiss
     @StateObject private var cam = CameraFrameProvider()
     @StateObject private var voice = VoiceOut()
@@ -35,7 +36,7 @@ struct CameraVisionView: View {
                     Spacer()
                     HStack(spacing: 7) {
                         Circle().fill(live ? .red : .white.opacity(0.4)).frame(width: 8, height: 8)
-                        Text(live ? "LIVE" : "AskAI Vision").font(.system(size: 13, weight: .bold))
+                        Text(live ? store.t("LIVE") : "AskAI Vision").font(.system(size: 13, weight: .bold))
                             .foregroundStyle(.white)
                     }
                     .padding(.horizontal, 12).padding(.vertical, 7)
@@ -57,7 +58,7 @@ struct CameraVisionView: View {
                     HStack(alignment: .top, spacing: 10) {
                         Image(systemName: "sparkles").font(.system(size: 15, weight: .bold))
                             .foregroundStyle(.white)
-                        Text(thinking && answer.isEmpty ? "Looking…" : answer)
+                        Text(thinking && answer.isEmpty ? store.t("Looking…") : answer)
                             .font(.system(size: 15)).foregroundStyle(.white)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -69,7 +70,7 @@ struct CameraVisionView: View {
 
                 // Prompt + controls
                 HStack(spacing: 10) {
-                    TextField("Ask about what you see…", text: $prompt)
+                    TextField(store.t("Ask about what you see…"), text: $prompt)
                         .font(.system(size: 15)).foregroundStyle(.white)
                         .padding(.horizontal, 14).padding(.vertical, 11)
                         .background(.white.opacity(0.15), in: Capsule())
@@ -87,7 +88,7 @@ struct CameraVisionView: View {
                 Button { toggleLive() } label: {
                     HStack(spacing: 8) {
                         Image(systemName: live ? "stop.fill" : "dot.radiowaves.left.and.right")
-                        Text(live ? "Stop live narration" : "Start live narration")
+                        Text(live ? store.t("Stop live narration") : store.t("Start live narration"))
                             .font(.system(size: 14, weight: .bold))
                     }
                     .foregroundStyle(live ? .red : .white)

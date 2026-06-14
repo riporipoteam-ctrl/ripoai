@@ -101,7 +101,7 @@ struct ModePickerSheet: View {
             .padding(.horizontal, 12).padding(.vertical, 9)
             .liquidGlass(cornerRadius: 16)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableButtonStyle())
     }
 
     private func modeRow(_ icon: String, _ title: String, _ sub: String, tint: Color, on: Bool,
@@ -131,6 +131,6 @@ struct ModePickerSheet: View {
                     .strokeBorder(on ? tint.opacity(0.5) : .clear, lineWidth: 1.5)
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableButtonStyle())
     }
 }

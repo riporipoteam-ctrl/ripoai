@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct PlusScreen: View {
+    @EnvironmentObject var store: AppStore
     let back: () -> Void
     @State private var appear = false
 
@@ -30,7 +31,7 @@ struct PlusScreen: View {
                             .frame(width: 84, height: 84)
                             .liquidGlass(cornerRadius: 26)
                         Text("AskAI+").font(.system(size: 28, weight: .bold, design: .rounded))
-                        Text("Everything in AskAI, supercharged.")
+                        Text(store.t("Everything in AskAI, supercharged."))
                             .font(.system(size: 14)).foregroundStyle(.secondary)
                     }
                     .padding(.top, 10)
@@ -43,8 +44,8 @@ struct PlusScreen: View {
                                     .frame(width: 40, height: 40)
                                     .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(f.1).font(.system(size: 15, weight: .bold))
-                                    Text(f.2).font(.system(size: 12)).foregroundStyle(.secondary)
+                                    Text(store.t(f.1)).font(.system(size: 15, weight: .bold))
+                                    Text(store.t(f.2)).font(.system(size: 12)).foregroundStyle(.secondary)
                                 }
                                 Spacer()
                             }
@@ -58,14 +59,14 @@ struct PlusScreen: View {
                     Button {
                         UINotificationFeedbackGenerator().notificationOccurred(.success)
                     } label: {
-                        Text("Manage on the web")
+                        Text(store.t("Manage on the web"))
                             .font(.system(size: 16, weight: .bold))
                             .frame(maxWidth: .infinity).padding(.vertical, 15)
                             .background(Color.primary, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                             .foregroundStyle(Color(uiColor: .systemBackground))
-                    }.buttonStyle(.plain)
+                    }.buttonStyle(PressableButtonStyle())
 
-                    Text("Subscriptions and AskAI coins are managed in your account on the website.")
+                    Text(store.t("Subscriptions and AskAI coins are managed in your account on the website."))
                         .font(.caption2).foregroundStyle(.secondary).multilineTextAlignment(.center)
                 }
                 .padding(.horizontal, 18).padding(.bottom, 30)

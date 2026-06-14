@@ -25,10 +25,10 @@ struct SettingsScreen: View {
                             Image(systemName: "person.crop.circle.fill").font(.title2)
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(u.email).font(.system(size: 14, weight: .semibold)).lineLimit(1)
-                                Text("Synced across web, Android & iOS").font(.system(size: 11)).foregroundStyle(.secondary)
+                                Text(store.t("Synced across web, Android & iOS")).font(.system(size: 11)).foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Button("Sign out") { store.signOut() }
+                            Button(store.t("Sign out")) { store.signOut() }
                                 .font(.system(size: 13, weight: .bold)).foregroundStyle(.red)
                         }
                         .padding(14).frame(maxWidth: .infinity).liquidGlass(cornerRadius: 18)
@@ -36,7 +36,7 @@ struct SettingsScreen: View {
                         Button { store.guest = false } label: {
                             HStack {
                                 Image(systemName: "icloud.and.arrow.up")
-                                Text("Sign in to sync your chats").fontWeight(.semibold)
+                                Text(store.t("Sign in to sync your chats")).fontWeight(.semibold)
                                 Spacer()
                                 Image(systemName: "chevron.right").font(.caption)
                             }
@@ -47,12 +47,12 @@ struct SettingsScreen: View {
                     // Personalization
                     SectionLabel(store.t("Personalization"))
                     VStack(alignment: .leading, spacing: 10) {
-                        Text("Response length").font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
+                        Text(store.t("Response length")).font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
                         ChipRow(options: ["concise", "balanced", "detailed"], selected: store.verbosity) { store.setVerbosity($0) }
-                        Text("Tone").font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
+                        Text(store.t("Tone")).font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
                         ChipRow(options: ["professional", "friendly", "playful", "direct"], selected: store.tone) { store.setTone($0) }
-                        Text("Custom instructions").font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
-                        TextField("e.g. Always answer in short bullet points", text: Binding(
+                        Text(store.t("Custom instructions")).font(.system(size: 12, weight: .semibold)).foregroundStyle(.secondary)
+                        TextField(store.t("e.g. Always answer in short bullet points"), text: Binding(
                             get: { store.customInstructions },
                             set: { store.setCustomInstructions($0) }
                         ), axis: .vertical)
@@ -80,7 +80,7 @@ struct SettingsScreen: View {
                                 Image(systemName: "chevron.right").font(.system(size: 12)).foregroundStyle(.secondary)
                             }
                         }.buttonStyle(.plain).foregroundStyle(.primary)
-                        Text("AskAI replies in this language. “Auto” follows your device language.")
+                        Text(store.t("AskAI replies in this language. “Auto” follows your device language."))
                             .font(.system(size: 11)).foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -92,7 +92,7 @@ struct SettingsScreen: View {
                     VStack(spacing: 12) {
                         Toggle(store.t("Auto web search"), isOn: Binding(
                             get: { store.autoWebSearch }, set: { store.setAutoWebSearch($0) }))
-                        Text("AskAI automatically searches the live web when a question needs current info (news, prices, weather, scores…).")
+                        Text(store.t("AskAI automatically searches the live web when a question needs current info (news, prices, weather, scores…)."))
                             .font(.system(size: 11)).foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -107,9 +107,9 @@ struct SettingsScreen: View {
                             get: { store.notifyOnComplete }, set: { store.setNotifyOnComplete($0) }))
                         Divider()
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("AI check-ins").font(.system(size: 13, weight: .semibold)).foregroundStyle(.secondary)
+                            Text(store.t("AI check-ins")).font(.system(size: 13, weight: .semibold)).foregroundStyle(.secondary)
                             ChipRow(options: ["off", "daily", "weekly", "monthly"], selected: store.aiCheckins) { store.setCheckins($0) }
-                            Text("AskAI sends a friendly nudge to help with your chats.")
+                            Text(store.t("AskAI sends a friendly nudge to help with your chats."))
                                 .font(.system(size: 11)).foregroundStyle(.secondary)
                         }
                         Divider()
@@ -128,7 +128,7 @@ struct SettingsScreen: View {
                                 store.setAppearance(v)
                                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                             } label: {
-                                Text(v.capitalized)
+                                Text(store.t(v.capitalized))
                                     .font(.system(size: 14, weight: .semibold))
                                     .frame(maxWidth: .infinity).padding(.vertical, 11)
                                     .background(
@@ -180,6 +180,7 @@ struct SettingsScreen: View {
         }
         .sheet(isPresented: $showLanguagePicker) {
             LanguagePicker(selected: store.language) { store.setLanguage($0) }
+                .environmentObject(store)
                 .presentationDetents([.large])
         }
     }
@@ -187,6 +188,7 @@ struct SettingsScreen: View {
 
 /// Searchable language picker with an Auto (device) option + 180+ languages.
 struct LanguagePicker: View {
+    @EnvironmentObject var store: AppStore
     let selected: String
     let pick: (String) -> Void
     @Environment(\.dismiss) private var dismiss
@@ -204,19 +206,19 @@ struct LanguagePicker: View {
         NavigationStack {
             List {
                 if query.trimmingCharacters(in: .whitespaces).isEmpty {
-                    row(code: "auto", title: "Auto", subtitle: Languages.displayName("auto"))
+                    row(code: "auto", title: store.t("Auto"), subtitle: Languages.displayName("auto"))
                 }
                 ForEach(filtered) { lang in
                     row(code: lang.code, title: lang.native, subtitle: lang.name)
                 }
             }
             .listStyle(.plain)
-            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: "Search 180+ languages")
-            .navigationTitle("Language")
+            .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: store.t("Search 180+ languages"))
+            .navigationTitle(store.t("Language"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") { dismiss() }
+                    Button(store.t("Done")) { dismiss() }
                 }
             }
         }
@@ -243,6 +245,7 @@ struct LanguagePicker: View {
 }
 
 struct ChipRow: View {
+    @EnvironmentObject var store: AppStore
     let options: [String]
     let selected: String
     let pick: (String) -> Void
@@ -253,7 +256,7 @@ struct ChipRow: View {
                     pick(o)
                     UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 } label: {
-                    Text(o.capitalized)
+                    Text(store.t(o.capitalized))
                         .font(.system(size: 12, weight: .semibold))
                         .padding(.horizontal, 11).padding(.vertical, 7)
                         .background(
@@ -261,7 +264,7 @@ struct ChipRow: View {
                             in: Capsule()
                         )
                         .foregroundStyle(selected == o ? Color(uiColor: .systemBackground) : .primary)
-                }.buttonStyle(.plain)
+                }.buttonStyle(PressableButtonStyle())
             }
         }
     }

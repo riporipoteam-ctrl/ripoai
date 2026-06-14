@@ -32,6 +32,10 @@ final class AppStore: ObservableObject {
     @Published var projects: [Project] = []             // local projects (everyone)
     @Published var teamLog: [TeamLogEntry] = []         // persisted Agents room
     @Published var i18n: [String: String] = [:]         // English UI string -> translated
+    private var i18nPending: Set<String> = []           // queued for background translation
+    private var i18nTried: Set<String> = []             // already attempted (avoid re-querying / loops)
+    private var i18nInFlight = false
+    private var i18nFlushTask: Task<Void, Never>?
     @Published var agents: [CustomAgent] = []           // user-created AI agents
     @Published var teamAvatars: [String: String] = [:]  // built-in team agent id -> portrait URL
 
@@ -147,12 +151,45 @@ final class AppStore: ObservableObject {
         applyTranslations()
     }
 
-    /// Translate the whole UI: look a string up in the translation table.
-    func t(_ s: String) -> String { i18n[s] ?? s }
+    /// The language the UI should render in right now ("en" means no translation).
+    var activeLangCode: String { language == "auto" ? Languages.device().code : language }
 
-    /// Load cached translations for the active language and refresh in background.
+    /// Translate ANY wrapped UI string. Returns the cached translation instantly,
+    /// or the English original while a debounced background batch fetches the rest.
+    /// Wrapping a brand-new string anywhere in the UI is enough — it self-registers
+    /// and the whole interface translates, not just a fixed master list.
+    func t(_ s: String) -> String {
+        guard activeLangCode != "en", !s.isEmpty else { return s }
+        if let hit = i18n[s] { return hit }
+        register(s)
+        return s
+    }
+
+    /// Queue a string for translation if we don't have it yet.
+    private func register(_ s: String) {
+        let trimmed = s.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count > 1, i18n[s] == nil, !i18nPending.contains(s), !i18nTried.contains(s) else { return }
+        // Nothing to translate in pure numbers / symbols / emoji.
+        if trimmed.rangeOfCharacter(from: .letters) == nil { return }
+        i18nPending.insert(s)
+        scheduleFlush()
+    }
+
+    private func scheduleFlush() {
+        i18nFlushTask?.cancel()
+        i18nFlushTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 400_000_000)   // debounce a render's worth of t() calls
+            if Task.isCancelled { return }
+            await self?.flushPending()
+        }
+    }
+
+    /// Load cached translations for the active language and warm common strings.
     func applyTranslations() {
-        let target = language == "auto" ? Languages.device().code : language
+        i18nFlushTask?.cancel()
+        i18nPending.removeAll()
+        i18nTried.removeAll()
+        let target = activeLangCode
         guard target != "en" else { i18n = [:]; return }
         if let data = UserDefaults.standard.data(forKey: "askai.i18n.\(target)"),
            let cached = try? JSONDecoder().decode([String: String].self, from: data) {
@@ -160,26 +197,42 @@ final class AppStore: ObservableObject {
         } else {
             i18n = [:]
         }
-        Task { await fetchTranslations(target) }
+        for s in UIStrings.all { register(s) }   // pre-translate the most common labels
     }
 
-    private func fetchTranslations(_ code: String) async {
-        guard let lang = Languages.all.first(where: { $0.code == code }) else { return }
-        let list = UIStrings.all
-        if i18n.count >= list.count { return }   // already have a full set cached
-        let numbered = list.enumerated().map { "\($0.offset). \($0.element)" }.joined(separator: "\n")
-        let sys = "You are a professional app localizer. Translate each numbered UI label into \(lang.name) (\(lang.native)). Return ONLY a JSON array of strings — same order, exactly \(list.count) items, no comments. Keep translations short and natural for a mobile app. Preserve punctuation like '…' and symbols."
-        guard let out = try? await GroqClient.shared.complete(
+    private func flushPending() async {
+        guard !i18nInFlight else { return }
+        let target = activeLangCode
+        guard target != "en", let lang = Languages.all.first(where: { $0.code == target }) else {
+            i18nPending.removeAll(); return
+        }
+        let items = Array(i18nPending.filter { i18n[$0] == nil }.prefix(60))
+        guard !items.isEmpty else { return }
+        i18nInFlight = true
+        defer { i18nInFlight = false }
+
+        let numbered = items.enumerated().map { "\($0.offset). \($0.element)" }.joined(separator: "\n")
+        let sys = "You are a professional app localizer. Translate each numbered UI label into \(lang.name) (\(lang.native)). Return ONLY a JSON array of strings in the same order — translate item i to array position i, same number of items. Keep them short and natural for a mobile app interface. Preserve trailing punctuation like '…', placeholders and symbols. No comments, no notes."
+        if let out = try? await GroqClient.shared.complete(
             model: "llama-3.3-70b-versatile",
             messages: [Message(role: .system, text: sys), Message(role: .user, text: numbered)]),
-            let start = out.firstIndex(of: "["), let end = out.lastIndex(of: "]"),
-            let data = String(out[start...end]).data(using: .utf8),
-            let arr = try? JSONSerialization.jsonObject(with: data) as? [String],
-            arr.count == list.count else { return }
-        var d: [String: String] = [:]
-        for (i, s) in list.enumerated() where !arr[i].isEmpty { d[s] = arr[i] }
-        i18n = d
-        if let enc = try? JSONEncoder().encode(d) {
+           let start = out.firstIndex(of: "["), let end = out.lastIndex(of: "]"),
+           let data = String(out[start...end]).data(using: .utf8),
+           let arr = try? JSONSerialization.jsonObject(with: data) as? [String] {
+            var changed = false
+            for (i, original) in items.enumerated() where i < arr.count {
+                let tr = arr[i].trimmingCharacters(in: .whitespacesAndNewlines)
+                if !tr.isEmpty { i18n[original] = tr; changed = true }
+            }
+            if changed { persistI18n(target) }
+        }
+        for original in items { i18nPending.remove(original) }
+        i18nTried.formUnion(items)                     // don't re-query this language session
+        if !i18nPending.isEmpty { scheduleFlush() }   // keep draining the queue
+    }
+
+    private func persistI18n(_ code: String) {
+        if let enc = try? JSONEncoder().encode(i18n) {
             UserDefaults.standard.set(enc, forKey: "askai.i18n.\(code)")
         }
     }

@@ -6,6 +6,7 @@ import ReplayKit
 /// polls them, sending the latest to the vision model so AskAI can see and
 /// answer about whatever is on screen — across any app.
 struct ScreenVisionView: View {
+    @EnvironmentObject var store: AppStore
     @Environment(\.dismiss) private var dismiss
     @StateObject private var voice = VoiceOut()
 
@@ -57,8 +58,8 @@ struct ScreenVisionView: View {
                             Image(systemName: "rectangle.dashed.badge.record")
                                 .font(.system(size: 36)).foregroundStyle(.white.opacity(0.7))
                             Text(ScreenShare.isAvailable
-                                 ? "Tap “Share my screen”, choose AskAI Screen,\nthen return here — AskAI will see your screen."
-                                 : "Screen sharing needs the App Group enabled when\nyou sign the app. Live Camera works without it.")
+                                 ? store.t("Tap “Share my screen”, choose AskAI Screen,\nthen return here — AskAI will see your screen.")
+                                 : store.t("Screen sharing needs the App Group enabled when\nyou sign the app. Live Camera works without it."))
                                 .font(.system(size: 13)).foregroundStyle(.white.opacity(0.65))
                                 .multilineTextAlignment(.center)
                         }.padding(24)
@@ -70,7 +71,7 @@ struct ScreenVisionView: View {
                 if !answer.isEmpty || thinking {
                     HStack(alignment: .top, spacing: 10) {
                         Image(systemName: "sparkles").foregroundStyle(.white).font(.system(size: 15, weight: .bold))
-                        Text(thinking && answer.isEmpty ? "Looking…" : answer)
+                        Text(thinking && answer.isEmpty ? store.t("Looking…") : answer)
                             .font(.system(size: 15)).foregroundStyle(.white)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -87,7 +88,7 @@ struct ScreenVisionView: View {
 
                 // Ask
                 HStack(spacing: 10) {
-                    TextField("Ask about your screen…", text: $prompt)
+                    TextField(store.t("Ask about your screen…"), text: $prompt)
                         .font(.system(size: 15)).foregroundStyle(.white)
                         .padding(.horizontal, 14).padding(.vertical, 11)
                         .background(.white.opacity(0.12), in: Capsule()).tint(.white)
@@ -102,7 +103,7 @@ struct ScreenVisionView: View {
                 Button { toggleLive() } label: {
                     HStack(spacing: 8) {
                         Image(systemName: live ? "stop.fill" : "dot.radiowaves.left.and.right")
-                        Text(live ? "Stop live narration" : "Narrate my screen live")
+                        Text(live ? store.t("Stop live narration") : store.t("Narrate my screen live"))
                             .font(.system(size: 14, weight: .bold))
                     }
                     .foregroundStyle(live ? .red : .white)
