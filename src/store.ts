@@ -179,6 +179,12 @@ export const useStore = create<AppState>((set, get) => ({
 
     // Push any existing local data to the cloud (one-time), in the background.
     void migrateLocalToCloud(uid)
+
+    // Warm up AI avatars for the user's agents in the background so they're ready
+    // when Settings/Team render. No-ops for agents that already have an avatar.
+    import('./lib/agents')
+      .then(({ pregenerateAgentAvatars }) => pregenerateAgentAvatars(uid))
+      .catch(() => {})
   },
 
   resync: async () => {
