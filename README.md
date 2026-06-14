@@ -42,6 +42,30 @@ Firestore, Tailwind, Framer Motion and an iOS‑26 "Liquid Glass" design. Deploy
   custom instructions, memory, and data controls.
 - **History** — chats saved to Firestore, grouped by date, searchable, renamable.
 
+## Windows desktop app
+
+A native **Windows app** (Electron) lives in [`electron/`](electron/). It wraps the
+web app — so every website feature works — and adds desktop-only powers:
+
+- **Installable from GitHub Releases** with its own icon + Start-menu/desktop shortcuts.
+- **Auto-update** (electron-updater) — new releases install themselves; check manually in
+  **Settings → AskAI Desktop**.
+- **Local PC control** — ask AskAI to do things on your computer ("move the funny folder to
+  my Desktop", "make a folder and unzip this") and it acts via `pc-action` blocks. Safe file
+  operations inside your folders run automatically; risky actions and shell commands ask you to
+  confirm (tune the allowlist in Settings).
+
+Build it locally:
+
+```bash
+cd electron && npm install && npm start          # run the desktop app (loads the live site)
+ASKAI_URL=http://localhost:5173 npm start        # or point it at your local dev server
+npm run dist                                      # build an installer into electron/release/
+```
+
+CI builds + publishes the installer via the **Build Windows App** workflow (push a `*-win`
+tag or run it from the Actions tab).
+
 ## Run locally
 
 ```bash

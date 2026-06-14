@@ -22,6 +22,7 @@ import { runAgentBrowserTask, type AgentBrowserEvent, type AgentBrowserState } f
 import { extractMemories } from '../lib/memory'
 import { installSkillFromUrl, detectSkillInstall, detectSlashSkill, findSkill, autoPickSkill } from '../lib/skills'
 import { wantsSubagents, runSubagents, type SubagentStatus } from '../lib/subagents'
+import { isDesktop, getDesktopInfo, desktopCapabilityPrompt } from '../lib/desktop'
 import { markPending, clearPending, isPending, loadPendingRuns } from '../lib/pendingRuns'
 import { haptic } from './useSpeech'
 import { isNative } from '../lib/native'
@@ -617,6 +618,13 @@ export function useChat(chatId: string | undefined) {
         if (!activeSkill) activeSkill = await autoPickSkill(user.uid, lastText, complete)
         if (activeSkill)
           system += `\n\n### Active skill: ${activeSkill.name}\nFollow these instructions for this response:\n${activeSkill.content}`
+      }
+
+      // Desktop control: when running inside the AskAI Windows app, let AskAI act
+      // on the user's PC (move/organize files, run commands) via pc-action blocks.
+      if (!opts.systemOverride && !opts.image && isDesktop()) {
+        const dinfo = await getDesktopInfo()
+        if (dinfo) system += '\n\n' + desktopCapabilityPrompt(dinfo)
       }
 
       // Premium 3D website mode when the user asks to build a site.

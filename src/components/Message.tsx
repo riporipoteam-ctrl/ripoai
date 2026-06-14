@@ -5,6 +5,8 @@ import { Markdown } from './Markdown'
 import Reasoning from './Reasoning'
 import AgentTrace from './AgentTrace'
 import SubagentTrace from './SubagentTrace'
+import DesktopActionCard from './DesktopActionCard'
+import { parsePcActions, stripPcActions } from '../lib/desktop'
 import AgentBrowserPanel from './AgentBrowserPanel'
 import ImageCard from './ImageCard'
 import WebImagesCard from './WebImagesCard'
@@ -72,6 +74,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
   ).webImages
   const agentBrowser = (message as StoredMessage & { agentBrowser?: AgentBrowserState }).agentBrowser
   const subagents = message.subagents
+  const pcActions = message.role !== 'user' ? parsePcActions(message.content) : []
 
   function copy() {
     navigator.clipboard.writeText(message.content)
@@ -278,8 +281,11 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
         {message.deck && <SlidesCard deck={message.deck} />}
         {message.content && (
           <div data-answer className={liveStreaming ? 'stream-caret' : ''}>
-            <Markdown>{message.content}</Markdown>
+            <Markdown>{pcActions.length ? stripPcActions(message.content) : message.content}</Markdown>
           </div>
+        )}
+        {!isUser && !liveStreaming && pcActions.length > 0 && (
+          <DesktopActionCard actions={pcActions} messageId={message.id} />
         )}
         {skillFromBlock && !liveStreaming && (
           <button

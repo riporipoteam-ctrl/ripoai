@@ -1,0 +1,35 @@
+name: Build Windows App
+
+# Builds the AskAI Windows desktop app (Electron) and publishes the installer to
+# a GitHub Release, which also powers in-app auto-update (electron-updater reads
+# the same release). Run it from the Actions tab (Run workflow) or by pushing a
+# tag like v1.0.0-win.
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['*-win']
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: electron
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install desktop app dependencies
+        run: npm install
+
+      - name: Build & publish installer
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win --publish always

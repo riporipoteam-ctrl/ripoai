@@ -30,6 +30,17 @@ import { Calendar as CalIcon, Cloud, Map as MapIcon, Bitcoin, Globe, Wand2 } fro
 import { loadSkills, deleteSkill, installSkillFromUrl, type Skill } from '../lib/skills'
 import { isNative } from '../lib/native'
 import { isPuterFableEnabled, setPuterFableEnabled, isPuterLoaded } from '../lib/puter'
+import {
+  isDesktop,
+  getDesktopInfo,
+  getDesktopSettings,
+  setDesktopSettings,
+  checkForDesktopUpdate,
+  installDesktopUpdate,
+  onDesktopUpdate,
+  type DesktopInfo,
+  type DesktopUpdate,
+} from '../lib/desktop'
 import { loadAgents, upsertAgent, deleteAgent, newAgent, setPendingAgentChat, ensureAgentAvatar, agentCanBrowse, type Agent } from '../lib/agents'
 import AgentProfile from './AgentProfile'
 import { Bot, Plus as PlusIcon, MessageSquare, Globe2 } from 'lucide-react'
@@ -77,6 +88,22 @@ export default function Settings() {
   const [fableOn, setFableOn] = useState(isPuterFableEnabled())
   const [fableBusy, setFableBusy] = useState(false)
   const [fableErr, setFableErr] = useState('')
+  const desktop = isDesktop()
+  const [dInfo, setDInfo] = useState<DesktopInfo | null>(null)
+  const [dAutoRun, setDAutoRun] = useState(true)
+  const [dAllow, setDAllow] = useState('')
+  const [dUpdate, setDUpdate] = useState<DesktopUpdate | null>(null)
+
+  useEffect(() => {
+    if (!desktop) return
+    getDesktopInfo().then(setDInfo)
+    getDesktopSettings().then((s) => {
+      if (!s) return
+      setDAutoRun(s.autoRunFileOps !== false)
+      setDAllow((s.allowCommands || []).join(', '))
+    })
+    return onDesktopUpdate(setDUpdate)
+  }, [desktop])
 
   async function toggleFable() {
     if (fableBusy) return
@@ -398,6 +425,66 @@ export default function Settings() {
                     <Toggle on={fableOn} onClick={isPuterLoaded() ? toggleFable : () => setFableErr('Puter is still loading — try again in a moment.')} />
                   </div>
                   {fableBusy && <p className="mt-2 text-xs text-muted">Setting up Puter…</p>}
+                </div>
+              )}
+
+              {desktop && (
+                <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3.5">
+                  <div className="text-sm font-semibold">AskAI Desktop</div>
+                  <p className="mt-1 text-xs text-muted">
+                    Running as the Windows app{dInfo ? ` v${dInfo.appVersion}` : ''}. AskAI can act on this PC —
+                    organize files, run commands — when you ask. Safe file operations run automatically; risky
+                    actions and commands ask you to confirm.
+                  </p>
+
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold">Auto-run safe file operations</div>
+                      <div className="text-xs text-muted">Move/copy/create inside your folders without a prompt.</div>
+                    </div>
+                    <Toggle
+                      on={dAutoRun}
+                      onClick={() => {
+                        const v = !dAutoRun
+                        setDAutoRun(v)
+                        setDesktopSettings({ autoRunFileOps: v })
+                      }}
+                    />
+                  </div>
+
+                  <label className="mt-3 block text-sm font-semibold">Always-allow commands</label>
+                  <p className="mb-1.5 text-xs text-muted">
+                    Comma-separated commands that may run without confirming (e.g. <code className="rounded bg-white/10 px-1">echo, dir, mkdir</code>). Everything else still asks.
+                  </p>
+                  <input
+                    value={dAllow}
+                    onChange={(e) => setDAllow(e.target.value)}
+                    onBlur={() =>
+                      setDesktopSettings({
+                        allowCommands: dAllow.split(',').map((s) => s.trim()).filter(Boolean),
+                      })
+                    }
+                    placeholder="echo, dir, mkdir"
+                    className="field w-full text-sm"
+                  />
+
+                  <div className="mt-3 flex items-center gap-2">
+                    <button
+                      onClick={() => checkForDesktopUpdate()}
+                      className="rounded-2xl border border-white/15 px-3 py-2 text-sm font-semibold hover:bg-white/5"
+                    >
+                      Check for updates
+                    </button>
+                    {dUpdate?.state === 'available' && <span className="text-xs text-muted">Downloading v{dUpdate.version}…</span>}
+                    {dUpdate?.state === 'downloading' && <span className="text-xs text-muted">Downloading… {dUpdate.percent}%</span>}
+                    {dUpdate?.state === 'ready' && (
+                      <button onClick={() => installDesktopUpdate()} className="accent-gradient-bg rounded-2xl px-3 py-2 text-sm font-semibold text-white">
+                        Restart & update to v{dUpdate.version}
+                      </button>
+                    )}
+                    {dUpdate?.state === 'error' && <span className="text-xs text-amber-400">Update check failed.</span>}
+                    {!dUpdate && <span className="text-xs text-muted">Up to date.</span>}
+                  </div>
                 </div>
               )}
 
