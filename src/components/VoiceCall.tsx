@@ -5,6 +5,14 @@ import { streamChat, type ChatMessage, type ContentPart } from '../lib/groq'
 import { getModel, type ModelTier } from '../lib/models'
 import { buildSystemPrompt } from '../lib/prompt'
 import { hapticPattern, resolveVoice, getVoicePrefs } from '../hooks/useSpeech'
+import {
+  nativeVoiceAvailable,
+  ensureSpeechPermission,
+  nativeListenOnce,
+  nativeStopListening,
+  nativeSpeak,
+  nativeStopSpeaking,
+} from '../lib/nativeVoice'
 import { saveChat, type StoredMessage } from '../lib/db'
 import { useStore } from '../store'
 
@@ -57,9 +65,14 @@ export default function VoiceCall({
   const [caption, setCaption] = useState('')
   const [userSaid, setUserSaid] = useState('')
   const [manual, setManual] = useState('')
-  const sttSupported =
+  const webStt =
     typeof window !== 'undefined' &&
     !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
+  // Native speech (Capacitor plugins) unlocks hands-free voice inside the app,
+  // where the WebView has no usable Web Speech API. Detected async on open.
+  const nativeRef = useRef(false)
+  const [nativeReady, setNativeReady] = useState(false)
+  const sttSupported = webStt || nativeReady
   const recRef = useRef<any>(null)
   const historyRef = useRef<ChatMessage[]>([])
   const activeRef = useRef(false)
@@ -115,37 +128,25 @@ export default function VoiceCall({
       voiceRef.current = pickVoice()
     })
     hapticPattern([20, 60, 20])
+    ;(async () => {
+      // Prefer native speech (the app's WebView lacks the Web Speech API).
+      const native = await nativeVoiceAvailable().catch(() => false)
+      if (native) await ensureSpeechPermission().catch(() => false)
+      if (!activeRef.current) return
+      nativeRef.current = native
+      setNativeReady(native)
+      const canHear = native || webStt
 
-    const sttSupported =
-      typeof window !== 'undefined' &&
-      !!((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition)
-
-    // Greet immediately — this runs inside the tap gesture, which unlocks
-    // speech synthesis on iOS, and gives audible confirmation the call started.
-    const greeting = sttSupported
-      ? `Hey, I'm AskAI. I'm listening — what's up?`
-      : `Hey, I'm AskAI. Heads up: this browser can't hear you — open AskAI in Chrome to talk. I can still read out loud.`
-    setPhase('speaking')
-    setCaption(greeting)
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel()
-      const u = new SpeechSynthesisUtterance(greeting)
-      if (voiceRef.current) u.voice = voiceRef.current
-      const gp = getVoicePrefs()
-      u.rate = gp.rate || 1.03
-      u.pitch = gp.pitch || 1.05
-      u.onend = () => {
-        if (!activeRef.current) return
-        if (sttSupported) startListening()
-        else setCaption("This browser doesn't support voice input. Open AskAI in Chrome to talk to me.")
-      }
-      u.onerror = () => {
-        if (activeRef.current && sttSupported) startListening()
-      }
-      window.speechSynthesis.speak(u)
-    } else if (sttSupported) {
-      startListening()
-    }
+      const greeting = canHear
+        ? `Hey, I'm AskAI. I'm listening — what's up?`
+        : `Hey, I'm AskAI. Heads up: this browser can't hear you — open AskAI in Chrome to talk. I can still read out loud.`
+      setPhase('speaking')
+      setCaption(greeting)
+      await speakUnified(greeting)
+      if (!activeRef.current) return
+      if (canHear) startListening()
+      else setCaption("This browser doesn't support voice input. Open AskAI in Chrome, or use the box below.")
+    })()
 
     return () => {
       activeRef.current = false
@@ -155,13 +156,56 @@ export default function VoiceCall({
         /* ignore */
       }
       window.speechSynthesis?.cancel()
+      void nativeStopListening()
+      void nativeStopSpeaking()
       streamRef.current?.getTracks().forEach((t) => t.stop())
       streamRef.current = null
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
+  // Speak via native TTS in the app, else the Web Speech API. Resolves on end.
+  function speakUnified(text: string): Promise<void> {
+    const clean = text.replace(/[*_#`>]/g, '')
+    const vp = getVoicePrefs()
+    if (nativeRef.current) {
+      return nativeSpeak(clean, { rate: vp.rate || 1.0, pitch: vp.pitch || 1.0 })
+    }
+    return new Promise((resolve) => {
+      if (!window.speechSynthesis) return resolve()
+      window.speechSynthesis.cancel()
+      const u = new SpeechSynthesisUtterance(clean)
+      if (voiceRef.current) u.voice = voiceRef.current
+      u.rate = vp.rate || 1.03
+      u.pitch = vp.pitch || 1.05
+      u.onend = () => resolve()
+      u.onerror = () => resolve()
+      window.speechSynthesis.speak(u)
+    })
+  }
+
+  // One native listening turn, looped — the app's hands-free equivalent of the
+  // Web SpeechRecognition flow below.
+  async function listenNative() {
+    if (!activeRef.current) return
+    setPhase('listening')
+    setCaption('Listening…')
+    setUserSaid('')
+    const said = await nativeListenOnce((t) => setUserSaid(t))
+    if (!activeRef.current) return
+    if (said) {
+      setUserSaid(said)
+      respond(said)
+    } else {
+      listenNative()
+    }
+  }
+
   function startListening() {
+    if (nativeRef.current) {
+      void listenNative()
+      return
+    }
     const Ctor = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!Ctor) {
       setCaption('Voice input is not supported in this browser. Try Chrome.')
@@ -248,23 +292,9 @@ export default function VoiceCall({
   function speakThenListen(text: string) {
     setPhase('speaking')
     setCaption(text)
-    if (!window.speechSynthesis) {
-      startListening()
-      return
-    }
-    window.speechSynthesis.cancel()
-    const u = new SpeechSynthesisUtterance(text.replace(/[*_#`>]/g, ''))
-    if (voiceRef.current) u.voice = voiceRef.current
-    const vp = getVoicePrefs()
-    u.rate = vp.rate || 1.03
-    u.pitch = vp.pitch || 1.05
-    u.onend = () => {
+    speakUnified(text).then(() => {
       if (activeRef.current) startListening()
-    }
-    u.onerror = () => {
-      if (activeRef.current) startListening()
-    }
-    window.speechSynthesis.speak(u)
+    })
   }
 
   const ringColor =

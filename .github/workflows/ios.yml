@@ -67,6 +67,16 @@ jobs:
           npx cap add ios
           npx cap sync ios
 
+      - name: Add microphone & speech usage strings (voice calls)
+        run: |
+          PLIST=ios/App/App/Info.plist
+          MIC="AskAI uses your microphone for voice calls."
+          SPEECH="AskAI uses speech recognition to understand you on voice calls."
+          /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string \"$MIC\"" "$PLIST" \
+            || /usr/libexec/PlistBuddy -c "Set :NSMicrophoneUsageDescription \"$MIC\"" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :NSSpeechRecognitionUsageDescription string \"$SPEECH\"" "$PLIST" \
+            || /usr/libexec/PlistBuddy -c "Set :NSSpeechRecognitionUsageDescription \"$SPEECH\"" "$PLIST"
+
       - name: Generate AskAI app icon & splash
         run: |
           npm install @capacitor/assets --no-save
