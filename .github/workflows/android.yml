@@ -8,7 +8,10 @@ on:
   workflow_dispatch:
   push:
     tags: ['*-android']
-    branches: ['claude/askai-redesign-features-c73ka5', 'claude/ripoai-web-app-U0rvk']
+    branches:
+      - 'claude/askai-redesign-features-c73ka5'
+      - 'claude/ripoai-web-app-U0rvk'
+      - 'claude/askai-agents-prebuilt-skills-wqk4ea'
     paths:
       - '.github/workflows/android.yml'
       - 'capacitor.config.ts'
@@ -16,6 +19,7 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'public/**'
+      - 'scripts/**'
       - 'src/**'
       - 'tailwind.config.js'
       - 'vite.config.ts'
@@ -69,6 +73,19 @@ jobs:
             --splashBackgroundColorDark '#1e1d1b'
           npx cap sync android
 
+      - name: Compute version
+        id: ver
+        run: |
+          # Monotonic versionCode so installed apps can detect newer APKs.
+          echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          echo "name=1.0.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
+      - name: Patch in APK self-updater (version, permission, plugin)
+        env:
+          APK_VERSION_CODE: ${{ steps.ver.outputs.code }}
+          APK_VERSION_NAME: ${{ steps.ver.outputs.name }}
+        run: node scripts/patch-android-updater.mjs
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
@@ -95,4 +112,10 @@ jobs:
           files: AskAI.apk
           body: |
             Latest AskAI Android APK (debug build).
+
+            versionCode: ${{ steps.ver.outputs.code }}
+            versionName: ${{ steps.ver.outputs.name }}
+
             Install: download AskAI.apk on your phone, allow "install from unknown sources", and open it.
+            Already have AskAI installed? The app updates itself — you'll get an
+            "Update available" prompt in-app and it installs in a tap.
