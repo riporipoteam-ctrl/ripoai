@@ -3,9 +3,9 @@
 @tailwind utilities;
 
 :root {
-  /* Default = ChatGPT-style neutral light theme (mono black/white accent). */
-  --accent: 26 26 26;
-  --accent-soft: 26 26 26;
+  /* Bold-modern light theme — vibrant indigo→violet accent (was mono black). */
+  --accent: 88 101 242;
+  --accent-soft: 130 99 245;
   --accent-ink: 255 255 255;
   --surface: 247 247 248;
   --surface-raised: 255 255 255;
@@ -24,10 +24,10 @@
 }
 
 .dark {
-  /* ChatGPT-style neutral dark theme (#212121). */
-  --accent: 242 242 242;
-  --accent-soft: 242 242 242;
-  --accent-ink: 26 26 26;
+  /* Bold-modern dark theme — luminous indigo accent on near-black. */
+  --accent: 120 134 255;
+  --accent-soft: 158 126 255;
+  --accent-ink: 255 255 255;
   --surface: 33 33 33;
   --surface-raised: 47 47 47;
   --ink: 236 236 238;
