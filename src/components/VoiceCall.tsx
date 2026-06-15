@@ -15,12 +15,25 @@ import {
 } from '../lib/nativeVoice'
 import { saveChat, type StoredMessage } from '../lib/db'
 import { useStore } from '../store'
+import { SpeechQueue, puterSynthesize, splitSentences, cleanForSpeech } from '../lib/voice'
+import {
+  getAudioContext,
+  getLevel,
+  startThinkingSfx,
+  stopThinkingSfx,
+  playStartCue,
+  playListenCue,
+  disposeSfx,
+} from '../lib/voiceSfx'
 
 type Phase = 'connecting' | 'listening' | 'thinking' | 'speaking'
 
 function pickVoice(): SpeechSynthesisVoice | null {
   return resolveVoice()
 }
+
+// Per-bar amplitude multipliers — taller in the centre for a natural waveform.
+const WAVE_BARS = [0.55, 0.8, 1.15, 1.35, 1.15, 0.8, 0.55]
 
 export default function VoiceCall({
   open,
@@ -78,6 +91,15 @@ export default function VoiceCall({
   const activeRef = useRef(false)
   const voiceRef = useRef<SpeechSynthesisVoice | null>(null)
 
+  // Gapless streaming speech queue (Puter neural TTS → native/web fallback).
+  const queueRef = useRef<SpeechQueue | null>(null)
+  // Live audio level (0..1) for the reactive waveform / orb. Kept in a ref and
+  // mirrored to state on a rAF loop so we don't re-render on every frame's data
+  // but the CSS vars still update smoothly.
+  const levelRef = useRef(0)
+  const [level, setLevel] = useState(0)
+  const rafRef = useRef<number | null>(null)
+
   // Live camera vision
   const [camOn, setCamOn] = useState(false)
   const [facing, setFacing] = useState<'user' | 'environment'>('environment')
@@ -128,6 +150,26 @@ export default function VoiceCall({
       voiceRef.current = pickVoice()
     })
     hapticPattern([20, 60, 20])
+
+    // Unlock/resume the Web Audio context from this user-gesture-driven open,
+    // and build the gapless speech queue. The queue tries Puter neural TTS for
+    // each sentence and falls back to native/web TTS if Puter is unavailable.
+    getAudioContext()
+    queueRef.current = new SpeechQueue(
+      (t) => puterSynthesize(t),
+      (t) => speakUnified(t),
+    )
+
+    // rAF loop: read the live audio level and mirror it to state for the
+    // reactive waveform / orb. Cheap enough at 60fps for a single number.
+    const loop = () => {
+      const lvl = getLevel()
+      levelRef.current = lvl
+      // Only re-render when it moves meaningfully to avoid churn.
+      setLevel((prev) => (Math.abs(prev - lvl) > 0.03 ? lvl : prev))
+      rafRef.current = requestAnimationFrame(loop)
+    }
+    rafRef.current = requestAnimationFrame(loop)
     ;(async () => {
       // Prefer native speech (the app's WebView lacks the Web Speech API).
       const native = await nativeVoiceAvailable().catch(() => false)
@@ -142,7 +184,8 @@ export default function VoiceCall({
         : `Hey, I'm AskAI. Heads up: this browser can't hear you — open AskAI in Chrome to talk. I can still read out loud.`
       setPhase('speaking')
       setCaption(greeting)
-      await speakUnified(greeting)
+      playStartCue()
+      await speakQueued(greeting)
       if (!activeRef.current) return
       if (canHear) startListening()
       else setCaption("This browser doesn't support voice input. Open AskAI in Chrome, or use the box below.")
@@ -155,6 +198,12 @@ export default function VoiceCall({
       } catch {
         /* ignore */
       }
+      queueRef.current?.stop()
+      queueRef.current = null
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current)
+      rafRef.current = null
+      stopThinkingSfx()
+      disposeSfx()
       window.speechSynthesis?.cancel()
       void nativeStopListening()
       void nativeStopSpeaking()
@@ -184,6 +233,30 @@ export default function VoiceCall({
     })
   }
 
+  // Speak a complete piece of text through the gapless queue, split into
+  // sentences, resolving once everything has finished playing. Used for the
+  // greeting and as the final flush of a streamed reply.
+  function speakQueued(text: string): Promise<void> {
+    const q = queueRef.current
+    if (!q) return speakUnified(text)
+    const clean = cleanForSpeech(text)
+    if (!clean) return Promise.resolve()
+    const { chunks, rest } = splitSentences(clean)
+    ;[...chunks, rest].forEach((c) => c.trim() && q.push(c))
+    return waitForQueueIdle()
+  }
+
+  // Resolve when the speech queue has drained (or the call ends).
+  function waitForQueueIdle(): Promise<void> {
+    return new Promise((resolve) => {
+      const check = () => {
+        if (!activeRef.current || !queueRef.current?.active) return resolve()
+        setTimeout(check, 80)
+      }
+      check()
+    })
+  }
+
   // One native listening turn, looped — the app's hands-free equivalent of the
   // Web SpeechRecognition flow below.
   async function listenNative() {
@@ -191,6 +264,7 @@ export default function VoiceCall({
     setPhase('listening')
     setCaption('Listening…')
     setUserSaid('')
+    playListenCue()
     const said = await nativeListenOnce((t) => setUserSaid(t))
     if (!activeRef.current) return
     if (said) {
@@ -219,6 +293,7 @@ export default function VoiceCall({
     let finalText = ''
     setPhase('listening')
     setCaption('Listening…')
+    playListenCue()
     rec.onresult = (e: any) => {
       let interim = ''
       for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -272,30 +347,79 @@ export default function VoiceCall({
         ] as ContentPart[],
       }
     }
+    // Soft "thinking / searching" sound cues until the first words come back.
+    startThinkingSfx()
+
+    const q = queueRef.current
     let answer = ''
+    let buffer = '' // unspoken tail not yet ending a sentence
+    let startedSpeaking = false
+
+    // As tokens stream in, peel off complete sentences and speak them right
+    // away — latency becomes "time to first sentence", not the whole reply.
+    const onToken = (delta: string) => {
+      if (!activeRef.current) return
+      answer += delta
+      buffer += delta
+      const { chunks, rest } = splitSentences(buffer)
+      buffer = rest
+      if (chunks.length && q) {
+        if (!startedSpeaking) {
+          startedSpeaking = true
+          stopThinkingSfx()
+          playStartCue()
+          setPhase('speaking')
+        }
+        setCaption(answer)
+        chunks.forEach((c) => q.push(c))
+      }
+    }
+
     try {
       const res = await streamChat({
         model: m.groqModel,
         messages: msgs,
         temperature: 0.7,
         maxTokens: 400,
+        onToken,
       })
-      answer = res.content
+      // Ensure we have the canonical full text (handles non-streaming providers).
+      if (res.content && res.content.length > answer.length) answer = res.content
     } catch {
       answer = 'Sorry, I had trouble responding. Could you say that again?'
     }
     if (!activeRef.current) return
+    stopThinkingSfx()
     historyRef.current.push({ role: 'assistant', content: answer })
-    speakThenListen(answer)
+
+    // Flush: if streaming never produced chunks (non-streaming provider or an
+    // error message), speak the whole answer now. Otherwise just speak whatever
+    // tail remains, then wait for the queue to drain before listening again.
+    if (!startedSpeaking) {
+      speakThenListen(answer)
+      return
+    }
+    setPhase('speaking')
+    setCaption(answer)
+    const tail = cleanForSpeech(buffer)
+    if (tail && q) q.push(tail)
+    waitForQueueIdle().then(() => {
+      if (activeRef.current) startListening()
+    })
   }
 
   function speakThenListen(text: string) {
     setPhase('speaking')
     setCaption(text)
-    speakUnified(text).then(() => {
+    speakQueued(text).then(() => {
       if (activeRef.current) startListening()
     })
   }
+
+  // Only let the live level drive the visuals while speaking/listening, so the
+  // orb is calm while connecting/thinking.
+  const reactiveLevel = phase === 'speaking' || phase === 'listening' ? level : 0
+  const waveActive = phase === 'speaking' || phase === 'listening'
 
   const ringColor =
     phase === 'listening' ? 'from-emerald-400 to-cyan-400'
@@ -335,6 +459,19 @@ export default function VoiceCall({
               />
             ) : (
               <>
+                {/* Audio-reactive halo — scales with the live spoken/heard level. */}
+                <div
+                  className={`vc-orb-halo bg-gradient-to-br ${ringColor}`}
+                  style={{ ['--amp' as any]: reactiveLevel }}
+                />
+                {/* Speaking ripples. */}
+                {phase === 'speaking' && (
+                  <>
+                    <span className="vc-ripple" />
+                    <span className="vc-ripple vc-ripple--2" />
+                    <span className="vc-ripple vc-ripple--3" />
+                  </>
+                )}
                 <motion.div
                   className={`h-44 w-44 rounded-full bg-gradient-to-br ${ringColor} blur-xl`}
                   animate={{
@@ -356,6 +493,31 @@ export default function VoiceCall({
               <p className="mb-3 text-sm text-muted">“{userSaid}”</p>
             )}
             <p className="min-h-[3rem] text-lg font-medium leading-relaxed">{caption}</p>
+
+            {/* Live feedback: thinking dots, or a reactive talking/listening waveform. */}
+            <div className="mt-3 flex h-14 items-center justify-center">
+              {phase === 'thinking' ? (
+                <div className="vc-thinking" aria-label="Thinking">
+                  <span className="vc-thinking__dot" />
+                  <span className="vc-thinking__dot" />
+                  <span className="vc-thinking__dot" />
+                </div>
+              ) : waveActive ? (
+                <div
+                  className="vc-wave"
+                  data-idle={reactiveLevel < 0.04 ? 'true' : 'false'}
+                  aria-hidden
+                >
+                  {WAVE_BARS.map((mult, i) => (
+                    <span
+                      key={i}
+                      className="vc-wave__bar"
+                      style={{ ['--amp' as any]: Math.min(1, reactiveLevel * mult) }}
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </div>
 
             {!sttSupported && (
               <form
