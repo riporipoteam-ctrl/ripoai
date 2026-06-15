@@ -1,3 +1,5 @@
+import { isNative } from './native'
+
 export type AgentBrowserStatus = 'idle' | 'running' | 'done' | 'error' | 'unavailable'
 
 export interface AgentBrowserEvent {
@@ -162,7 +164,18 @@ export async function runAgentBrowserTask(
 // ============================================================================
 
 const MAX_STEPS = 12
-const READER_TIMEOUT = 14000
+// Per-fetch read timeout. The browse loop runs through CORS proxies (Jina /
+// allorigins / DuckDuckGo / thum.io) that are noticeably less reliable from
+// inside the native WKWebView/Android WebView than from a desktop browser, so
+// keep each request short there to avoid stacking up multi-second stalls.
+const READER_TIMEOUT = isNative ? 9000 : 14000
+// Hard wall-clock budget for the whole browse loop. The agent reply is gated
+// behind this phase (it runs inline before the model streams), so it must never
+// be able to block the answer indefinitely — on native, where the third-party
+// proxies frequently hang, an unbounded loop is exactly why agents appeared to
+// "never respond". When the budget is hit we stop browsing and let the model
+// answer with whatever (if anything) was gathered.
+const BROWSE_BUDGET_MS = isNative ? 45000 : 90000
 
 function shotUrl(url: string): string {
   // thum.io renders on demand and returns the REAL page image (mshots often
@@ -183,6 +196,21 @@ function fetchTimeout(url: string, signal?: AbortSignal, ms = READER_TIMEOUT): P
   const t = setTimeout(() => ac.abort(), ms)
   signal?.addEventListener('abort', () => ac.abort(), { once: true })
   return fetch(url, { signal: ac.signal }).finally(() => clearTimeout(t))
+}
+
+/** Quick reachability probe for the read proxy. On native WebViews the CORS
+ *  proxies are sometimes blocked outright (ATS / network policy); when that's
+ *  the case we want to find out in ~4s and skip browsing entirely rather than
+ *  burning the whole budget on doomed requests while the user waits. Returns
+ *  true if the web is reachable, false if browsing should be skipped. */
+async function browsingReachable(signal?: AbortSignal): Promise<boolean> {
+  try {
+    const res = await fetchTimeout('https://r.jina.ai/https://example.com', signal, 4500)
+    return res.ok
+  } catch (e: any) {
+    if (e?.name === 'AbortError' && signal?.aborted) throw e
+    return false
+  }
 }
 
 /** Read a page like a human would: full text content, title included. */
@@ -272,6 +300,9 @@ export async function runLocalBrowserAgent(
   const { signal, onEvent } = opts
   const events: AgentBrowserEvent[] = []
   const visited: { title: string; url: string; excerpt: string }[] = []
+  // Track what we've already opened so a confused model can't burn the budget
+  // re-reading the same page (or re-running the same search) over and over.
+  const openedUrls = new Set<string>()
   let currentUrl = ''
   let currentTitle = ''
   let screenshot = ''
@@ -294,6 +325,22 @@ export async function runLocalBrowserAgent(
 
   emit({ type: 'start', label: 'Launching AskAI browser' })
 
+  const deadline = Date.now() + BROWSE_BUDGET_MS
+  const outOfTime = () => Date.now() > deadline
+
+  // Preflight: if the read proxies aren't reachable (common inside the native
+  // app's WebView), don't spin — return 'unavailable' immediately so the model
+  // still answers right away from its own knowledge instead of the user staring
+  // at a hung browser panel.
+  if (!(await browsingReachable(signal))) {
+    emit({ type: 'error', label: 'Live browsing is unavailable here' })
+    return {
+      status: 'unavailable',
+      events,
+      error: 'Live web browsing could not be reached from this device — answering directly.',
+    }
+  }
+
   const directUrl = prompt.match(/https?:\/\/[^\s)"']+/i)?.[0]?.replace(/[),.]+$/, '')
 
   const decideSystem = `You are AskAI Agent controlling a real web browser to complete the user's task.
@@ -305,6 +352,9 @@ Rules: BE THOROUGH — real tasks need several pages, comparisons and cross-chec
 
   for (let step = 0; step < MAX_STEPS; step++) {
     aborted()
+    // Budget exhausted mid-loop: stop browsing and summarize what we have so the
+    // reply is never blocked past BROWSE_BUDGET_MS.
+    if (outOfTime()) break
     const context = [
       `TASK: ${prompt}`,
       visited.length
@@ -347,7 +397,7 @@ Rules: BE THOROUGH — real tasks need several pages, comparisons and cross-chec
           : { action: 'done' }
     }
 
-    if (decision.action === 'done' && visited.length < 2 && step < MAX_STEPS - 2) {
+    if (decision.action === 'done' && visited.length < 2 && step < MAX_STEPS - 2 && !outOfTime()) {
       // Too hasty — it hasn't actually read enough. Force more research.
       decision = visited.length || searchLinks.length
         ? { action: 'open', url: (searchLinks[0]?.url ?? visited[0]?.url) as string }
@@ -412,6 +462,12 @@ Rules: BE THOROUGH — real tasks need several pages, comparisons and cross-chec
 
     if (decision.action === 'open' && decision.url) {
       const url = decision.url
+      // Already read this page — don't waste a step/round-trip re-opening it.
+      if (openedUrls.has(url)) {
+        searchLinks = searchLinks.filter((l) => l.url !== url)
+        continue
+      }
+      openedUrls.add(url)
       emit({ type: 'click', label: `Clicking ${hostOf(url)}`, url })
       try {
         const page = await readPage(url, signal)
