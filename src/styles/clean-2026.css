@@ -1,0 +1,247 @@
+/* ============================================================
+   ✦ CLEAN 2026 — calm, minimal, native-feeling redesign.
+   Loads LAST so it wins over every earlier layer (globals,
+   glass, redesign, native-app, bold-2026 …). The brief: make
+   AskAI feel like the ChatGPT iOS app — lots of whitespace,
+   one restrained accent, flat surfaces, almost no competing
+   motion. This file deliberately tones down the busy glass +
+   gradient + aurora work that made the UI feel "dizzy".
+   Applies to web AND the native shell (html.native).
+   ============================================================ */
+
+/* ---- 1. Calm the background ------------------------------------------------
+   Kill the animated multi-gradient aurora + drifting orbs. Replace with a
+   single, almost-flat surface so nothing competes with the content. */
+.aurora,
+html.native .aurora {
+  background: rgb(var(--surface)) !important;
+  animation: none !important;
+}
+.aurora::before,
+.aurora::after,
+html.native .aurora::before,
+html.native .aurora::after {
+  /* One whisper-faint wash near the top so it isn't dead-flat, no motion. */
+  background:
+    radial-gradient(120% 80% at 50% -10%, rgb(var(--accent) / 0.05), transparent 60%) !important;
+  opacity: 1 !important;
+  filter: none !important;
+  animation: none !important;
+}
+.aurora::after,
+html.native .aurora::after {
+  background: none !important;
+}
+.dark .aurora::before { opacity: 1 !important; }
+.dark .aurora::after { opacity: 1 !important; }
+
+/* ---- 2. Flatten the glass --------------------------------------------------
+   The "liquid glass" specular borders + heavy drop shadows are the main source
+   of visual noise. Strip them back to clean, near-opaque cards with a hairline
+   border and at most a soft shadow on true overlays. */
+.glass {
+  background: rgb(var(--surface-raised) / 0.92) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgb(var(--ink) / 0.07) !important;
+  box-shadow: none !important;
+}
+.glass-strong {
+  background: rgb(var(--surface-raised) / 0.98) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+  backdrop-filter: blur(18px) !important;
+  border: 1px solid rgb(var(--ink) / 0.08) !important;
+  box-shadow: 0 12px 40px -16px rgb(0 0 0 / 0.28) !important;
+}
+.dark .glass {
+  background: rgb(var(--surface-raised) / 0.8) !important;
+  border-color: rgb(255 255 255 / 0.07) !important;
+}
+.dark .glass-strong {
+  background: rgb(var(--surface-raised) / 0.96) !important;
+  border-color: rgb(255 255 255 / 0.08) !important;
+}
+/* Remove the specular highlight sweep entirely. */
+.glass::before,
+.glass-strong::before,
+html.native .glass::before,
+html.native .glass-strong::before {
+  display: none !important;
+}
+
+/* ---- 3. One restrained accent — drop the gradient fills --------------------
+   Primary actions become a single solid accent colour (not a gradient) with no
+   glowing shadow. Calm, ChatGPT-like. */
+.accent-gradient-bg {
+  background: rgb(var(--accent)) !important;
+  background-image: none !important;
+  color: rgb(var(--accent-ink)) !important;
+  box-shadow: none !important;
+}
+.accent-gradient-bg:hover {
+  filter: brightness(0.96) !important;
+  box-shadow: none !important;
+}
+.dark .accent-gradient-bg:hover {
+  filter: brightness(1.08) !important;
+}
+/* The gradient wordmark "+" and gradient greeting text become flat accent. */
+.brand-gradient {
+  background: none !important;
+  -webkit-background-clip: border-box !important;
+  background-clip: border-box !important;
+  color: rgb(var(--accent)) !important;
+}
+.btn-sheen::after { display: none !important; }
+
+/* ---- 4. Subtle motion only -------------------------------------------------
+   Replace the springy overshoot presses + rise/pop entrances with quiet,
+   short, no-overshoot transitions. */
+button:not(:disabled) {
+  transition: background-color 0.15s ease, color 0.15s ease,
+    border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease !important;
+}
+button:not(:disabled):active {
+  transform: scale(0.97) !important;
+}
+.pressable:active { transform: scale(0.98) !important; }
+
+@keyframes c26-fade {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+[data-message],
+.message-row,
+.animate-fade-up {
+  animation: c26-fade 0.28s ease both !important;
+}
+/* No idle floating/bobbing on marks/avatars — it's distracting. */
+.animate-float { animation: none !important; }
+
+/* ---- 5. Type: calmer headings ---------------------------------------------
+   Sora + 800 weight + tight tracking was shouty. Keep the display face but
+   dial weight/tracking down for a softer, more premium feel. */
+h1, h2, h3, .font-display {
+  letter-spacing: -0.02em !important;
+  font-weight: 700 !important;
+}
+
+/* ---- 6. Top app bar — clean ChatGPT-style header --------------------------
+   Flat, hairline divider underneath, centered title. No glass, no shadow. */
+.top-app-bar,
+.composer-dock {
+  box-shadow: none !important;
+}
+.mobile-topbar.top-app-bar {
+  background: rgb(var(--surface) / 0.85);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgb(var(--ink) / 0.06);
+  padding: 0.4rem 0.5rem;
+}
+.dark .mobile-topbar.top-app-bar {
+  background: rgb(var(--surface) / 0.85);
+  border-bottom-color: rgb(255 255 255 / 0.06);
+}
+.mobile-topbar .glass-control {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: rgb(var(--ink)) !important;
+}
+.mobile-topbar .glass-control:hover {
+  background: rgb(var(--ink) / 0.05) !important;
+}
+
+/* ---- 7. The composer — one clean rounded pill -----------------------------
+   No heavy outer dock shadow, no thick gradient border. Just a soft pill that
+   sits on the page with a hairline edge and gentle focus ring. */
+.composer-dock {
+  background: linear-gradient(
+    to top,
+    rgb(var(--surface)) 55%,
+    rgb(var(--surface) / 0)
+  );
+}
+.dark .composer-dock {
+  background: linear-gradient(
+    to top,
+    rgb(var(--surface)) 55%,
+    rgb(var(--surface) / 0)
+  );
+}
+.composer-shell,
+.floating-composer {
+  background: rgb(var(--surface-raised)) !important;
+  border: 1px solid rgb(var(--ink) / 0.1) !important;
+  box-shadow: 0 4px 18px -10px rgb(0 0 0 / 0.18) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border-radius: 26px !important;
+}
+.dark .composer-shell,
+.dark .floating-composer {
+  background: rgb(var(--surface-raised)) !important;
+  border-color: rgb(255 255 255 / 0.1) !important;
+  box-shadow: 0 4px 18px -10px rgb(0 0 0 / 0.5) !important;
+}
+.composer-shell:focus-within,
+.floating-composer:focus-within {
+  border-color: rgb(var(--accent) / 0.4) !important;
+  box-shadow: 0 0 0 3px rgb(var(--accent) / 0.1) !important;
+  background: rgb(var(--surface-raised)) !important;
+}
+
+/* Active-mode chips: quiet tinted tag, not a glowing gradient pill. */
+.mode-chip.accent-gradient-bg {
+  background: rgb(var(--accent) / 0.12) !important;
+  color: rgb(var(--accent)) !important;
+  box-shadow: none !important;
+  font-weight: 600;
+}
+
+/* ---- 8. Native shell parity ------------------------------------------------
+   Re-apply the flat treatment inside the WebView, overriding native-app.css. */
+html.native .composer-shell,
+html.native .floating-composer {
+  background: rgb(var(--surface-raised)) !important;
+  border: 1px solid rgb(var(--ink) / 0.1) !important;
+  box-shadow: 0 4px 18px -10px rgb(0 0 0 / 0.18) !important;
+}
+html.native.dark .composer-shell,
+html.native.dark .floating-composer {
+  background: rgb(var(--surface-raised)) !important;
+  border-color: rgb(255 255 255 / 0.1) !important;
+}
+html.native .composer-dock {
+  background: linear-gradient(
+    to top,
+    rgb(var(--surface)) 55%,
+    rgb(var(--surface) / 0)
+  ) !important;
+  box-shadow: none !important;
+}
+html.native .home-mark::after { display: none !important; }
+html.native .home-mark > .animate-float { animation: none !important; }
+
+/* ---- 9. Sidebar — flatten the nested boxed clusters -----------------------
+   The sidebar stacked several bordered/tinted cards which read as clutter.
+   Calm, borderless surface with a single hairline divider. */
+.askai-sidebar {
+  background: rgb(var(--surface)) !important;
+  border-right: 1px solid rgb(var(--ink) / 0.06);
+}
+.dark .askai-sidebar {
+  border-right-color: rgb(255 255 255 / 0.06);
+}
+
+/* ---- 10. Reduced motion ----------------------------------------------------*/
+@media (prefers-reduced-motion: reduce) {
+  [data-message],
+  .message-row,
+  .animate-fade-up,
+  button {
+    animation: none !important;
+    transition: none !important;
+  }
+}
