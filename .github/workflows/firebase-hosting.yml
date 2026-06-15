@@ -21,7 +21,10 @@ name: Deploy to Firebase Hosting
 on:
   workflow_dispatch:
   push:
-    branches: ['claude/askai-redesign-features-c73ka5', 'claude/ripoai-web-app-U0rvk']
+    branches:
+      - 'claude/askai-redesign-features-c73ka5'
+      - 'claude/ripoai-web-app-U0rvk'
+      - 'claude/askai-agents-prebuilt-skills-wqk4ea'
 
 permissions:
   contents: read

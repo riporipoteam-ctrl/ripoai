@@ -2,7 +2,11 @@ name: Deploy AskAI to GitHub Pages
 
 on:
   push:
-    branches: ['claude/askai-redesign-features-c73ka5', 'claude/ripoai-web-app-U0rvk', 'main']
+    branches:
+      - 'claude/askai-redesign-features-c73ka5'
+      - 'claude/ripoai-web-app-U0rvk'
+      - 'claude/askai-agents-prebuilt-skills-wqk4ea'
+      - 'main'
   workflow_dispatch:
 
 permissions:

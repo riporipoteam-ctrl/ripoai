@@ -1,0 +1,148 @@
+/* ============================================================
+   ✦ BOLD 2026 — full bold-modern redesign (ChatGPT/Gemini-grade)
+   Loads LAST so it wins over every earlier layer. Applies to the
+   website AND the native app. Built on the app's CSS tokens so the
+   vibrant indigo accent ripples through every screen at once, plus
+   bigger confident type, softer depth, and springy motion.
+   ============================================================ */
+
+/* ---- Type: confident display headings, comfortable body ---------------- */
+h1, h2, h3, .font-display {
+  font-family: 'Sora', 'Manrope', system-ui, sans-serif;
+  letter-spacing: -0.028em;
+  font-weight: 800;
+}
+body {
+  letter-spacing: -0.012em;
+}
+
+/* ---- The signature accent surface — gradient + glow + spring ----------- */
+.accent-gradient-bg {
+  background-image: linear-gradient(
+    135deg,
+    rgb(var(--accent)) 0%,
+    rgb(var(--accent-soft)) 100%
+  ) !important;
+  color: rgb(var(--accent-ink)) !important;
+  box-shadow:
+    0 8px 22px -6px rgb(var(--accent) / 0.5),
+    inset 0 1px 0 rgb(255 255 255 / 0.22);
+  transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.25s ease, filter 0.2s ease;
+}
+.accent-gradient-bg:hover {
+  filter: brightness(1.05) saturate(1.05);
+  box-shadow:
+    0 12px 30px -6px rgb(var(--accent) / 0.6),
+    inset 0 1px 0 rgb(255 255 255 / 0.28);
+}
+.accent-gradient-bg:active {
+  transform: scale(0.96);
+}
+
+/* ---- Buttons everywhere get a tactile spring press --------------------- */
+button:not(:disabled) {
+  transition: transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1),
+    background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease,
+    box-shadow 0.2s ease, opacity 0.2s ease;
+}
+button:not(:disabled):active {
+  transform: scale(0.94);
+}
+
+/* ---- Inputs: rounder, with a soft accent focus ring -------------------- */
+.field,
+input:not([type='checkbox']):not([type='radio']),
+textarea {
+  border-radius: 16px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease,
+    background-color 0.2s ease;
+}
+.field:focus,
+.field:focus-within,
+input:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: rgb(var(--accent) / 0.75) !important;
+  box-shadow: 0 0 0 4px rgb(var(--accent) / 0.18) !important;
+}
+
+/* ---- Accent text + links pick up the new hue ---------------------------- */
+a:not(.no-accent):hover {
+  color: rgb(var(--accent));
+}
+
+/* ---- Selection + scrollbar themed to the accent ------------------------ */
+::selection {
+  background: rgb(var(--accent) / 0.28);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--ink) / 0.22) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgb(var(--ink) / 0.18);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--accent) / 0.55);
+  background-clip: content-box;
+}
+
+/* ---- Motion: messages + cards reveal with a springy rise --------------- */
+@keyframes b26-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@keyframes b26-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  60% {
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Chat message rows (react-markdown wrapper + message containers) glide in. */
+[data-message],
+.message-row,
+.animate-fade-up {
+  animation: b26-rise 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Rich result cards (images, maps, slides, weather, web images) pop in and
+   gently lift on hover for a tactile, modern feel. */
+.rounded-3xl,
+.rounded-2xl {
+  transition: transform 0.22s cubic-bezier(0.34, 1.4, 0.64, 1),
+    box-shadow 0.25s ease, border-color 0.2s ease;
+}
+
+/* ---- Reduced-motion users get a calm, static UI ------------------------ */
+@media (prefers-reduced-motion: reduce) {
+  [data-message],
+  .message-row,
+  .animate-fade-up,
+  .accent-gradient-bg,
+  button {
+    animation: none !important;
+    transition: none !important;
+  }
+}

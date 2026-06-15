@@ -1,9 +1,10 @@
 import { initializeApp } from 'firebase/app'
 import {
-  getAuth,
+  initializeAuth,
   GoogleAuthProvider,
-  setPersistence,
+  indexedDBLocalPersistence,
   browserLocalPersistence,
+  browserPopupRedirectResolver,
 } from 'firebase/auth'
 import { getFirestore } from 'firebase/firestore'
 
@@ -26,10 +27,17 @@ const firebaseConfig = {
 }
 
 export const app = initializeApp(firebaseConfig)
-export const auth = getAuth(app)
+
+// Persistence is set synchronously at init (no race with an async
+// setPersistence that could miss an early sign-in) and prefers IndexedDB,
+// which survives in the native WebView where localStorage is evicted under
+// storage pressure — fixing sign-ins that "sometimes don't save". Falls back
+// to localStorage where IndexedDB is unavailable.
+export const auth = initializeAuth(app, {
+  persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+  popupRedirectResolver: browserPopupRedirectResolver,
+})
+
 export const db = getFirestore(app)
 export const googleProvider = new GoogleAuthProvider()
 googleProvider.setCustomParameters({ prompt: 'select_account' })
-
-// Keep users signed in across reloads.
-void setPersistence(auth, browserLocalPersistence)

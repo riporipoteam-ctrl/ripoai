@@ -3,9 +3,9 @@
 @tailwind utilities;
 
 :root {
-  /* Default = ChatGPT-style neutral light theme (mono black/white accent). */
-  --accent: 26 26 26;
-  --accent-soft: 26 26 26;
+  /* Bold-modern light theme — vibrant indigo→violet accent (was mono black). */
+  --accent: 88 101 242;
+  --accent-soft: 130 99 245;
   --accent-ink: 255 255 255;
   --surface: 247 247 248;
   --surface-raised: 255 255 255;
@@ -24,10 +24,10 @@
 }
 
 .dark {
-  /* ChatGPT-style neutral dark theme (#212121). */
-  --accent: 242 242 242;
-  --accent-soft: 242 242 242;
-  --accent-ink: 26 26 26;
+  /* Bold-modern dark theme — luminous indigo accent on near-black. */
+  --accent: 120 134 255;
+  --accent-soft: 158 126 255;
+  --accent-ink: 255 255 255;
   --surface: 33 33 33;
   --surface-raised: 47 47 47;
   --ink: 236 236 238;
@@ -76,6 +76,17 @@
 
 * {
   -webkit-tap-highlight-color: transparent;
+}
+
+/* Lock the text/zoom scale. Inside the native WebView (Android & iOS) the
+   system "Display size" / "Font size" accessibility settings otherwise inflate
+   every element, which makes the whole app look zoomed-in and oversized while
+   the same page looks correct in a desktop browser. Pinning to 100% keeps the
+   app rendering at its designed scale on every device. */
+html {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 html,

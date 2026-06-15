@@ -13,6 +13,7 @@ import Home from './pages/Home'
 import Landing from './pages/Landing'
 import Onboarding from './components/Onboarding'
 import InstallHint from './components/InstallHint'
+import AndroidUpdater from './components/AndroidUpdater'
 import SelectionToolbar from './components/SelectionToolbar'
 import Logo from './components/Logo'
 
@@ -140,6 +141,7 @@ export default function App() {
         </Routes>
       </div>
       <InstallHint />
+      <AndroidUpdater />
       <SelectionToolbar />
     </>
   )
