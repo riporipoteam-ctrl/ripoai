@@ -62,6 +62,9 @@ export const MODELS: Record<ModelTier, RipoModel> = {
     id: 'ripoai-2o-instant',
     name: 'AskAI 2o instant',
     tagline: 'Quick + understands images',
+    // Llama-4 Scout is natively multimodal (early-fusion) and reliably available
+    // on Groq — a solid vision model. (Maverick scored higher but is being
+    // deprecated, so Scout is the dependable primary for every image turn.)
     groqModel: 'meta-llama/llama-4-scout-17b-16e-instruct',
     vision: true,
     reasoning: false,

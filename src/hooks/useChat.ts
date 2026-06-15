@@ -923,11 +923,12 @@ export function useChat(chatId: string | undefined) {
         attempts.push({ provider: 'groq', model: searchModel(), maxTokens: 2048 })
         attempts.push({ provider: 'groq', model: 'llama-3.3-70b-versatile', maxTokens: 1500 })
       } else if (hasImages) {
-        // Strongest vision model first (Maverick), then Scout as a fast fallback,
-        // so image understanding is as accurate as possible. Bigger budget lets
-        // it describe rich/multi-image inputs thoroughly.
-        attempts.push({ provider: 'groq', model: 'meta-llama/llama-4-maverick-17b-128e-instruct', maxTokens: 2048 })
-        attempts.push({ provider: 'groq', model: visionModel.groqModel, maxTokens: 2048 })
+        // Vision: Llama-4 Scout (natively multimodal, reliably on Groq) is the
+        // primary so image reads are accurate and never silently fall back to a
+        // text-only model. A larger token budget lets it describe rich or
+        // multi-image inputs thoroughly.
+        attempts.push({ provider: 'groq', model: visionModel.groqModel, maxTokens: 2560 })
+        attempts.push({ provider: 'groq', model: 'meta-llama/llama-4-scout-17b-16e-instruct', maxTokens: 2048 })
       } else if (usePuter) {
         // 5o Pro (opted in + signed in): real Fable 5 via Puter first, then a
         // strong frontier fallback so an answer always lands.
