@@ -1,7 +1,7 @@
 {
   "name": "askai-desktop",
   "productName": "AskAI",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "AskAI desktop app for Windows — chat, agents, skills, and (opt-in) local PC control.",
   "private": true,
   "main": "main.js",
