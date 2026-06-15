@@ -47,6 +47,11 @@ Firestore, Tailwind, Framer Motion and an iOS‑26 "Liquid Glass" design. Deploy
 A native **Windows app** (Electron) lives in [`electron/`](electron/). It wraps the
 web app — so every website feature works — and adds desktop-only powers:
 
+> **Download:** grab the latest **`AskAI-Setup-x.y.z.exe`** from the
+> [Releases page](https://github.com/riporipoteam-ctrl/ripoai/releases) and run it.
+> The build is unsigned, so Windows SmartScreen shows "More info → Run anyway" the
+> first time. After install, the app keeps itself up to date automatically.
+
 - **Installable from GitHub Releases** with its own icon + Start-menu/desktop shortcuts.
 - **Auto-update** (electron-updater) — new releases install themselves; check manually in
   **Settings → AskAI Desktop**.
