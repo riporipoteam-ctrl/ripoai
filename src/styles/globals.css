@@ -78,6 +78,17 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Lock the text/zoom scale. Inside the native WebView (Android & iOS) the
+   system "Display size" / "Font size" accessibility settings otherwise inflate
+   every element, which makes the whole app look zoomed-in and oversized while
+   the same page looks correct in a desktop browser. Pinning to 100% keeps the
+   app rendering at its designed scale on every device. */
+html {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 html,
 body {
   height: 100%;
