@@ -28,7 +28,7 @@
       { "from": "build/tools", "to": "tools", "filter": ["**/*"] }
     ],
     "publish": [
-      { "provider": "github", "owner": "riporipoteam-ctrl", "repo": "ripoai" }
+      { "provider": "github", "owner": "riporipoteam-ctrl", "repo": "ripoai", "releaseType": "release" }
     ],
     "win": {
       "target": [{ "target": "nsis", "arch": ["x64"] }],
