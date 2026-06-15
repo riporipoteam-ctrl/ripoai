@@ -92,6 +92,7 @@ export default function Settings() {
   const desktop = isDesktop()
   const [dInfo, setDInfo] = useState<DesktopInfo | null>(null)
   const [dAutoRun, setDAutoRun] = useState(true)
+  const [dTray, setDTray] = useState(true)
   const [dAllow, setDAllow] = useState('')
   const [dUpdate, setDUpdate] = useState<DesktopUpdate | null>(null)
 
@@ -101,6 +102,7 @@ export default function Settings() {
     getDesktopSettings().then((s) => {
       if (!s) return
       setDAutoRun(s.autoRunFileOps !== false)
+      setDTray(s.minimizeToTray !== false)
       setDAllow((s.allowCommands || []).join(', '))
     })
     return onDesktopUpdate(setDUpdate)
@@ -449,6 +451,21 @@ export default function Settings() {
                         const v = !dAutoRun
                         setDAutoRun(v)
                         setDesktopSettings({ autoRunFileOps: v })
+                      }}
+                    />
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold">Keep running in the tray</div>
+                      <div className="text-xs text-muted">Closing the window hides AskAI to the system tray instead of quitting.</div>
+                    </div>
+                    <Toggle
+                      on={dTray}
+                      onClick={() => {
+                        const v = !dTray
+                        setDTray(v)
+                        setDesktopSettings({ minimizeToTray: v })
                       }}
                     />
                   </div>

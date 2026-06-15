@@ -5,6 +5,7 @@ import {
   iosDetect,
   iosLatest,
   iosInstall,
+  iosPair,
   onSideloadProgress,
   getDesktopSettings,
   setDesktopSettings,
@@ -94,9 +95,22 @@ export default function IosUpdater() {
               <div className="font-semibold">{device.name}</div>
               <div className="text-muted">
                 {device.productType} · iOS {device.iosVersion}
-                {device.trusted === false && ' · tap "Trust" on your iPhone'}
+                {device.installedVersion ? ` · AskAI ${device.installedVersion} installed` : ''}
               </div>
             </div>
+            {device.trusted === false && (
+              <button
+                onClick={async () => {
+                  setProgress({ stage: 'detect', message: 'Pairing — tap "Trust" on your iPhone…' })
+                  const r = await iosPair()
+                  setProgress({ stage: r.ok ? 'detect' : 'error', message: r.message || r.error })
+                  refresh()
+                }}
+                className="ml-auto shrink-0 rounded-xl border border-white/15 px-2.5 py-1.5 text-[11px] font-semibold hover:bg-white/5"
+              >
+                Pair / Trust
+              </button>
+            )}
           </>
         ) : (
           <>

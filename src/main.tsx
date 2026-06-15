@@ -14,7 +14,7 @@ import './styles/ios-polish.css'
 import 'katex/dist/katex.min.css'
 
 // Bump on each deploy so the build hash changes and the version stamp updates.
-export const APP_VERSION = 'v9.0.0'
+export const APP_VERSION = 'v9.1.0'
 console.log('AskAI', APP_VERSION)
 
 ReactDOM.createRoot(document.getElementById('root')!).render(

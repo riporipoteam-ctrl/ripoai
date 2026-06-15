@@ -41,6 +41,7 @@ export interface IosDevice {
   productType?: string
   iosVersion?: string
   trusted?: boolean
+  installedVersion?: string
 }
 export interface IosTools {
   idevice_id: boolean
@@ -72,6 +73,7 @@ interface SideloadApi {
   tools: () => Promise<IosTools>
   detect: () => Promise<IosDevice>
   latest: () => Promise<IosLatest>
+  pair: () => Promise<{ ok: boolean; message?: string; error?: string }>
   install: (opts: { signing?: SideloadSigning }) => Promise<{ ok: boolean; version?: string; error?: string }>
   onProgress: (cb: (p: SideloadProgress) => void) => () => void
 }
@@ -79,8 +81,8 @@ interface SideloadApi {
 interface DesktopApi {
   isAskAIDesktop: boolean
   info: () => Promise<DesktopInfo>
-  getSettings: () => Promise<{ allowCommands: string[]; autoRunFileOps: boolean; iosToolsDir?: string }>
-  setSettings: (s: Partial<{ allowCommands: string[]; autoRunFileOps: boolean; iosToolsDir: string }>) => Promise<any>
+  getSettings: () => Promise<{ allowCommands: string[]; autoRunFileOps: boolean; iosToolsDir?: string; minimizeToTray?: boolean }>
+  setSettings: (s: Partial<{ allowCommands: string[]; autoRunFileOps: boolean; iosToolsDir: string; minimizeToTray: boolean }>) => Promise<any>
   fs: (req: FsRequest) => Promise<any>
   exec: (req: { command: string; cwd?: string }) => Promise<any>
   sideload: SideloadApi
@@ -111,7 +113,7 @@ export async function getDesktopInfo(): Promise<DesktopInfo | null> {
   }
 }
 
-export async function getDesktopSettings(): Promise<{ allowCommands: string[]; autoRunFileOps: boolean } | null> {
+export async function getDesktopSettings(): Promise<{ allowCommands: string[]; autoRunFileOps: boolean; iosToolsDir?: string; minimizeToTray?: boolean } | null> {
   const a = api()
   if (!a) return null
   try {
@@ -122,7 +124,7 @@ export async function getDesktopSettings(): Promise<{ allowCommands: string[]; a
 }
 
 export async function setDesktopSettings(
-  s: Partial<{ allowCommands: string[]; autoRunFileOps: boolean }>,
+  s: Partial<{ allowCommands: string[]; autoRunFileOps: boolean; iosToolsDir: string; minimizeToTray: boolean }>,
 ): Promise<void> {
   const a = api()
   if (!a) return
@@ -165,6 +167,11 @@ export async function iosInstall(opts: { signing?: SideloadSigning } = {}) {
   const a = api()
   if (!a) return { ok: false, error: 'Not running in the AskAI desktop app.' }
   return a.sideload.install(opts)
+}
+export async function iosPair(): Promise<{ ok: boolean; message?: string; error?: string }> {
+  const a = api()
+  if (!a) return { ok: false, error: 'Not running in the AskAI desktop app.' }
+  return a.sideload.pair()
 }
 export function onSideloadProgress(cb: (p: SideloadProgress) => void): () => void {
   const a = api()

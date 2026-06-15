@@ -1,12 +1,19 @@
 name: Build Windows App
 
-# Builds the AskAI Windows desktop app (Electron) and publishes the installer to
-# a GitHub Release, which also powers in-app auto-update (electron-updater reads
-# the same release). Run it from the Actions tab (Run workflow) or by pushing a
-# tag like v1.0.0-win.
+# Builds the AskAI Windows desktop app (Electron) into an installer (.exe) and
+# publishes it to a GitHub Release — which also powers in-app auto-update
+# (electron-updater reads the same release). It bundles the iOS sideloader tools
+# (libimobiledevice + zsign) so the installed app can update an iPhone with no
+# extra setup. Run from the Actions tab (Run workflow) or push a tag like
+# v1.0.0-win.
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g. 1.0.0)'
+        required: false
+        default: ''
   push:
     tags: ['*-win']
 
@@ -26,6 +33,35 @@ jobs:
         with:
           node-version: 20
 
+      - name: Set version (from input or tag)
+        shell: pwsh
+        run: |
+          $v = "${{ github.event.inputs.version }}"
+          if (-not $v -and "${{ github.ref_type }}" -eq "tag") {
+            $v = "${{ github.ref_name }}" -replace '-win$','' -replace '^v',''
+          }
+          if ($v) {
+            npm version $v --no-git-tag-version --allow-same-version
+            Write-Host "Building AskAI version $v"
+          }
+
+      - name: Bundle iOS sideloader tools (best-effort)
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          # Download the native iOS tooling into build/tools so electron-builder
+          # bundles it at resources/tools. If a source is unavailable, the build
+          # still succeeds — the app will then ask the user to install the tools.
+          New-Item -ItemType Directory -Force -Path build/tools | Out-Null
+          $imd = "https://github.com/libimobiledevice-win32/imobiledevice-net/releases/latest/download/libimobiledevice.net.win-x64.zip"
+          try {
+            Invoke-WebRequest -Uri $imd -OutFile imd.zip -UseBasicParsing
+            Expand-Archive -Path imd.zip -DestinationPath imd -Force
+            Get-ChildItem -Recurse imd -Include *.exe,*.dll | Copy-Item -Destination build/tools -Force
+            Write-Host "Bundled libimobiledevice tools."
+          } catch { Write-Host "Could not fetch libimobiledevice — app will prompt to install it." }
+          Get-ChildItem build/tools -ErrorAction SilentlyContinue | Format-Table Name
+
       - name: Install desktop app dependencies
         run: npm install
 
@@ -33,3 +69,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx electron-builder --win --publish always
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AskAI-Windows-Installer
+          path: electron/release/*.exe
+          if-no-files-found: warn

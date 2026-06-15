@@ -22,6 +22,8 @@ const os = require('node:os')
 const https = require('node:https')
 
 const REPO = { owner: 'riporipoteam-ctrl', repo: 'ripoai' }
+// The AskAI iOS bundle identifier (used to read the currently-installed version).
+const BUNDLE_ID = 'io.github.riporipoteam.ripoai'
 
 let toolsDirOverride = ''
 function setToolsDir(dir) {
@@ -119,6 +121,36 @@ async function detectDevice() {
     productType,
     iosVersion: version,
     trusted: paired,
+    installedVersion: paired ? await installedVersion(udid) : '',
+  }
+}
+
+// Trigger the trust/pairing handshake (the iPhone shows a "Trust This Computer?"
+// prompt the user must accept, then enter their passcode).
+async function pairDevice() {
+  const ids = await run('idevice_id', ['-l'])
+  const udid = (ids.stdout || '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean)[0]
+  if (!udid) return { ok: false, error: 'No iPhone detected. Plug it in with a cable.' }
+  const r = await run('idevicepair', ['-u', udid, 'pair'])
+  const ok = r.ok || /SUCCESS|already paired/i.test(r.stdout + r.stderr)
+  return { ok, message: ok ? 'Paired.' : (r.stderr || r.stdout || 'Tap "Trust" on your iPhone, then retry.').trim() }
+}
+
+// Read the AskAI version currently installed on the device (if any), so the UI
+// can show "installed vX → latest vY".
+async function installedVersion(udid) {
+  try {
+    const r = await run('ideviceinstaller', ['-u', udid, '-l'])
+    if (!r.ok) return ''
+    for (const line of r.stdout.split(/\r?\n/)) {
+      if (line.includes(BUNDLE_ID)) {
+        const m = line.match(/"?([0-9][0-9.]*)"?\s*$/) || line.match(/,\s*"?([0-9][0-9.]+)"?/)
+        return m ? m[1] : 'installed'
+      }
+    }
+    return ''
+  } catch {
+    return ''
   }
 }
 
@@ -276,6 +308,7 @@ module.exports = {
   setToolsDir,
   checkTools,
   detectDevice,
+  pairDevice,
   checkLatestIpa,
   installLatest,
 }

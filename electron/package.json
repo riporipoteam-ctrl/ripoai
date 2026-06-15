@@ -23,7 +23,10 @@
     "productName": "AskAI",
     "artifactName": "AskAI-Setup-${version}.${ext}",
     "directories": { "output": "release", "buildResources": "build" },
-    "files": ["main.js", "preload.js", "build/**/*"],
+    "files": ["main.js", "preload.js", "sideload.js", "build/icon.png"],
+    "extraResources": [
+      { "from": "build/tools", "to": "tools", "filter": ["**/*"] }
+    ],
     "publish": [
       { "provider": "github", "owner": "riporipoteam-ctrl", "repo": "ripoai" }
     ],

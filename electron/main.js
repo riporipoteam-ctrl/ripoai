@@ -1,6 +1,6 @@
 // AskAI Desktop (Windows) — Electron shell around the AskAI web app, plus an
 // opt-in, allowlisted bridge that lets AskAI control the local PC (run commands,
-// move/organize files) on the user's behalf.
+// move/organize files) and a USB iPhone updater (sideloader).
 //
 // Safety model ("allowlist + auto-run"): read-only and clearly-safe file ops
 // inside the user's own folders run automatically; anything destructive or any
@@ -8,7 +8,7 @@
 // added it to their allowlist. The renderer only ever gets the high-level API in
 // preload.js (contextIsolation on, no direct Node access).
 
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu, Tray, nativeImage, globalShortcut } = require('electron')
 const path = require('node:path')
 const fs = require('node:fs')
 const fsp = require('node:fs/promises')
@@ -19,10 +19,27 @@ const sideload = require('./sideload')
 // The web app the desktop shell loads. Override with ASKAI_URL for local dev
 // (e.g. http://localhost:5173).
 const APP_URL = process.env.ASKAI_URL || 'https://riporipoteam-ctrl.github.io/ripoai/'
+const ICON = path.join(__dirname, 'build', 'icon.png')
 
 let mainWindow = null
+let tray = null
+let quitting = false
 
-// ---- Allowlist persistence -------------------------------------------------
+// ---- Single instance: focus the existing window instead of opening a 2nd -----
+const gotLock = app.requestSingleInstanceLock()
+if (!gotLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      if (!mainWindow.isVisible()) mainWindow.show()
+      mainWindow.focus()
+    }
+  })
+}
+
+// ---- Settings + window-state persistence -----------------------------------
 function settingsPath() {
   return path.join(app.getPath('userData'), 'askai-desktop.json')
 }
@@ -30,7 +47,7 @@ function loadSettings() {
   try {
     return JSON.parse(fs.readFileSync(settingsPath(), 'utf8'))
   } catch {
-    return { allowCommands: [], autoRunFileOps: true }
+    return { allowCommands: [], autoRunFileOps: true, minimizeToTray: true }
   }
 }
 function saveSettings(s) {
@@ -43,25 +60,49 @@ function saveSettings(s) {
 
 // ---- Window ---------------------------------------------------------------
 function createWindow() {
+  const s = loadSettings()
+  const b = s.bounds || {}
   mainWindow = new BrowserWindow({
-    width: 1180,
-    height: 820,
+    width: b.width || 1180,
+    height: b.height || 820,
+    x: b.x,
+    y: b.y,
     minWidth: 380,
     minHeight: 560,
     backgroundColor: '#0f0e0c',
     title: 'AskAI',
+    show: false,
     autoHideMenuBar: true,
-    icon: path.join(__dirname, 'build', 'icon.png'),
+    icon: ICON,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
+      spellcheck: true,
     },
   })
 
-  Menu.setApplicationMenu(null)
   mainWindow.loadURL(APP_URL)
+  mainWindow.once('ready-to-show', () => mainWindow.show())
+
+  // Persist window bounds (debounced via close/resize).
+  const saveBounds = () => {
+    if (!mainWindow || mainWindow.isMinimized() || mainWindow.isMaximized()) return
+    const cur = loadSettings()
+    cur.bounds = mainWindow.getBounds()
+    saveSettings(cur)
+  }
+  mainWindow.on('resize', saveBounds)
+  mainWindow.on('move', saveBounds)
+
+  // Minimize-to-tray: closing hides to the tray instead of quitting (opt-out).
+  mainWindow.on('close', (e) => {
+    if (!quitting && loadSettings().minimizeToTray !== false && tray) {
+      e.preventDefault()
+      mainWindow.hide()
+    }
+  })
 
   // Open external links in the system browser, keep app links in-app.
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -83,9 +124,83 @@ function createWindow() {
   })
 }
 
+function showWindow() {
+  if (!mainWindow) return createWindow()
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.show()
+  mainWindow.focus()
+}
+
+// Tell the renderer (HashRouter) to start a new chat.
+function newChat() {
+  showWindow()
+  mainWindow?.webContents.executeJavaScript("location.hash = '#/'; ").catch(() => {})
+}
+
+// ---- App menu + accelerators ----------------------------------------------
+function buildMenu() {
+  const template = [
+    {
+      label: 'File',
+      submenu: [
+        { label: 'New Chat', accelerator: 'CmdOrCtrl+N', click: newChat },
+        { type: 'separator' },
+        { label: 'Check for Updates…', click: () => checkUpdatesManual() },
+        { type: 'separator' },
+        { label: 'Quit', accelerator: 'CmdOrCtrl+Q', click: () => { quitting = true; app.quit() } },
+      ],
+    },
+    {
+      label: 'Edit',
+      submenu: [
+        { role: 'undo' }, { role: 'redo' }, { type: 'separator' },
+        { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' },
+      ],
+    },
+    {
+      label: 'View',
+      submenu: [
+        { role: 'reload', accelerator: 'CmdOrCtrl+R' },
+        { role: 'forceReload' },
+        { type: 'separator' },
+        { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' },
+        { type: 'separator' },
+        { role: 'togglefullscreen' },
+        { label: 'Toggle Developer Tools', accelerator: 'CmdOrCtrl+Shift+I', click: () => mainWindow?.webContents.toggleDevTools() },
+      ],
+    },
+  ]
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template))
+}
+
+// ---- Tray -----------------------------------------------------------------
+function buildTray() {
+  try {
+    let img = nativeImage.createFromPath(ICON)
+    if (!img.isEmpty()) img = img.resize({ width: 16, height: 16 })
+    tray = new Tray(img)
+    tray.setToolTip('AskAI')
+    const menu = Menu.buildFromTemplate([
+      { label: 'Open AskAI', click: showWindow },
+      { label: 'New Chat', click: newChat },
+      { type: 'separator' },
+      { label: 'Check for Updates…', click: () => checkUpdatesManual() },
+      { label: 'Quit', click: () => { quitting = true; app.quit() } },
+    ])
+    tray.setContextMenu(menu)
+    tray.on('click', showWindow)
+    tray.on('double-click', showWindow)
+  } catch {
+    /* tray unavailable — fine */
+  }
+}
+
 // ---- Auto-update (GitHub Releases) ----------------------------------------
+let autoUpdater = null
+function checkUpdatesManual() {
+  if (autoUpdater) autoUpdater.checkForUpdates().catch(() => {})
+}
 function setupAutoUpdate() {
-  let autoUpdater
   try {
     ;({ autoUpdater } = require('electron-updater'))
   } catch {
@@ -99,8 +214,7 @@ function setupAutoUpdate() {
   autoUpdater.on('update-downloaded', (info) => send('desktop:update', { state: 'ready', version: info?.version }))
   autoUpdater.on('error', (e) => send('desktop:update', { state: 'error', message: String(e?.message || e) }))
   ipcMain.handle('desktop:update-check', () => autoUpdater.checkForUpdates().catch(() => null))
-  ipcMain.handle('desktop:update-install', () => autoUpdater.quitAndInstall())
-  // Check shortly after launch, then hourly.
+  ipcMain.handle('desktop:update-install', () => { quitting = true; autoUpdater.quitAndInstall() })
   setTimeout(() => autoUpdater.checkForUpdatesAndNotify().catch(() => {}), 4000)
   setInterval(() => autoUpdater.checkForUpdates().catch(() => {}), 60 * 60 * 1000)
 }
@@ -124,7 +238,6 @@ function confirm(title, message, detail) {
     .then((r) => r.response === 0)
 }
 
-// Resolve a user-supplied path; expand ~ and known folders.
 function resolvePath(p) {
   if (!p) return HOME
   let out = String(p).trim()
@@ -143,7 +256,6 @@ function resolvePath(p) {
   return path.resolve(HOME, out)
 }
 
-// Is a path inside the user's home tree (the auto-run safe zone)?
 function inHome(p) {
   const rp = path.resolve(p)
   return rp === HOME || rp.startsWith(HOME + path.sep)
@@ -171,8 +283,6 @@ function registerControlHandlers() {
     return next
   })
 
-  // File operations. Safe ops auto-run; destructive ops confirm (unless the user
-  // turned auto-run off, in which case everything confirms).
   ipcMain.handle('desktop:fs', async (_e, req) => {
     const settings = loadSettings()
     const op = req?.op
@@ -182,18 +292,13 @@ function registerControlHandlers() {
         case 'list': {
           const dir = resolvePath(req.path)
           const names = await fsp.readdir(dir, { withFileTypes: true })
-          return {
-            ok: true,
-            path: dir,
-            entries: names.slice(0, 500).map((d) => ({ name: d.name, dir: d.isDirectory() })),
-          }
+          return { ok: true, path: dir, entries: names.slice(0, 500).map((d) => ({ name: d.name, dir: d.isDirectory() })) }
         }
         case 'read': {
           const file = resolvePath(req.path)
           const stat = await fsp.stat(file)
           if (stat.size > 256 * 1024) return { ok: false, error: 'File too large to read (>256KB).' }
-          const text = await fsp.readFile(file, 'utf8')
-          return { ok: true, path: file, text }
+          return { ok: true, path: file, text: await fsp.readFile(file, 'utf8') }
         }
         case 'mkdir': {
           const dir = resolvePath(req.path)
@@ -207,11 +312,7 @@ function registerControlHandlers() {
           const to = resolvePath(req.to)
           const safe = inHome(from) && inHome(to)
           if (!auto || !safe) {
-            const okGo = await confirm(
-              'AskAI wants to ' + op + ' a file',
-              `${op[0].toUpperCase() + op.slice(1)} this item?`,
-              `${from}\n→ ${to}`,
-            )
+            const okGo = await confirm('AskAI wants to ' + op + ' a file', `${op[0].toUpperCase() + op.slice(1)} this item?`, `${from}\n→ ${to}`)
             if (!okGo) return { ok: false, error: 'Cancelled by user.' }
           }
           if (op === 'copy') await fsp.cp(from, to, { recursive: true })
@@ -230,11 +331,7 @@ function registerControlHandlers() {
         case 'trash':
         case 'delete': {
           const target = resolvePath(req.path)
-          const okGo = await confirm(
-            'AskAI wants to delete an item',
-            'Move this item to the Recycle Bin?',
-            target,
-          )
+          const okGo = await confirm('AskAI wants to delete an item', 'Move this item to the Recycle Bin?', target)
           if (!okGo) return { ok: false, error: 'Cancelled by user.' }
           await shell.trashItem(target)
           return { ok: true, path: target }
@@ -253,8 +350,6 @@ function registerControlHandlers() {
     }
   })
 
-  // Shell command. Always confirms unless the command's first token is on the
-  // user's allowlist.
   ipcMain.handle('desktop:exec', async (_e, req) => {
     const command = String(req?.command || '').trim()
     if (!command) return { ok: false, error: 'Empty command.' }
@@ -278,20 +373,13 @@ function registerControlHandlers() {
   })
 
   // ---- iOS sideloader (install/update the AskAI iOS app over USB) ----------
-  ipcMain.handle('sideload:tools', () => {
-    const s = loadSettings()
-    sideload.setToolsDir(s.iosToolsDir || '')
-    return sideload.checkTools()
-  })
-  ipcMain.handle('sideload:detect', () => {
-    const s = loadSettings()
-    sideload.setToolsDir(s.iosToolsDir || '')
-    return sideload.detectDevice()
-  })
+  const withTools = () => sideload.setToolsDir(loadSettings().iosToolsDir || '')
+  ipcMain.handle('sideload:tools', () => { withTools(); return sideload.checkTools() })
+  ipcMain.handle('sideload:detect', () => { withTools(); return sideload.detectDevice() })
   ipcMain.handle('sideload:latest', () => sideload.checkLatestIpa())
+  ipcMain.handle('sideload:pair', () => { withTools(); return sideload.pairDevice() })
   ipcMain.handle('sideload:install', async (e, opts) => {
-    const s = loadSettings()
-    sideload.setToolsDir(s.iosToolsDir || '')
+    withTools()
     const send = (payload) => e.sender.send('sideload:progress', payload)
     try {
       const res = await sideload.installLatest(opts || {}, send)
@@ -305,11 +393,24 @@ function registerControlHandlers() {
 
 app.whenReady().then(() => {
   registerControlHandlers()
+  buildMenu()
   createWindow()
+  buildTray()
   setupAutoUpdate()
+  // Quick global shortcut to summon AskAI.
+  try {
+    globalShortcut.register('CommandOrControl+Shift+Space', showWindow)
+  } catch {
+    /* ignore */
+  }
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    else showWindow()
   })
+})
+
+app.on('before-quit', () => {
+  quitting = true
 })
 
 app.on('window-all-closed', () => {

@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('askaiDesktop', {
     tools: () => ipcRenderer.invoke('sideload:tools'),
     detect: () => ipcRenderer.invoke('sideload:detect'),
     latest: () => ipcRenderer.invoke('sideload:latest'),
+    pair: () => ipcRenderer.invoke('sideload:pair'),
     install: (opts) => ipcRenderer.invoke('sideload:install', opts),
     onProgress: (cb) => {
       const handler = (_e, payload) => cb(payload)
