@@ -15,30 +15,13 @@ import Onboarding from './components/Onboarding'
 import InstallHint from './components/InstallHint'
 import AndroidUpdater from './components/AndroidUpdater'
 import SelectionToolbar from './components/SelectionToolbar'
-import Logo from './components/Logo'
 
+// Minimal, near-invisible boot state. The old full-screen "Loading your
+// workspace…" splash was distracting (and could get stuck), so we just hold on
+// the app's own background for the brief moment auth resolves — no logo, no
+// progress bar. A hard safety timeout (see App) guarantees we never hang here.
 function FullScreenLoader() {
-  return (
-    <div className="relative z-10 flex h-full items-center justify-center">
-      <div className="flex flex-col items-center gap-6">
-        <div className="relative">
-          {/* orbiting ring */}
-          <span className="absolute inset-0 -m-4 rounded-[28px] border border-[rgb(var(--ink)/0.12)]" />
-          <span className="absolute inset-0 -m-4 animate-ping rounded-[28px] bg-[rgb(var(--ink)/0.05)]" />
-          <div className="animate-float overflow-hidden rounded-[22px] shadow-2xl ring-1 ring-[rgb(var(--ink)/0.1)]">
-            <Logo size={76} variant="icon" />
-          </div>
-        </div>
-        <div className="text-center">
-          <div className="text-2xl font-extrabold tracking-tight">AskAI</div>
-          <div className="mt-1 text-xs font-medium text-muted">Loading your workspace…</div>
-        </div>
-        <div className="h-1 w-36 overflow-hidden rounded-full bg-[rgb(var(--ink)/0.08)]">
-          <div className="h-full w-1/2 rounded-full bg-[rgb(var(--accent))] [animation:loadbar_1.1s_ease-in-out_infinite]" />
-        </div>
-      </div>
-    </div>
-  )
+  return <div className="relative z-10 h-full" aria-hidden />
 }
 
 function Protected({ children }: { children: React.ReactNode }) {
@@ -70,7 +53,12 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    // Safety net: never let the app hang on a blank boot screen if Firebase auth
+    // is slow to initialise inside the native WebView — show the UI after 2.5s
+    // regardless (onAuthStateChanged will still correct the user when it fires).
+    const safety = setTimeout(() => setAuthReady(true), 2500)
     const unsub = onAuthStateChanged(auth, async (u) => {
+      clearTimeout(safety)
       setUser(u)
       try {
         if (u) {

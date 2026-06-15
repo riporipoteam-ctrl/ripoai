@@ -62,7 +62,9 @@ export const MODELS: Record<ModelTier, RipoModel> = {
     id: 'ripoai-2o-instant',
     name: 'AskAI 2o instant',
     tagline: 'Quick + understands images',
-    groqModel: 'meta-llama/llama-4-scout-17b-16e-instruct',
+    // Maverick (128 experts) is a much stronger vision model than Scout (16e):
+    // far better image reading/OCR/reasoning. Used for every image turn.
+    groqModel: 'meta-llama/llama-4-maverick-17b-128e-instruct',
     vision: true,
     reasoning: false,
     temperature: 1,
