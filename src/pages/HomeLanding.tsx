@@ -80,7 +80,7 @@ export default function HomeLanding() {
       </div>
 
       {/* Messages */}
-      {convs.length > 0 && user && (
+      {user && (
         <div className="mb-6">
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-xs font-bold uppercase tracking-wide text-muted">Messages</h2>
@@ -88,6 +88,18 @@ export default function HomeLanding() {
               Friends
             </button>
           </div>
+          {convs.length === 0 && (
+            <button
+              onClick={() => navigate('/friends')}
+              className="flex w-full items-center gap-3 rounded-2xl border border-line bg-card px-4 py-4 text-left"
+            >
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/15 text-accent">
+                <MessageSquare size={16} />
+              </span>
+              <span className="text-sm text-muted">No messages yet — add friends to start chatting, voice & video calling.</span>
+            </button>
+          )}
+          {convs.length > 0 && (
           <div className="flex flex-col divide-y divide-line/60 rounded-2xl border border-line bg-card">
             {convs.slice(0, 5).map((c) => {
               const otherUid = c.participants.find((u) => u !== user.uid) || ''
@@ -105,6 +117,7 @@ export default function HomeLanding() {
               )
             })}
           </div>
+          )}
         </div>
       )}
 
