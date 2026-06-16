@@ -52,7 +52,17 @@ import {
 import { MODEL_LIST, type ModelTier } from '../lib/models'
 import { haptic } from '../lib/native'
 import { useStore } from '../store'
+import { loadJobs, untilLabel, CADENCE_LABEL, type Job } from '../lib/jobs'
+import {
+  agentActivity,
+  logActivity,
+  activityKindLabel,
+  activityWhen,
+  ACTIVITY_CHANGED,
+  type ActivityEvent,
+} from '../lib/agentActivity'
 import '../styles/agents-detail.css'
+import '../styles/agents.css'
 
 const uid4 = () => Math.random().toString(36).slice(2)
 
@@ -256,9 +266,23 @@ export default function AgentDetailPage() {
   const [sheet, setSheet] = useState<null | 'model' | 'visibility' | 'device' | 'trigger'>(null)
 
   const [regenning, setRegenning] = useState(false)
+  const [jobs, setJobs] = useState<Job[]>([])
+  const [activity, setActivity] = useState<ActivityEvent[]>([])
 
   useEffect(() => {
     if (uid && agentId) setAgent(getAgent(uid, agentId))
+  }, [uid, agentId])
+
+  // The agent's scheduled jobs + run history, refreshed when either changes.
+  useEffect(() => {
+    if (!uid || !agentId) return
+    const refresh = () => {
+      setJobs(loadJobs(uid).filter((j) => j.agentId === agentId))
+      setActivity(agentActivity(uid, agentId))
+    }
+    refresh()
+    window.addEventListener(ACTIVITY_CHANGED, refresh)
+    return () => window.removeEventListener(ACTIVITY_CHANGED, refresh)
   }, [uid, agentId])
 
   // Lazily paint a real avatar if this agent still only has an emoji.
@@ -318,6 +342,7 @@ export default function AgentDetailPage() {
 
   function chatWithAgent() {
     haptic('medium')
+    if (uid && agent) logActivity(uid, agent.id, agent.name, 'chat', `Started a chat with ${agent.name}`)
     setPendingAgentChat(agent!)
     navigate('/')
   }
@@ -530,6 +555,12 @@ export default function AgentDetailPage() {
                   onToggle={toggleGoal}
                   onRemove={removeGoal}
                 />
+
+                {/* Scheduled jobs */}
+                <ScheduledJobs jobs={jobs} onOpen={() => navigate('/jobs')} />
+
+                {/* Activity / run history */}
+                <ActivityTimeline activity={activity} onOpen={(href) => navigate(href)} />
               </div>
             )}
 
@@ -785,5 +816,102 @@ function TriggersTab({
         <Plus size={16} /> Add trigger
       </button>
     </div>
+  )
+}
+
+/** The scheduled jobs assigned to this agent (links to the Jobs tab). */
+function ScheduledJobs({ jobs, onOpen }: { jobs: Job[]; onOpen: () => void }) {
+  return (
+    <section>
+      <div className="mb-1.5 flex items-center justify-between px-1">
+        <h2 className="text-xs font-bold uppercase tracking-widest text-muted">Scheduled jobs</h2>
+        <button onClick={onOpen} className="pressable text-xs font-semibold text-accent">
+          Manage
+        </button>
+      </div>
+      {jobs.length === 0 ? (
+        <button
+          onClick={onOpen}
+          className="glass pressable flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent">
+            <Clock size={18} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold text-ink">No scheduled jobs</span>
+            <span className="block text-xs text-muted">Schedule a recurring job for this agent.</span>
+          </span>
+          <Plus size={16} className="shrink-0 text-muted" />
+        </button>
+      ) : (
+        <div className="space-y-2">
+          {jobs.map((j) => (
+            <button
+              key={j.id}
+              onClick={onOpen}
+              className="glass pressable flex items-center gap-3 rounded-2xl px-4 py-3 text-left"
+            >
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                <Zap size={18} strokeWidth={2.4} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-ink">{j.title}</span>
+                <span className="block truncate text-xs text-muted">
+                  {CADENCE_LABEL[j.cadence]}
+                  {j.enabled ? '' : ' · paused'}
+                </span>
+              </span>
+              <span className="shrink-0 text-xs font-medium text-muted">
+                {j.enabled ? untilLabel(j.nextRunAt) : '—'}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
+/** The agent's run history / activity timeline. */
+function ActivityTimeline({
+  activity,
+  onOpen,
+}: {
+  activity: ActivityEvent[]
+  onOpen: (href: string) => void
+}) {
+  if (activity.length === 0) {
+    return (
+      <section>
+        <h2 className="mb-1.5 px-1 text-xs font-bold uppercase tracking-widest text-muted">Activity</h2>
+        <div className="glass rounded-2xl px-4 py-6 text-center text-sm text-muted">
+          No runs yet — this agent's activity will show up here.
+        </div>
+      </section>
+    )
+  }
+  return (
+    <section>
+      <h2 className="mb-2.5 px-1 text-xs font-bold uppercase tracking-widest text-muted">Activity</h2>
+      <div className="ag-timeline flex flex-col gap-3">
+        {activity.slice(0, 20).map((e) => (
+          <div key={e.id} className="relative">
+            <span className="ag-timeline-node" />
+            <button
+              onClick={() => e.href && onOpen(e.href)}
+              disabled={!e.href}
+              className={`block w-full text-left ${e.href ? 'pressable' : 'cursor-default'}`}
+            >
+              <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted">
+                {activityKindLabel(e.kind)}
+                <span className="ml-auto normal-case tracking-normal">{activityWhen(e.at)}</span>
+              </span>
+              <span className="mt-0.5 block text-sm font-medium text-ink">{e.title}</span>
+              {e.detail && <span className="block text-xs text-muted">{e.detail}</span>}
+            </button>
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }
