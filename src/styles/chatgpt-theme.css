@@ -117,7 +117,9 @@ body,
   letter-spacing: -0.005em;
 }
 
-/* ---- 6b. Kill the stray native hairline iOS/Android draw inside form fields. */
+/* ---- 6b. Kill the stray native hairline iOS/Android draw inside form fields.
+ *        Fields that DON'T opt into a Tailwind `border` class get no border at
+ *        all (removes the line); intentionally-bordered fields keep theirs. --- */
 input,
 textarea,
 select {
@@ -126,13 +128,20 @@ select {
   -webkit-tap-highlight-color: transparent;
   background-clip: padding-box;
 }
+input:not([class*='border']),
+textarea:not([class*='border']),
+select:not([class*='border']) {
+  border: 0 !important;
+  box-shadow: none !important;
+}
 textarea {
   resize: none;
 }
 input:focus,
 textarea:focus,
 select:focus {
-  outline: none;
+  outline: none !important;
+  box-shadow: none;
 }
 
 /* ============================================================================

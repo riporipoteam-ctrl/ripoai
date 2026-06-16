@@ -122,6 +122,15 @@ export const useStore = create<AppState>((set, get) => ({
   initUserData: async (uid) => {
     get().teardown()
 
+    // Publish a public profile on login so this user is discoverable in Friends
+    // search + suggestions everywhere (not only after opening the Friends page).
+    const authedUser = get().user
+    if (authedUser) {
+      import('./lib/friends')
+        .then(({ publishProfile }) => publishProfile(authedUser))
+        .catch(() => {})
+    }
+
     // Never let Firestore reads block app entry. If the database isn't reachable
     // or rules deny reads, fall back to defaults so the user still gets in.
     const withTimeout = <T,>(p: Promise<T>, ms: number, fallback: T): Promise<T> =>
