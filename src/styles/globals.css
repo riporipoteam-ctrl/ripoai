@@ -9,6 +9,8 @@
   --accent-ink: 255 255 255;
   --surface: 247 247 248;
   --surface-raised: 255 255 255;
+  --card: 255 255 255;
+  --line: 224 224 230;
   --ink: 13 13 13;
   --muted: 108 108 122;
   --glass-bg: 255 255 255;
@@ -30,6 +32,8 @@
   --accent-ink: 255 255 255;
   --surface: 33 33 33;
   --surface-raised: 47 47 47;
+  --card: 44 44 47;
+  --line: 64 64 70;
   --ink: 236 236 238;
   --muted: 154 154 166;
   --glass-bg: 52 52 54;

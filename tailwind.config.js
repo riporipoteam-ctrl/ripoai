@@ -16,6 +16,10 @@ export default {
         },
         ink: 'rgb(var(--ink) / <alpha-value>)',
         muted: 'rgb(var(--muted) / <alpha-value>)',
+        // Card surface + hairline border used by the agents/jobs/apps pages.
+        card: 'rgb(var(--card) / <alpha-value>)',
+        bg: 'rgb(var(--surface) / <alpha-value>)',
+        line: 'rgb(var(--line) / <alpha-value>)',
       },
       fontFamily: {
         sans: ['Manrope', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
