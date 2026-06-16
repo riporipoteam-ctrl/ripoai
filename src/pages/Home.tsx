@@ -21,6 +21,7 @@ const AdminPage = lazy(() => import('./AdminPage'))
 const AgentsPage = lazy(() => import('./AgentsPage'))
 const JobsPage = lazy(() => import('./JobsPage'))
 const AppsPage = lazy(() => import('./AppsPage'))
+const FriendsPage = lazy(() => import('./FriendsPage'))
 const AgentDetailPage = lazy(() => import('./AgentDetailPage'))
 
 export default function Home() {
@@ -147,6 +148,14 @@ export default function Home() {
             element={
               <Suspense fallback={<div className="flex h-full items-center justify-center"><Spinner /></div>}>
                 <AppsPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/friends"
+            element={
+              <Suspense fallback={<div className="flex h-full items-center justify-center"><Spinner /></div>}>
+                <FriendsPage />
               </Suspense>
             }
           />

@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Home, Bot, Plus, Zap, LayoutGrid } from 'lucide-react'
+import { Home, Bot, Plus, Zap, MessageSquare } from 'lucide-react'
 import { useStore } from '../../store'
 import { isNative } from '../../lib/native'
 import { haptic } from '../../lib/native'
@@ -18,7 +18,7 @@ export default function NativeTabBar() {
   const isHome = path === '/' || path.startsWith('/c/')
   const onAgents = path.startsWith('/agents') || path.startsWith('/agent/') || path.startsWith('/team')
   const onJobs = path.startsWith('/jobs')
-  const onApps = path.startsWith('/apps')
+  const onFriends = path.startsWith('/friends')
 
   function go(fn: () => void) {
     haptic('light')
@@ -83,7 +83,7 @@ export default function NativeTabBar() {
         </div>
 
         <Tab icon={<Zap size={21} />} label="Jobs" active={onJobs} onClick={() => navigate('/jobs')} />
-        <Tab icon={<LayoutGrid size={21} />} label="Apps" active={onApps} onClick={() => navigate('/apps')} />
+        <Tab icon={<MessageSquare size={21} />} label="Friends" active={onFriends} onClick={() => navigate('/friends')} />
       </div>
     </motion.nav>
   )

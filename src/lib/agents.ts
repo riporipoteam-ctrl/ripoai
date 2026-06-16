@@ -134,12 +134,12 @@ export function agentWantsBrowse(text: string): boolean {
 export const DEFAULT_AGENTS: Agent[] = [
   {
     id: 'bob',
-    name: 'Bob',
+    name: 'AskAI',
     emoji: '🧭',
-    role: 'Team Lead',
+    role: 'Chief of Staff',
     personality:
-      'A decisive coordinator. You break a goal into clear tasks, delegate each to the right specialist, keep everyone on track, and assemble the final, complete deliverable. You are concise and action-oriented.',
-    color: '#6366f1',
+      'The head agent and Chief of Staff. You break a goal into clear tasks, delegate each to the right specialist agent, keep everyone on track, and assemble the final, complete deliverable. You are decisive, concise and action-oriented.',
+    color: '#10a37f',
   },
   {
     id: 'ada',
@@ -241,6 +241,17 @@ export function loadAgents(uid: string): Agent[] {
     if (!raw) return [...DEFAULT_AGENTS, ...EXTRA_AGENTS]
     const list = JSON.parse(raw) as Agent[]
     if (!Array.isArray(list) || !list.length) return [...DEFAULT_AGENTS, ...EXTRA_AGENTS]
+    // One-time rename of the old "Bob" Team Lead to the "AskAI" Chief of Staff
+    // so existing rosters reflect the head agent's new identity.
+    let renamed = false
+    for (const a of list) {
+      if (a.id === 'bob' && a.name === 'Bob') {
+        a.name = 'AskAI'
+        a.role = 'Chief of Staff'
+        renamed = true
+      }
+    }
+    if (renamed) localStorage.setItem(key(uid), JSON.stringify(list))
     // One-time merge of the newer specialists for users with a saved roster.
     // Done once so deleting them afterwards sticks.
     if (!localStorage.getItem(seededKey(uid))) {
