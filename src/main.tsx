@@ -13,6 +13,7 @@ import './styles/ui-upgrades.css'
 import './styles/ios-polish.css'
 import './styles/android-redesign.css'
 import './styles/bold-2026.css'
+import './styles/chatgpt-theme.css'
 import 'katex/dist/katex.min.css'
 
 // Bump on each deploy so the build hash changes and the version stamp updates.
