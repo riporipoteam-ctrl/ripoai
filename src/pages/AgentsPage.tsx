@@ -46,9 +46,11 @@ import {
   delegationSuggestions,
   hireFromTemplate,
   applyStarterPack,
+  scheduleFromGoal,
   STARTER_PACKS,
   CHIEF,
 } from '../lib/orchestrator'
+import { untilLabel } from '../lib/jobs'
 import {
   loadActivity,
   logActivity,
@@ -203,6 +205,32 @@ export default function AgentsPage() {
     const text = (prefill ?? draft).trim()
     if (!uid || !text || routing) return
     haptic('medium')
+
+    // If the goal asks for something LATER ("tomorrow", "every morning"…),
+    // schedule it as a job for the right agent instead of running it now.
+    if (!forceAgent) {
+      const scheduled = scheduleFromGoal(uid, text)
+      if (scheduled) {
+        setDraft('')
+        setSuggested([])
+        setRouting(`Scheduled for ${scheduled.agent.name} · ${untilLabel(scheduled.job.nextRunAt)}`)
+        try {
+          window.dispatchEvent(
+            new CustomEvent('askai-notify', {
+              detail: { kind: 'job', title: 'Job scheduled', body: `${scheduled.job.title} · ${untilLabel(scheduled.job.nextRunAt)}`, to: '/jobs' },
+            }),
+          )
+        } catch {
+          /* ignore */
+        }
+        setTimeout(() => {
+          setRouting(null)
+          navigate('/jobs')
+        }, 800)
+        return
+      }
+    }
+
     const route = forceAgent ? null : routeGoal(uid, text)
     const agent = forceAgent ?? route?.agent
     if (!agent) return

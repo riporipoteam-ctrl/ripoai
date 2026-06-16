@@ -276,9 +276,10 @@ async function webSearch(
 }
 
 interface BrowserDecision {
-  action: 'search' | 'open' | 'done'
+  action: 'search' | 'open' | 'extract' | 'done'
   query?: string
   url?: string
+  focus?: string
   thought?: string
   answer?: string
 }
@@ -288,7 +289,7 @@ function parseDecision(out: string): BrowserDecision | null {
   if (!m) return null
   try {
     const parsed = JSON.parse(m[0])
-    if (parsed.action === 'search' || parsed.action === 'open' || parsed.action === 'done') return parsed
+    if (['search', 'open', 'extract', 'done'].includes(parsed.action)) return parsed
   } catch {
     /* unparseable */
   }
@@ -351,6 +352,7 @@ export async function runLocalBrowserAgent(
 Decide the SINGLE next browser action. Reply with ONLY compact JSON, no prose:
 {"action":"search","query":"...","thought":"short reason"} — type a query into the search engine
 {"action":"open","url":"https://...","thought":"short reason"} — click/open one of the available links or a URL you know
+{"action":"extract","focus":"what to pull, e.g. prices and names","thought":"short reason"} — pull the specific facts you need out of the CURRENT page
 {"action":"done","answer":"...full answer for the user, with concrete findings and source URLs...","thought":"why done"}
 Rules: BE THOROUGH — real tasks need several pages, comparisons and cross-checking, not one quick look. Open the most promising pages, read them, refine your search, and verify facts across at least 2-3 different sources before finishing. Only choose "done" when you genuinely have everything needed for a complete, specific answer (names, numbers, prices, steps) with the URLs you used. If a page failed to load or was useless, try a different one. Never give up early.`
 
@@ -444,6 +446,25 @@ Rules: BE THOROUGH — real tasks need several pages, comparisons and cross-chec
         sources: visited.map((v) => ({ title: v.title, url: v.url })),
         events,
       }
+    }
+
+    if (decision.action === 'extract' && currentUrl) {
+      const focus = decision.focus || 'the key facts'
+      emit({ type: 'read', label: `Extracting ${focus.slice(0, 50)}`, url: currentUrl, screenshot: screenshot || undefined, title: currentTitle })
+      try {
+        const data = await complete(
+          'llama-3.3-70b-versatile',
+          [
+            { role: 'system', content: 'Extract only the requested facts from the page text as a tight bullet list. No preamble.' },
+            { role: 'user', content: `EXTRACT: ${focus}\n\nPAGE: ${currentTitle} (${currentUrl})\n${pageText.slice(0, 4000)}` },
+          ],
+          { temperature: 0.1, maxTokens: 500 },
+        )
+        if (data.trim()) visited.push({ title: `Extracted: ${focus.slice(0, 40)}`, url: currentUrl, excerpt: data.trim() })
+      } catch {
+        /* extraction failed — keep going */
+      }
+      continue
     }
 
     if (decision.action === 'search' && decision.query) {

@@ -14,10 +14,15 @@ import './styles/ios-polish.css'
 import './styles/android-redesign.css'
 import './styles/bold-2026.css'
 import './styles/chatgpt-theme.css'
+import './styles/platform.css'
 import 'katex/dist/katex.min.css'
+import { applyPlatformClass } from './lib/platform'
+
+// Give the shared app a native iOS / Android / web feel.
+applyPlatformClass()
 
 // Bump on each deploy so the build hash changes and the version stamp updates.
-export const APP_VERSION = 'v7.15.4'
+export const APP_VERSION = 'v7.16.0'
 console.log('AskAI', APP_VERSION)
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
