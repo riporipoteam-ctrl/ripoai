@@ -17,6 +17,101 @@ export interface Agent {
   skills?: string[]
   /** Live web browsing (OpenClaw) capability. Defaults to ON when undefined. */
   browsing?: boolean
+
+  // ── Nebula-style agent profile (all optional & backward-compatible) ──
+  /** Per-agent model id. Falls back to the app default when undefined. */
+  model?: string
+  /** Work status shown in the header. */
+  status?: AgentStatus
+  /** Longer human description shown in the "About" section. */
+  about?: string
+  /** The editable system prompt powering this agent (the "Prompt" tab). */
+  systemPrompt?: string
+  /** Who can see/use this agent. */
+  visibility?: AgentVisibility
+  /** Where the agent runs. */
+  device?: AgentDevice
+  /** Capabilities the agent may use (the "Tools" tab). */
+  tools?: AgentTool[]
+  /** Automations that start the agent (the "Triggers" tab). */
+  triggers?: AgentTrigger[]
+  /** Standing objectives the agent works toward (the "Goals" section). */
+  goals?: AgentGoal[]
+  /** Whether this is a built-in default agent (cannot be deleted). */
+  builtin?: boolean
+}
+
+export type AgentStatus = 'ready' | 'working' | 'paused'
+export type AgentVisibility = 'private' | 'workspace' | 'public'
+export type AgentDevice = 'automatic' | 'cloud' | 'local'
+
+export interface AgentTool {
+  id: string
+  /** lucide icon name or emoji */
+  icon?: string
+  label: string
+  description?: string
+  enabled: boolean
+}
+
+export interface AgentTrigger {
+  id: string
+  type: 'schedule' | 'event' | 'webhook' | 'mention' | 'manual'
+  label: string
+  /** cron-ish or natural cadence ("daily 9am", "weekly mon") for schedule type */
+  cadence?: string
+  enabled: boolean
+}
+
+export interface AgentGoal {
+  id: string
+  text: string
+  done?: boolean
+}
+
+/** The catalog of tools an agent can be granted, mirroring Nebula's Tools tab. */
+export const AGENT_TOOL_CATALOG: Omit<AgentTool, 'enabled'>[] = [
+  { id: 'web', icon: 'Globe', label: 'Web Browsing', description: 'Search and read live web pages.' },
+  { id: 'image', icon: 'Image', label: 'Image Generation', description: 'Create images from prompts.' },
+  { id: 'code', icon: 'Code', label: 'Code & Sandbox', description: 'Write, run and debug code.' },
+  { id: 'files', icon: 'FileText', label: 'Files & Docs', description: 'Read and produce documents.' },
+  { id: 'memory', icon: 'Brain', label: 'Memory', description: 'Remember context across runs.' },
+  { id: 'email', icon: 'Mail', label: 'Email', description: 'Draft and send email (needs integration).' },
+]
+
+/** Status label + color for the header pill. */
+export function statusMeta(status?: AgentStatus): { label: string; color: string } {
+  switch (status) {
+    case 'working':
+      return { label: 'Working…', color: '#f59e0b' }
+    case 'paused':
+      return { label: 'Paused', color: '#9ca3af' }
+    default:
+      return { label: 'Ready to work', color: '#10b981' }
+  }
+}
+
+/** Fill in sensible Nebula-style defaults for any agent (old or new) so every
+ *  agent renders the full profile without migrations. Non-destructive. */
+export function normalizeAgent(agent: Agent): Agent &
+  Required<Pick<Agent, 'status' | 'visibility' | 'device' | 'about' | 'systemPrompt' | 'tools' | 'triggers' | 'goals'>> {
+  return {
+    ...agent,
+    status: agent.status ?? 'ready',
+    visibility: agent.visibility ?? 'private',
+    device: agent.device ?? 'automatic',
+    about: agent.about ?? agent.personality,
+    systemPrompt: agent.systemPrompt ?? `You are ${agent.name}, ${agent.role}. ${agent.personality}`,
+    tools:
+      agent.tools ??
+      AGENT_TOOL_CATALOG.map((t) => ({
+        ...t,
+        // Sensible defaults: browsing + files on, the rest off until enabled.
+        enabled: t.id === 'web' ? agent.browsing !== false : t.id === 'files',
+      })),
+    triggers: agent.triggers ?? [],
+    goals: agent.goals ?? [],
+  }
 }
 
 /** Is live web browsing (OpenClaw) enabled for this agent? Defaults to true so
