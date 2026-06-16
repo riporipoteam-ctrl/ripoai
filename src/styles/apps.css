@@ -1,0 +1,28 @@
+/* Apps tab — gallery card thumbnails for agent-built apps.
+ *
+ * The page itself uses the app's design tokens (accent / ink / muted / card /
+ * bg / line) and the shared `glass` / `pressable` utilities; this file only
+ * adds the thumbnail banner treatment, which is too gradient-y to express
+ * cleanly with Tailwind utilities. The banner tint is driven by a per-card
+ * `--thumb` CSS variable set inline from the app's kind. */
+
+.apps-thumb {
+  background:
+    radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--thumb, #6366f1) 55%, transparent), transparent 60%),
+    radial-gradient(120% 140% at 100% 100%, color-mix(in srgb, var(--thumb, #6366f1) 35%, transparent), transparent 55%),
+    linear-gradient(135deg, color-mix(in srgb, var(--thumb, #6366f1) 22%, transparent), transparent);
+}
+
+.apps-thumb-mark {
+  color: var(--thumb, #6366f1);
+  text-shadow: 0 1px 0 rgb(255 255 255 / 35%);
+  letter-spacing: -0.02em;
+}
+
+/* Fallback for engines without color-mix(): a flat tinted wash. */
+@supports not (background: color-mix(in srgb, red, blue)) {
+  .apps-thumb {
+    background: linear-gradient(135deg, var(--thumb, #6366f1), transparent);
+    opacity: 0.92;
+  }
+}

@@ -1,333 +1,340 @@
-// Apps / Integrations — connect external services (GitHub, Slack, Gmail,
-// Notion …) that your agents can act on, mirroring Nebula's Apps tab.
+// Apps — a gallery of the websites/apps your AGENTS BUILD for you.
 //
-// Connections here are SIMULATED (preview): real OAuth needs a backend this
-// client-only build doesn't have, so "Connect (preview)" only records the link
-// locally. Once connected, you can choose which agents may use the service —
-// that integration↔agent wiring lives in lib/integrations.ts (we never mutate
-// the agents.ts schema). See the `// TODO: real OAuth` seam in integrations.ts.
+// (Service integrations that used to live here moved to Settings.) Each card is
+// an AgentApp: a small React + TypeScript app an agent generated, with a live
+// preview and its source. A prominent composer at the top lets you ask an agent
+// to build a new website/app/component; it reuses the same streaming codegen
+// pipeline ProjectsView uses (see lib/agentApps.ts → buildAppFiles). Tapping a
+// card opens it in AppPreview (live preview + code, edit, ask-to-change,
+// open-in-new-tab, download).
 
 import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Github,
-  Slack,
-  Mail,
-  FileText,
-  Calendar,
-  Trello,
-  Webhook,
-  Plug,
-  Check,
-  Bot,
-  ChevronDown,
-  ShieldCheck,
   Sparkles,
+  ArrowUp,
+  Square,
+  LayoutGrid,
+  Globe,
+  Boxes,
+  Component as ComponentIcon,
+  Wand2,
+  Trash2,
   type LucideIcon,
 } from 'lucide-react'
 import { useStore } from '../store'
-import { loadAgents, type Agent } from '../lib/agents'
-import {
-  loadIntegrations,
-  connect,
-  disconnect,
-  toggleAgent,
-  onIntegrationsChanged,
-  CATEGORY_LABEL,
-  type Integration,
-} from '../lib/integrations'
 import { haptic, isNative } from '../lib/native'
+import {
+  loadAgentApps,
+  onAgentAppsChanged,
+  newApp,
+  saveApp,
+  deleteApp,
+  buildAppFiles,
+  titleFor,
+  guessKind,
+  type AgentApp,
+  type AgentAppKind,
+} from '../lib/agentApps'
+import { loadAgents, type Agent } from '../lib/agents'
+import AppPreview from '../components/AppPreview'
+import '../styles/apps.css'
 
-/** Map the catalog's icon name to a lucide component. */
-const ICONS: Record<string, LucideIcon> = {
-  Github,
-  Slack,
-  Mail,
-  FileText,
-  Calendar,
-  Trello,
-  Webhook,
+const KIND_META: Record<AgentAppKind, { label: string; icon: LucideIcon; tint: string }> = {
+  website: { label: 'Website', icon: Globe, tint: '#6366f1' },
+  app: { label: 'App', icon: Boxes, tint: '#10b981' },
+  component: { label: 'Component', icon: ComponentIcon, tint: '#f59e0b' },
 }
 
-function relativeTime(ts?: number): string {
-  if (!ts) return ''
+const SUGGESTIONS = [
+  'A SaaS landing page for an AI note-taking app',
+  'A pomodoro timer app with start, pause and reset',
+  'A pricing table component with three tiers',
+]
+
+function relativeTime(ts: number): string {
   const mins = Math.round((Date.now() - ts) / 60000)
   if (mins < 1) return 'just now'
   if (mins < 60) return `${mins}m ago`
   const hrs = Math.round(mins / 60)
   if (hrs < 24) return `${hrs}h ago`
-  return new Date(ts).toLocaleDateString()
+  const days = Math.round(hrs / 24)
+  return days < 7 ? `${days}d ago` : new Date(ts).toLocaleDateString()
 }
 
 export default function AppsPage() {
   const uid = useStore((s) => s.user?.uid)
-  const [integrations, setIntegrations] = useState<Integration[]>([])
+  const [apps, setApps] = useState<AgentApp[]>([])
   const [agents, setAgents] = useState<Agent[]>([])
-  const [expanded, setExpanded] = useState<string | null>(null)
+  const [openId, setOpenId] = useState<string | null>(null)
+  const [prompt, setPrompt] = useState('')
+  const [building, setBuilding] = useState(false)
 
   useEffect(() => {
     if (!uid) return
-    setIntegrations(loadIntegrations(uid))
+    setApps(loadAgentApps(uid))
     setAgents(loadAgents(uid))
-    return onIntegrationsChanged(() => setIntegrations(loadIntegrations(uid)))
+    return onAgentAppsChanged(() => setApps(loadAgentApps(uid)))
   }, [uid])
 
-  const connectedTotal = useMemo(
-    () => integrations.filter((i) => i.connected).length,
-    [integrations],
-  )
+  const openApp = useMemo(() => apps.find((a) => a.id === openId) ?? null, [apps, openId])
 
-  function handleConnect(id: string) {
-    if (!uid) return
+  async function build() {
+    const text = prompt.trim()
+    if (!text || building || !uid) return
     haptic('medium')
-    connect(uid, id)
-    setExpanded(id)
+    setBuilding(true)
+    setPrompt('')
+
+    // Pick a builder agent — prefer one whose role hints at building.
+    const builder =
+      agents.find((a) => /engineer|developer|builder|design|code|web/i.test(`${a.role} ${a.name}`)) ??
+      agents[0]
+    const agentId = builder?.id ?? 'askai'
+    const agentName = builder
+      ? `${builder.name}${builder.role ? ` (${builder.role})` : ''}`
+      : 'AskAI Builder'
+    const kind = guessKind(text)
+
+    // Create the card immediately (empty scaffold) so the user sees progress,
+    // then fill it in once the agent finishes.
+    const draft = newApp({
+      title: text.length > 40 ? text.slice(0, 40) + '…' : text,
+      description: text,
+      agentId,
+      agentName,
+      kind,
+      prompt: text,
+    })
+    saveApp(uid, draft)
+
+    try {
+      const [{ files }, title] = await Promise.all([buildAppFiles(text), titleFor(text)])
+      saveApp(uid, {
+        ...draft,
+        title: title || draft.title,
+        files,
+      })
+    } catch {
+      // Keep the scaffold card; the user can retry via "ask the agent to change".
+    } finally {
+      setBuilding(false)
+    }
   }
 
-  function handleDisconnect(id: string) {
+  function remove(id: string) {
     if (!uid) return
     haptic('light')
-    disconnect(uid, id)
-    setExpanded((e) => (e === id ? null : e))
+    deleteApp(uid, id)
   }
 
-  function handleToggleAgent(id: string, agentId: string) {
-    if (!uid) return
-    haptic('select')
-    toggleAgent(uid, id, agentId)
+  // ── Detail view ──
+  if (openApp && uid) {
+    return (
+      <AppPreview
+        app={openApp}
+        uid={uid}
+        onBack={() => setOpenId(null)}
+        onChange={() => setApps(loadAgentApps(uid))}
+      />
+    )
   }
 
+  // ── Gallery ──
   return (
-    <div
-      className={`mx-auto w-full max-w-2xl px-4 py-6 ${isNative ? 'pb-32' : 'pb-12'}`}
-    >
+    <div className={`mx-auto w-full max-w-4xl px-4 py-6 ${isNative ? 'pb-32' : 'pb-12'}`}>
       {/* Header */}
       <div className="mb-5">
         <div className="mb-1 flex items-center gap-2">
           <span className="accent-gradient-bg flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-sm">
-            <Plug size={18} />
+            <LayoutGrid size={18} />
           </span>
           <h1 className="text-2xl font-bold text-ink">Apps</h1>
-          {connectedTotal > 0 && (
+          {apps.length > 0 && (
             <span className="ml-auto rounded-full bg-accent/15 px-2.5 py-1 text-xs font-bold text-accent">
-              {connectedTotal} connected
+              {apps.length} built
             </span>
           )}
         </div>
         <p className="text-sm text-muted">
-          Connect services so your agents can act on them — read your repos, send
-          email, post to Slack and more.
+          Websites and apps your agents build for you — each one runs live with editable source.
         </p>
-        {/* Honest preview disclaimer */}
-        <div className="glass mt-3 flex items-start gap-2 rounded-xl px-3 py-2.5 text-xs text-muted">
-          <ShieldCheck size={15} className="mt-0.5 shrink-0 text-accent" />
-          <span>
-            <span className="font-semibold text-ink">Preview connections.</span>{' '}
-            Real OAuth needs a backend that isn't wired up yet, so connecting here
-            simulates the link locally — no external account is actually accessed.
-          </span>
-        </div>
       </div>
 
-      {/* Grid: 1 col mobile, 2 col ≥sm */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {integrations.map((i, idx) => (
-          <IntegrationCard
-            key={i.id}
-            integration={i}
-            agents={agents}
-            index={idx}
-            expanded={expanded === i.id}
-            onToggleExpanded={() =>
-              setExpanded((e) => (e === i.id ? null : i.id))
-            }
-            onConnect={() => handleConnect(i.id)}
-            onDisconnect={() => handleDisconnect(i.id)}
-            onToggleAgent={(agentId) => handleToggleAgent(i.id, agentId)}
+      {/* Composer */}
+      <div className="glass mb-6 rounded-2xl border border-line/60 p-3">
+        <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-ink">
+          <Wand2 size={16} className="text-accent" />
+          Have an agent build me a website or app
+        </div>
+        <div className="glass-strong flex items-end gap-2 rounded-xl border border-line/60 p-2">
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                build()
+              }
+            }}
+            rows={2}
+            placeholder="Describe what you want built — e.g. a landing page for my coffee shop…"
+            className="no-scrollbar max-h-32 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-ink outline-none placeholder:text-muted"
           />
-        ))}
+          {building ? (
+            <button
+              disabled
+              className="pressable flex h-11 w-11 items-center justify-center rounded-full bg-ink text-bg opacity-70"
+              aria-label="Building"
+            >
+              <Square size={14} fill="currentColor" />
+            </button>
+          ) : (
+            <button
+              onClick={build}
+              disabled={!prompt.trim()}
+              className="accent-gradient-bg pressable flex h-11 w-11 items-center justify-center rounded-full text-white disabled:opacity-40"
+              aria-label="Build"
+            >
+              <ArrowUp size={18} />
+            </button>
+          )}
+        </div>
+        {building && (
+          <div className="mt-2 flex items-center gap-2 text-xs font-medium text-muted">
+            <span className="bg-gradient-to-r from-accent via-ink to-accent bg-[length:200%_100%] bg-clip-text text-transparent animate-shimmer">
+              An agent is building your app…
+            </span>
+            <span className="flex gap-1">
+              <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent" />
+              <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent [animation-delay:0.2s]" />
+              <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-accent [animation-delay:0.4s]" />
+            </span>
+          </div>
+        )}
+        {!building && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {SUGGESTIONS.map((s) => (
+              <button
+                key={s}
+                onClick={() => setPrompt(s)}
+                className="pressable rounded-full border border-line/60 px-2.5 py-1 text-xs text-muted hover:text-ink"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Gallery grid: 1 col mobile, 2 col ≥sm */}
+      {apps.length === 0 ? (
+        <div className="glass rounded-2xl border border-line/60 px-4 py-12 text-center">
+          <Sparkles size={28} className="mx-auto text-accent" />
+          <p className="mt-3 font-semibold text-ink">No apps yet</p>
+          <p className="mt-1 text-sm text-muted">
+            Ask an agent above to build your first website or app.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <AnimatePresence initial={false}>
+            {apps.map((a, i) => (
+              <AppCard
+                key={a.id}
+                app={a}
+                index={i}
+                onOpen={() => {
+                  haptic('select')
+                  setOpenId(a.id)
+                }}
+                onDelete={() => remove(a.id)}
+              />
+            ))}
+          </AnimatePresence>
+        </div>
+      )}
     </div>
   )
 }
 
-function IntegrationCard({
-  integration: i,
-  agents,
+function AppCard({
+  app,
   index,
-  expanded,
-  onToggleExpanded,
-  onConnect,
-  onDisconnect,
-  onToggleAgent,
+  onOpen,
+  onDelete,
 }: {
-  integration: Integration
-  agents: Agent[]
+  app: AgentApp
   index: number
-  expanded: boolean
-  onToggleExpanded: () => void
-  onConnect: () => void
-  onDisconnect: () => void
-  onToggleAgent: (agentId: string) => void
+  onOpen: () => void
+  onDelete: () => void
 }) {
-  const Icon = ICONS[i.icon] ?? Plug
-
+  const meta = KIND_META[app.kind]
+  const KindIcon = meta.icon
   return (
     <motion.div
       layout
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: Math.min(index * 0.04, 0.3), type: 'spring', stiffness: 260, damping: 26 }}
-      whileHover={{ y: -2 }}
-      className="glass flex flex-col rounded-2xl border border-line/50 p-4"
+      exit={{ opacity: 0, scale: 0.96 }}
+      transition={{
+        delay: Math.min(index * 0.04, 0.3),
+        type: 'spring',
+        stiffness: 260,
+        damping: 26,
+      }}
+      className="glass group flex flex-col overflow-hidden rounded-2xl border border-line/60"
     >
-      <div className="flex items-start gap-3">
-        <span
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
-          style={{ background: i.color + '22', boxShadow: `inset 0 0 0 1px ${i.color}33` }}
-        >
-          <Icon size={20} style={{ color: i.color }} />
+      {/* Thumbnail: a styled banner derived from the app kind/title. */}
+      <button
+        onClick={onOpen}
+        className="pressable apps-thumb relative flex h-32 w-full items-center justify-center overflow-hidden text-left"
+        style={{ ['--thumb' as string]: meta.tint }}
+        aria-label={`Open ${app.title}`}
+      >
+        <span className="apps-thumb-mark text-4xl font-black opacity-90">
+          {app.title.trim().charAt(0).toUpperCase() || 'A'}
         </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h3 className="truncate font-semibold text-ink">{i.label}</h3>
-            {i.connected && (
-              <span className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-500">
-                <Check size={10} strokeWidth={3} /> On
-              </span>
-            )}
-          </div>
-          <p className="mt-0.5 text-sm text-muted">{i.description}</p>
-          <span className="mt-1 inline-block rounded-md bg-ink/5 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted">
-            {CATEGORY_LABEL[i.category]}
+        <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-black/35 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white backdrop-blur">
+          <KindIcon size={11} /> {meta.label}
+        </span>
+      </button>
+
+      {/* Body */}
+      <div className="flex min-w-0 flex-1 flex-col p-3.5">
+        <button onClick={onOpen} className="min-w-0 text-left">
+          <h3 className="truncate font-semibold text-ink">{app.title}</h3>
+          <p className="mt-0.5 line-clamp-2 text-sm text-muted">
+            {app.description || 'No description'}
+          </p>
+        </button>
+
+        <div className="mt-auto flex items-center gap-2 pt-3">
+          <span className="flex min-w-0 items-center gap-1.5 text-xs text-muted">
+            <Wand2 size={12} className="shrink-0 text-accent" />
+            <span className="truncate">{app.agentName}</span>
+          </span>
+          <span className="ml-auto shrink-0 text-[11px] text-muted">
+            {relativeTime(app.updatedAt)}
           </span>
         </div>
-      </div>
 
-      {/* Scopes */}
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {i.scopes.map((s) => (
-          <span
-            key={s}
-            className="rounded-full border border-line/60 px-2 py-0.5 text-[11px] text-muted"
-          >
-            {s}
-          </span>
-        ))}
-      </div>
-
-      {/* Action row — 44px+ touch targets */}
-      <div className="mt-4 flex items-center gap-2">
-        {i.connected ? (
-          <>
-            <button
-              onClick={onToggleExpanded}
-              className="pressable flex min-h-[44px] flex-1 items-center justify-center gap-1.5 rounded-xl border border-line/60 bg-card px-3 text-sm font-semibold text-ink"
-            >
-              <Bot size={15} className="text-accent" />
-              {i.agentIds.length
-                ? `${i.agentIds.length} agent${i.agentIds.length === 1 ? '' : 's'}`
-                : 'Assign agents'}
-              <ChevronDown
-                size={15}
-                className={`transition-transform ${expanded ? 'rotate-180' : ''}`}
-              />
-            </button>
-            <button
-              onClick={onDisconnect}
-              className="pressable flex min-h-[44px] items-center justify-center rounded-xl border border-line/60 px-3 text-sm font-semibold text-muted hover:text-red-400"
-            >
-              Disconnect
-            </button>
-          </>
-        ) : (
+        <div className="mt-3 flex items-center gap-2">
           <button
-            onClick={onConnect}
-            className="accent-gradient-bg pressable flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl px-3 text-sm font-bold text-white shadow-sm"
+            onClick={onOpen}
+            className="accent-gradient-bg pressable flex min-h-[44px] flex-1 items-center justify-center rounded-xl text-sm font-bold text-white shadow-sm"
           >
-            <Plug size={15} /> Connect <span className="opacity-70">(preview)</span>
+            Open
           </button>
-        )}
-      </div>
-
-      {/* Per-agent wiring (only when connected & expanded) */}
-      <AnimatePresence initial={false}>
-        {i.connected && expanded && (
-          <motion.div
-            layout
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="overflow-hidden"
+          <button
+            onClick={onDelete}
+            className="pressable flex min-h-[44px] w-11 items-center justify-center rounded-xl border border-line/60 text-muted hover:text-red-400"
+            aria-label={`Delete ${app.title}`}
           >
-            <div className="mt-3 border-t border-line/50 pt-3">
-              <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-muted">
-                <Sparkles size={12} className="text-accent" />
-                Which agents can use {i.label}?
-              </p>
-              {agents.length === 0 ? (
-                <p className="text-xs text-muted">No agents yet.</p>
-              ) : (
-                <div className="flex flex-col gap-1">
-                  {agents.map((a) => {
-                    const on = i.agentIds.includes(a.id)
-                    // Read-only hint from the agent's own tools (agents.ts schema)
-                    // — does this agent already have a tool this service powers?
-                    const relevant = (a.tools ?? []).some(
-                      (t) => t.enabled && i.agentTools.includes(t.id),
-                    )
-                    return (
-                      <button
-                        key={a.id}
-                        onClick={() => onToggleAgent(a.id)}
-                        className={`pressable flex min-h-[44px] items-center gap-2.5 rounded-xl px-2.5 text-left transition ${
-                          on ? 'bg-accent/10' : 'hover:bg-ink/5'
-                        }`}
-                      >
-                        <span
-                          className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-lg text-base"
-                          style={{ background: a.color + '22' }}
-                        >
-                          {a.avatar ? (
-                            <img src={a.avatar} alt="" className="h-8 w-8 rounded-lg object-cover" />
-                          ) : (
-                            a.emoji
-                          )}
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-medium text-ink">
-                            {a.name}
-                          </span>
-                          <span className="block truncate text-[11px] text-muted">
-                            {a.role}
-                            {relevant && (
-                              <span className="ml-1 text-accent">· has matching tool</span>
-                            )}
-                          </span>
-                        </span>
-                        <span
-                          className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition ${
-                            on
-                              ? 'border-accent bg-accent text-[rgb(var(--accent-ink))]'
-                              : 'border-line'
-                          }`}
-                        >
-                          {on && <Check size={13} strokeWidth={3} />}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-              {i.connectedAt && (
-                <p className="mt-2 text-[11px] text-muted">
-                  Connected {relativeTime(i.connectedAt)} · preview
-                </p>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <Trash2 size={16} />
+          </button>
+        </div>
+      </div>
     </motion.div>
   )
 }

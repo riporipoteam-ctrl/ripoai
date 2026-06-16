@@ -342,7 +342,7 @@ export default function Composer({
               <button
                 key={a.id}
                 onClick={() => pickAgent(a.name)}
-                className="pressable flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left hover:bg-white/10"
+                className="pressable flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left hover:bg-[rgb(var(--ink)/0.06)]"
               >
                 <span
                   className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-base"
@@ -376,7 +376,7 @@ export default function Composer({
               <button
                 key={s.id}
                 onClick={() => pickSkill(s.slug)}
-                className="pressable flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left hover:bg-white/10"
+                className="pressable flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left hover:bg-[rgb(var(--ink)/0.06)]"
               >
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/15 text-accent">
                   <Wand2 size={16} />
@@ -395,7 +395,7 @@ export default function Composer({
 
       <motion.div
         layout
-        className={`composer-shell floating-composer relative z-20 rounded-[28px] border border-white/[0.12] p-2 backdrop-blur-2xl ${dragging ? 'composer-drop-hot' : ''}`}
+        className={`composer-shell floating-composer relative z-20 rounded-[28px] p-2 ${dragging ? 'composer-drop-hot' : ''}`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -424,7 +424,7 @@ export default function Composer({
           <div className="relative shrink-0">
             <button
               onClick={() => setPlusOpen((o) => !o)}
-              className={`pressable flex h-9 w-9 items-center justify-center rounded-full transition ${plusOpen ? 'bg-accent text-white' : 'hover:bg-white/10'}`}
+              className={`pressable flex h-9 w-9 items-center justify-center rounded-full transition ${plusOpen ? 'bg-accent text-white' : 'hover:bg-[rgb(var(--ink)/0.06)]'}`}
               title="Add"
             >
               {busy ? <Loader2 size={18} className="animate-spin" /> : <Plus size={20} className={plusOpen ? 'rotate-45 transition-transform' : 'transition-transform'} />}
@@ -455,7 +455,7 @@ export default function Composer({
                           camInput.current?.click()
                           setPlusOpen(false)
                         }}
-                        className="pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium hover:bg-white/10"
+                        className="pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium hover:bg-[rgb(var(--ink)/0.06)]"
                       >
                         <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
                           <Camera size={18} />
@@ -467,7 +467,7 @@ export default function Composer({
                           imgInput.current?.click()
                           setPlusOpen(false)
                         }}
-                        className="pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium hover:bg-white/10"
+                        className="pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium hover:bg-[rgb(var(--ink)/0.06)]"
                       >
                         <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
                           <ImageIcon size={18} />
@@ -479,7 +479,7 @@ export default function Composer({
                           fileInput.current?.click()
                           setPlusOpen(false)
                         }}
-                        className="pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium hover:bg-white/10"
+                        className="pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium hover:bg-[rgb(var(--ink)/0.06)]"
                       >
                         <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
                           <Paperclip size={18} />
@@ -487,13 +487,13 @@ export default function Composer({
                         Upload file
                       </button>
 
-                      <div className="my-1.5 h-px bg-white/10" />
+                      <div className="my-1.5 h-px bg-[rgb(var(--line))]" />
                       <div className="px-3 pb-1 text-[11px] font-bold uppercase tracking-widest text-muted/70">
                         Modes
                       </div>
                       <button
                         onClick={() => { haptic('select'); onToggleWeb(); setPlusOpen(false) }}
-                        className={`pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium ${webSearch ? 'bg-accent/15' : 'hover:bg-white/10'}`}
+                        className={`pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium ${webSearch ? 'bg-accent/15' : 'hover:bg-[rgb(var(--ink)/0.06)]'}`}
                       >
                         <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
                           <Globe size={18} />
@@ -503,7 +503,7 @@ export default function Composer({
                       </button>
                       <button
                         onClick={() => { haptic('select'); onToggleAgent(); setPlusOpen(false) }}
-                        className={`pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium ${agent ? 'bg-accent/15' : 'hover:bg-white/10'}`}
+                        className={`pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium ${agent ? 'bg-accent/15' : 'hover:bg-[rgb(var(--ink)/0.06)]'}`}
                       >
                         <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
                           <Bot size={18} />
@@ -514,7 +514,7 @@ export default function Composer({
                       {onToggleImage && (
                         <button
                           onClick={() => { haptic('select'); onToggleImage?.(); setPlusOpen(false) }}
-                          className={`pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium ${imageMode ? 'bg-accent/15' : 'hover:bg-white/10'}`}
+                          className={`pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium ${imageMode ? 'bg-accent/15' : 'hover:bg-[rgb(var(--ink)/0.06)]'}`}
                         >
                           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
                             <Sparkles size={18} />
@@ -526,7 +526,7 @@ export default function Composer({
                       {onTeam && (
                         <button
                           onClick={() => { haptic('select'); onTeam(text); setPlusOpen(false) }}
-                          className="pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium hover:bg-white/10"
+                          className="pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium hover:bg-[rgb(var(--ink)/0.06)]"
                         >
                           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
                             <Users size={18} />
@@ -535,14 +535,14 @@ export default function Composer({
                         </button>
                       )}
 
-                      <div className="my-1.5 h-px bg-white/10" />
+                      <div className="my-1.5 h-px bg-[rgb(var(--line))]" />
                       {onVoiceCall && (
                         <button
                           onClick={() => {
                             onVoiceCall()
                             setPlusOpen(false)
                           }}
-                          className="pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium hover:bg-white/10"
+                          className="pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium hover:bg-[rgb(var(--ink)/0.06)]"
                         >
                           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
                             <Phone size={18} />
@@ -609,7 +609,7 @@ export default function Composer({
                   voice.listening ? voice.stop() : voice.start()
                 }}
                 className={`pressable flex h-9 w-9 items-center justify-center rounded-full transition ${
-                  voice.listening ? 'bg-red-500 text-white' : 'text-muted hover:bg-white/10 hover:text-ink'
+                  voice.listening ? 'bg-red-500 text-white' : 'text-muted hover:bg-[rgb(var(--ink)/0.06)] hover:text-ink'
                 }`}
                 title="Voice input"
               >

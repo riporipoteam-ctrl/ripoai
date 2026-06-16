@@ -44,8 +44,10 @@ import {
 import { loadAgents, upsertAgent, deleteAgent, newAgent, setPendingAgentChat, ensureAgentAvatar, agentCanBrowse, type Agent } from '../lib/agents'
 import AgentProfile from './AgentProfile'
 import IosUpdater from './IosUpdater'
+import IntegrationsSettings from './settings/IntegrationsSettings'
 import { Bot, Plus as PlusIcon, MessageSquare, Globe2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import '../styles/settings.css'
 
 const ACCENTS = ['#10a37f', '#4ea8ff', '#36e0c0', '#7c5cff', '#ff6b6b', '#ffa94d', '#f06595']
 const TABS = [
@@ -55,6 +57,7 @@ const TABS = [
   { id: 'memory', label: 'Memory', icon: Brain },
   { id: 'skills', label: 'Skills', icon: Wand2 },
   { id: 'agents', label: 'Agents', icon: Bot },
+  { id: 'integrations', label: 'Integrations', icon: Plug },
   { id: 'data', label: 'Data controls', icon: Database },
   { id: 'about', label: 'About', icon: Info },
 ] as const
@@ -251,26 +254,24 @@ export default function Settings() {
 
   return (
     <Modal open={settingsOpen} onClose={closeSettings} title="Settings" wide>
-      <div className="flex flex-col gap-0 sm:flex-row">
-        {/* Tabs */}
-        <div className="no-scrollbar flex shrink-0 gap-1.5 overflow-x-auto border-b border-white/10 p-3 sm:w-52 sm:flex-col sm:border-b-0 sm:border-r">
+      <div className="settings-shell">
+        {/* Tabs — segmented strip on mobile, vertical rail on desktop */}
+        <div className="settings-tabs" role="tablist" aria-label="Settings sections">
           {TABS.map((t) => (
             <button
               key={t.id}
+              role="tab"
+              aria-selected={tab === t.id}
               onClick={() => setTab(t.id)}
-              className={`pressable flex items-center gap-2.5 whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
-                tab === t.id
-                  ? 'bg-[rgb(var(--accent)/0.14)] text-ink'
-                  : 'text-muted hover:bg-white/[0.06] hover:text-ink'
-              }`}
+              className="settings-tab pressable"
             >
-              <t.icon size={16} className={tab === t.id ? 'text-accent' : ''} /> {tr(t.label)}
+              <t.icon size={16} className="settings-tab-icon" /> {tr(t.label)}
             </button>
           ))}
         </div>
 
         {/* Panel */}
-        <div className="min-h-[340px] flex-1 space-y-6 p-5">
+        <div className="settings-panel min-h-[340px]" role="tabpanel">
           {tab === 'general' && (
             <>
               <Field label="Profile picture">
@@ -953,6 +954,8 @@ export default function Settings() {
               </div>
             </>
           )}
+
+          {tab === 'integrations' && <IntegrationsSettings />}
 
           {tab === 'data' && (
             <>
