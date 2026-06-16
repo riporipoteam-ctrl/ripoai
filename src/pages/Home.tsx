@@ -23,6 +23,7 @@ const AgentsPage = lazy(() => import('./AgentsPage'))
 const JobsPage = lazy(() => import('./JobsPage'))
 const AppsPage = lazy(() => import('./AppsPage'))
 const FriendsPage = lazy(() => import('./FriendsPage'))
+const HomeLanding = lazy(() => import('./HomeLanding'))
 const AgentDetailPage = lazy(() => import('./AgentDetailPage'))
 
 export default function Home() {
@@ -63,7 +64,7 @@ export default function Home() {
               <PanelLeftOpen size={18} />
             </button>
             <button
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/chat')}
               className="cg-iconbtn pressable !h-9 !min-w-9"
               title="New chat"
             >
@@ -73,7 +74,15 @@ export default function Home() {
         )}
 
         <Routes>
-          <Route path="/" element={<ChatView />} />
+          <Route
+            path="/"
+            element={
+              <Suspense fallback={<div className="flex h-full items-center justify-center"><Spinner /></div>}>
+                <HomeLanding />
+              </Suspense>
+            }
+          />
+          <Route path="/chat" element={<ChatView />} />
           <Route path="/c/:chatId" element={<ChatView />} />
           <Route
             path="/project/:projectId"

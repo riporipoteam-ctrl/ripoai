@@ -158,7 +158,7 @@ export default function Sidebar() {
               {/* Primary action */}
               <button
                 onClick={() => {
-                  navigate('/')
+                  navigate('/chat')
                   if (isMobile) setSidebar(false)
                 }}
                 className="cg-newchat pressable"

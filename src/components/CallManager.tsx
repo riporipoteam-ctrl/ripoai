@@ -21,6 +21,41 @@ interface StartDetail {
   kind: CallKind
 }
 
+/** Show an OS notification for an incoming call (rings while the app is alive
+ *  but backgrounded). Action buttons appear when a service worker is available;
+ *  tapping the notification focuses the app where Accept/Decline is shown. */
+function notifyIncoming(call: IncomingCall) {
+  try {
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
+    if (!document.hidden) return // already visible — the in-app ring is enough
+    const title = `Incoming ${call.kind} call`
+    const body = `${call.callerName} is calling…`
+    navigator.serviceWorker?.ready
+      .then((reg) =>
+        reg.showNotification(title, {
+          body,
+          tag: 'askai-call-' + call.id,
+          requireInteraction: true,
+          // @ts-expect-error actions is supported on SW notifications
+          actions: [
+            { action: 'answer', title: 'Answer' },
+            { action: 'decline', title: 'Decline' },
+          ],
+          data: { callId: call.id },
+        }),
+      )
+      .catch(() => {
+        const n = new Notification(title, { body, requireInteraction: true, tag: 'askai-call-' + call.id })
+        n.onclick = () => {
+          window.focus()
+          n.close()
+        }
+      })
+  } catch {
+    /* ignore */
+  }
+}
+
 export default function CallManager() {
   const user = useStore((s) => s.user)
   const [session, setSession] = useState<CallSession | null>(null)
@@ -45,10 +80,20 @@ export default function CallManager() {
     return () => window.removeEventListener('askai-start-call', onStart as EventListener)
   }, [user])
 
+  // Ask for notification permission so we can ring when the app is backgrounded.
+  useEffect(() => {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {})
+    }
+  }, [])
+
   // Incoming ring.
   useEffect(() => {
     if (!user) return
-    return watchIncomingCalls(user.uid, (call) => setIncoming(session ? null : call))
+    return watchIncomingCalls(user.uid, (call) => {
+      setIncoming(session ? null : call)
+      if (call && !session) notifyIncoming(call)
+    })
   }, [user, session])
 
   async function accept() {
