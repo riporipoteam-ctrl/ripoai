@@ -3,7 +3,7 @@
 // @askai support. Built on Firestore (lib/friends.ts) — no extra backend.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Search, UserPlus, Check, X, Send, Paperclip, MessageSquare, Users, Bot } from 'lucide-react'
+import { ArrowLeft, Search, UserPlus, Check, X, Send, Paperclip, MessageSquare, Users, Bot, Phone, Video } from 'lucide-react'
 import { useStore } from '../store'
 import { isNative } from '../lib/native'
 import {
@@ -263,10 +263,24 @@ function ChatThread({ me, other, onBack }: { me: UserProfile; other: UserProfile
           <ArrowLeft size={20} />
         </button>
         <Avatar p={other} size={36} />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="font-semibold text-ink">{other.name}</div>
-          <div className="text-xs text-muted">@{other.handle} · tip: type @askai to ask the AI here</div>
+          <div className="text-xs text-muted">@{other.handle} · @askai to ask the AI</div>
         </div>
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('askai-start-call', { detail: { other, kind: 'audio' } }))}
+          className="pressable flex h-10 w-10 items-center justify-center rounded-full text-ink hover:bg-white/10"
+          aria-label="Voice call"
+        >
+          <Phone size={19} />
+        </button>
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('askai-start-call', { detail: { other, kind: 'video' } }))}
+          className="pressable flex h-10 w-10 items-center justify-center rounded-full text-ink hover:bg-white/10"
+          aria-label="Video call"
+        >
+          <Video size={19} />
+        </button>
       </div>
 
       <div className="flex-1 space-y-2 overflow-y-auto py-2">
