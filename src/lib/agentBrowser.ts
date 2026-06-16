@@ -180,6 +180,10 @@ const BROWSE_BUDGET_MS = isNative ? 45000 : 90000
 function shotUrl(url: string): string {
   // thum.io renders on demand and returns the REAL page image (mshots often
   // returns a gray/black "Generating preview" placeholder that never resolves).
+  // This is the <img src> the viewport falls back to when no headless render
+  // backend is configured; the panel also tries the Worker's /browse/render for
+  // a guaranteed real screenshot. We pass the screenshot URL through here so the
+  // panel can decide how to display it.
   return `https://image.thum.io/get/width/1200/crop/800/noanimate/${url}`
 }
 

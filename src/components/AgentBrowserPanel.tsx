@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { AlertTriangle, ArrowUpRight, Camera, Check, CircleDot, Globe2, Loader2, MousePointer2, MousePointerClick, Search, Type, XCircle } from 'lucide-react'
 import type { AgentBrowserEvent, AgentBrowserState } from '../lib/agentBrowser'
+import { renderPage, type RenderResult } from '../lib/integrationsBackend'
 
 const ICONS = {
   start: CircleDot,
@@ -15,9 +16,59 @@ const ICONS = {
   error: XCircle,
 } as const
 
-/** Live page screenshot with a real loading state and a fallback chain.
- * Renders nothing-but-spinner until a shot actually loads, so the viewport
- * never shows a black/placeholder image. object-contain kills the zoom/crop. */
+function hostOf(url?: string): string {
+  if (!url) return ''
+  try {
+    return new URL(url).hostname.replace(/^www\./, '')
+  } catch {
+    return url.replace(/^https?:\/\//, '').slice(0, 40)
+  }
+}
+
+/**
+ * Detect the "black box" / "Generating preview" failure: free on-demand
+ * renderers (thum.io, mshots) sometimes return an all-black or all-one-color
+ * placeholder that still fires onLoad — so the old code thought it succeeded and
+ * left a black viewport. We sample the decoded image; if it's effectively a flat
+ * block (or tiny), we treat it as failed and advance the source chain.
+ */
+function looksBlank(img: HTMLImageElement): boolean {
+  if (img.naturalWidth < 32 || img.naturalHeight < 32) return true
+  try {
+    const c = document.createElement('canvas')
+    const w = (c.width = 24)
+    const h = (c.height = 24)
+    const ctx = c.getContext('2d', { willReadFrequently: true })
+    if (!ctx) return false
+    ctx.drawImage(img, 0, 0, w, h)
+    const { data } = ctx.getImageData(0, 0, w, h)
+    let min = 255
+    let max = 0
+    let sum = 0
+    for (let i = 0; i < data.length; i += 4) {
+      const lum = (data[i] + data[i + 1] + data[i + 2]) / 3
+      if (lum < min) min = lum
+      if (lum > max) max = lum
+      sum += lum
+    }
+    const avg = sum / (data.length / 4)
+    // Nearly-uniform (range tiny) OR near-black overall → placeholder.
+    return max - min < 8 || avg < 6
+  } catch {
+    // Cross-origin taint → can't sample; assume it's a real image.
+    return false
+  }
+}
+
+/**
+ * Live page preview with a guaranteed-non-black render path:
+ *  1. If the Integrations Worker is configured, fetch a REAL headless PNG from
+ *     /browse/render (and use its snapshot/title as the fallback content).
+ *  2. Otherwise fall through a chain of on-demand screenshot services, each
+ *     validated by looksBlank() so black/placeholder images are rejected.
+ *  3. If everything fails, show a readable fallback card (favicon + host + URL +
+ *     text snapshot) — never a black box.
+ */
 function Screenshot({ pageUrl, title }: { pageUrl?: string; title?: string }) {
   const chain = pageUrl
     ? [
@@ -28,29 +79,97 @@ function Screenshot({ pageUrl, title }: { pageUrl?: string; title?: string }) {
   const [idx, setIdx] = useState(0)
   const [loaded, setLoaded] = useState(false)
   const [bust, setBust] = useState(0)
+  const [failed, setFailed] = useState(false)
+  // Real headless render from the Worker (preferred when configured).
+  const [render, setRender] = useState<RenderResult | null>(null)
   const retry = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     setIdx(0)
     setLoaded(false)
     setBust(0)
+    setFailed(false)
+    setRender(null)
+    if (!pageUrl) return
+    const ac = new AbortController()
+    // Prefer a real headless screenshot from the Worker. Returns null when no
+    // Worker is configured (then we use the on-demand chain below).
+    renderPage(pageUrl, { signal: ac.signal })
+      .then((r) => {
+        if (r) setRender(r)
+      })
+      .catch(() => {
+        /* aborted or failed — on-demand chain still runs */
+      })
+    return () => ac.abort()
   }, [pageUrl])
 
-  // If the current source hasn't loaded within a few seconds, re-request it
-  // (on-demand renderers need a moment), then fall through the chain.
+  const advance = () => {
+    if (idx < chain.length - 1) setIdx((i) => i + 1)
+    else setFailed(true)
+  }
+
+  // If the current source hasn't loaded within a few seconds, re-request it once
+  // (on-demand renderers need a moment), then fall through / give up gracefully.
   useEffect(() => {
-    if (loaded || !chain.length) return
+    if (loaded || failed || !chain.length || (render && render.ok)) return
     retry.current = setTimeout(() => {
       if (idx < chain.length - 1) setIdx((i) => i + 1)
-      else setBust((b) => b + 1)
-    }, 4000)
+      else if (bust < 2) setBust((b) => b + 1)
+      else setFailed(true)
+    }, 4500)
     return () => {
       if (retry.current) clearTimeout(retry.current)
     }
-  }, [idx, loaded, bust, chain.length])
+  }, [idx, loaded, failed, bust, chain.length, render])
+
+  // --- 1) Real headless PNG from the Worker -------------------------------
+  if (render && render.ok && render.image) {
+    return (
+      <img
+        src={render.image}
+        alt={title || render.title || 'Live page'}
+        className="absolute inset-0 h-full w-full bg-white object-contain object-top"
+      />
+    )
+  }
+
+  // --- 3) Graceful fallback card (no usable image anywhere) ----------------
+  if (failed || (render && !render.ok && !chain.length)) {
+    const host = hostOf(pageUrl)
+    const snap = render?.snapshot
+    return (
+      <div className="absolute inset-0 flex flex-col gap-3 overflow-hidden bg-white/85 p-5 text-left text-black dark:bg-[#101012] dark:text-white">
+        <div className="flex items-center gap-2">
+          {host && (
+            <img
+              src={`https://www.google.com/s2/favicons?domain=${host}&sz=32`}
+              alt=""
+              className="h-5 w-5 rounded"
+              onError={(e) => ((e.currentTarget.style.display = 'none'))}
+            />
+          )}
+          <span className="truncate text-sm font-bold">{render?.title || title || host || 'Page'}</span>
+        </div>
+        {pageUrl && (
+          <a href={pageUrl} target="_blank" rel="noreferrer" className="truncate text-xs font-semibold text-accent hover:underline">
+            {pageUrl}
+          </a>
+        )}
+        {snap ? (
+          <p className="overflow-hidden text-xs leading-relaxed text-black/70 dark:text-white/65">{snap}</p>
+        ) : (
+          <p className="text-xs leading-relaxed text-black/55 dark:text-white/55">
+            Live preview unavailable — opened {host || 'the page'} and read its contents.
+          </p>
+        )}
+      </div>
+    )
+  }
 
   const src = chain.length ? `${chain[idx]}${chain[idx].includes('?') ? '&' : '?'}b=${bust}` : ''
 
+  // --- 2) On-demand screenshot chain (validated against black placeholders) -
   return (
     <>
       {src && (
@@ -58,10 +177,14 @@ function Screenshot({ pageUrl, title }: { pageUrl?: string; title?: string }) {
           key={src}
           src={src}
           alt={title || 'Agent browser page'}
-          onLoad={() => setLoaded(true)}
-          onError={() => {
-            if (idx < chain.length - 1) setIdx((i) => i + 1)
+          onLoad={(e) => {
+            // Reject black/placeholder images that still fire onLoad. Sampling
+            // is best-effort: cross-origin services taint the canvas, in which
+            // case looksBlank() catches the error and returns false (show it).
+            if (looksBlank(e.currentTarget)) advance()
+            else setLoaded(true)
           }}
+          onError={advance}
           className={`absolute inset-0 h-full w-full bg-white object-contain object-top transition-opacity duration-300 ${loaded ? 'opacity-100' : 'opacity-0'}`}
         />
       )}

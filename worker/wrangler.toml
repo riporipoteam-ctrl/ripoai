@@ -1,0 +1,49 @@
+# AskAI Integrations Worker — owner-deployed backend for OAuth + cron jobs +
+# headless browser render. Deploy with `wrangler deploy` from this directory.
+#
+# This is a ONE-TIME OWNER SETUP. Once the owner deploys this Worker and sets the
+# provider secrets below (wrangler secret put ...), END USERS can connect their
+# GitHub/Slack/Google/Notion/Linear accounts without any keys of their own — the
+# OAuth client_id/secret live here, not in the client.
+
+name = "askai-integrations-worker"
+main = "integrations-worker.js"
+compatibility_date = "2024-11-01"
+
+# KV namespace holding OAuth tokens (tok:{uid}:{provider}) and jobs
+# (job:{uid}:{id}). Create it once and paste the id below:
+#   wrangler kv namespace create INTEGRATIONS
+[[kv_namespaces]]
+binding = "INTEGRATIONS"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+# Run the cron every 15 minutes to process due jobs.
+[triggers]
+crons = ["*/15 * * * *"]
+
+[vars]
+# Allowed app origin(s), comma-separated. The first is the canonical app used for
+# OAuth redirects. Set these to your real deployed app origin(s).
+APP_ORIGIN = "http://localhost:5173,https://askai.app"
+# The Worker's own public URL. Used to build OAuth redirect_uri values. Set this
+# to the deployed Worker URL (https://askai-integrations-worker.<acct>.workers.dev
+# or your custom route). Leave blank to derive from the request origin.
+WORKER_PUBLIC_URL = ""
+
+# ---------------------------------------------------------------------------
+# SECRETS — set ONCE by the owner with `wrangler secret put <NAME>`. These are
+# NOT stored in this file. See README.md for the full one-time setup + the exact
+# OAuth callback URL to register in each provider's developer console.
+#
+#   STATE_SIGNING_SECRET            # random string used to sign OAuth state
+#
+#   GITHUB_CLIENT_ID  / GITHUB_CLIENT_SECRET
+#   SLACK_CLIENT_ID   / SLACK_CLIENT_SECRET
+#   GOOGLE_CLIENT_ID  / GOOGLE_CLIENT_SECRET
+#   NOTION_CLIENT_ID  / NOTION_CLIENT_SECRET
+#   LINEAR_CLIENT_ID  / LINEAR_CLIENT_SECRET
+#
+# Optional:
+#   CF_ACCOUNT_ID / CF_BROWSER_TOKEN  # enables real /browse/render screenshots
+#   JOB_RUNNER_URL / JOB_RUNNER_TOKEN # webhook the cron calls to execute jobs
+# ---------------------------------------------------------------------------
