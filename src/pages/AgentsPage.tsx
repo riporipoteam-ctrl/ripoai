@@ -139,6 +139,7 @@ export default function AgentsPage() {
   const [feedTab, setFeedTab] = useState<FeedTab>('mine')
   const [activity, setActivity] = useState<ActivityEvent[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [rosterQuery, setRosterQuery] = useState('')
 
   const intro = useMemo(() => chiefOfStaffIntro(), [])
 
@@ -477,8 +478,23 @@ export default function AgentsPage() {
           <Plus size={13} /> New agent
         </button>
       </div>
+      {agents.length > 4 && (
+        <div className="mb-3 flex items-center gap-2 rounded-2xl border border-line bg-card px-3 py-2">
+          <Search size={15} className="text-muted" />
+          <input
+            value={rosterQuery}
+            onChange={(e) => setRosterQuery(e.target.value)}
+            placeholder="Search your agents…"
+            className="w-full bg-transparent text-sm text-ink placeholder:text-muted"
+          />
+        </div>
+      )}
       <motion.div variants={container} initial="hidden" animate="show" className="flex flex-col gap-2">
-        {agents.map((a) => (
+        {agents
+          .filter((a) =>
+            `${a.name} ${a.role}`.toLowerCase().includes(rosterQuery.trim().toLowerCase()),
+          )
+          .map((a) => (
           <motion.button
             key={a.id}
             variants={item}
