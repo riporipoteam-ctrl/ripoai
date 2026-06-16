@@ -117,6 +117,24 @@ body,
   letter-spacing: -0.005em;
 }
 
+/* ---- 6b. Kill the stray native hairline iOS/Android draw inside form fields. */
+input,
+textarea,
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  background-clip: padding-box;
+}
+textarea {
+  resize: none;
+}
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+}
+
 /* ============================================================================
  * 7. RESPONSIVE GUARDS — stop the UI from running off the side of the screen
  *    on any device, and keep every control inside the safe area.

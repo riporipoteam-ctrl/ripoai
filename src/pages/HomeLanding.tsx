@@ -1,11 +1,13 @@
 // Home landing — the default screen when you open AskAI (matches the sketch):
 // a clean welcome, a big "New chat with AskAI" action, and quick cards into
 // Agents, Jobs, Friends and Apps. ChatGPT-clean, responsive, all platforms.
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { PenSquare, Bot, Zap, MessageSquare, LayoutGrid, ArrowRight, Sparkles } from 'lucide-react'
 import { useStore } from '../store'
 import { isNative } from '../lib/native'
+import { watchConversations, watchFriends, type Conversation, type UserProfile } from '../lib/friends'
 
 const CARDS = [
   { to: '/agents', label: 'Agents', desc: 'Your AI team & Chief of Staff', icon: Bot, tint: '#10a37f' },
@@ -21,8 +23,21 @@ export default function HomeLanding() {
   const name = user?.displayName?.split(' ')[0] || (user?.email ? user.email.split('@')[0] : '')
   const recent = [...(chats || [])].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)).slice(0, 4)
 
+  const [convs, setConvs] = useState<Conversation[]>([])
+  const [friends, setFriends] = useState<UserProfile[]>([])
+  useEffect(() => {
+    if (!user) return
+    const u1 = watchConversations(user.uid, setConvs)
+    const u2 = watchFriends(user.uid, setFriends)
+    return () => {
+      u1()
+      u2()
+    }
+  }, [user])
+  const friendByUid = useMemo(() => new Map(friends.map((f) => [f.uid, f])), [friends])
+
   return (
-    <div className={`mx-auto w-full max-w-2xl px-4 pt-8 ${isNative ? 'pb-28' : 'pb-10'}`}>
+    <div className={`h-full w-full overflow-y-auto mx-auto max-w-2xl px-4 pt-8 ${isNative ? 'pb-28' : 'pb-10'}`}>
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="mb-7 text-center">
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl accent-gradient-bg text-white shadow-sm">
           <Sparkles size={26} />
@@ -63,6 +78,35 @@ export default function HomeLanding() {
           </motion.button>
         ))}
       </div>
+
+      {/* Messages */}
+      {convs.length > 0 && user && (
+        <div className="mb-6">
+          <div className="mb-2 flex items-center justify-between">
+            <h2 className="text-xs font-bold uppercase tracking-wide text-muted">Messages</h2>
+            <button onClick={() => navigate('/friends')} className="text-xs font-semibold text-accent">
+              Friends
+            </button>
+          </div>
+          <div className="flex flex-col divide-y divide-line/60 rounded-2xl border border-line bg-card">
+            {convs.slice(0, 5).map((c) => {
+              const otherUid = c.participants.find((u) => u !== user.uid) || ''
+              const p = friendByUid.get(otherUid) || { uid: otherUid, name: 'User', handle: '' }
+              return (
+                <button key={c.id} onClick={() => navigate(`/dm/${otherUid}`)} className="pressable flex items-center gap-3 px-4 py-3 text-left">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/15 text-sm font-semibold text-accent">
+                    {(p.name || '?').charAt(0).toUpperCase()}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block font-semibold text-ink">{p.name}</span>
+                    <span className="block truncate text-sm text-muted">{c.last || ''}</span>
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Recent chats */}
       {recent.length > 0 && (
