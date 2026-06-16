@@ -180,27 +180,29 @@ export default function ChatView() {
       {/* Top app bar — gives the screen real structure instead of two lonely
           floating icons. Shown when the sidebar is collapsed (i.e. on mobile). */}
       {!sidebarOpen && (
-        <header className="mobile-topbar top-app-bar sticky top-0 z-20 flex items-center justify-between gap-2 px-2.5 py-2">
-          <button
-            onClick={toggleSidebar}
-            className="pressable glass-control rounded-xl p-2 text-ink"
-            title="Open sidebar"
-          >
-            <PanelLeftOpen size={20} />
-          </button>
-          <div className="flex items-center gap-2">
-            <div className="overflow-hidden rounded-lg ring-1 ring-[rgb(var(--ink)/0.1)]">
-              <Logo size={24} variant="icon" />
-            </div>
-            <span className="text-[17px] font-extrabold tracking-tight">AskAI</span>
+        <header className="mobile-topbar top-app-bar sticky top-0 z-20 grid grid-cols-[1fr_auto_1fr] items-center px-1.5 py-1.5">
+          <div className="justify-self-start">
+            <button
+              onClick={toggleSidebar}
+              className="pressable glass-control rounded-xl p-2 text-ink"
+              title="Open sidebar"
+            >
+              <PanelLeftOpen size={22} />
+            </button>
           </div>
-          <button
-            onClick={() => navigate('/')}
-            className="pressable glass-control rounded-xl p-2 text-ink"
-            title="New chat"
-          >
-            <PenSquare size={20} />
-          </button>
+          <div className="flex items-center gap-1.5 justify-self-center">
+            <Logo size={20} variant="icon" />
+            <span className="text-[16px] font-semibold tracking-tight">AskAI</span>
+          </div>
+          <div className="justify-self-end">
+            <button
+              onClick={() => navigate('/')}
+              className="pressable glass-control rounded-xl p-2 text-ink"
+              title="New chat"
+            >
+              <PenSquare size={22} />
+            </button>
+          </div>
         </header>
       )}
       {/* 1-on-1 agent chat header — a modern, tappable bar with the agent's
@@ -348,47 +350,24 @@ export default function ChatView() {
             }`}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.88, y: 12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ type: 'spring', stiffness: 220, damping: 20 }}
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
               className="home-mark relative"
             >
-              <span className="pointer-events-none absolute inset-0 -z-10 -m-8 rounded-full bg-[rgb(var(--accent)/0.12)] blur-3xl" />
-              <div className="animate-float rounded-[1.7rem] border border-white/30 bg-white/40 p-2.5 shadow-[0_20px_50px_-22px_rgb(var(--ink)/0.55),inset_0_1px_0_rgb(255_255_255/0.6)] backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.06]">
-                <Logo size={60} variant="icon" glow />
-              </div>
+              <Logo size={48} variant="icon" />
             </motion.div>
             <motion.h1
-              initial={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.08 }}
-              className="mt-5 text-center text-[1.55rem] font-extrabold leading-tight tracking-tight sm:text-4xl"
+              transition={{ delay: 0.06, duration: 0.3 }}
+              className="mt-5 text-center text-[1.5rem] font-semibold leading-tight tracking-tight sm:text-[1.8rem]"
             >
               {(() => {
                 const name = (settings.displayName || user?.displayName || '').split(' ')[0]
-                const h = new Date().getHours()
-                const slot = h < 5 ? 'Up late' : h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
-                return name ? (
-                  <>
-                    {slot}, {name}.
-                    <span className="mt-1 block bg-gradient-to-r from-[rgb(var(--ink))] to-[rgb(var(--muted))] bg-clip-text text-transparent">
-                      {t('What are we making?')}
-                    </span>
-                  </>
-                ) : (
-                  <>{t('What can I help with?')}</>
-                )
+                return name ? `${name}, ${t('What are we making?')}` : t('What can I help with?')
               })()}
             </motion.h1>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.16 }}
-              className="mt-2 hidden max-w-md text-center text-sm text-muted sm:block"
-            >
-              {t('Ask anything, build apps & sites, search the live web, create images, or dispatch a team of agents.')}
-            </motion.p>
-
           </div>
         ) : (
           /* Extra top clearance when the floating top bar overlays the scroll
