@@ -245,6 +245,12 @@ export default function Sidebar() {
                         active={path === '/apps'}
                       />
                       <NavItem
+                        icon={<MessageSquare size={17} />}
+                        label={t('Friends')}
+                        to="/friends"
+                        active={path === '/friends'}
+                      />
+                      <NavItem
                         icon={<ListChecks size={17} />}
                         label={t('Daily tasks')}
                         to="/tasks"
