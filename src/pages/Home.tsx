@@ -11,6 +11,7 @@ import { useStore } from '../store'
 import { loadPendingRuns } from '../lib/pendingRuns'
 import { useSwipeNav } from '../hooks/useSwipeNav'
 import NativeTabBar from '../components/native/NativeTabBar'
+import CallManager from '../components/CallManager'
 
 // Sandpack is large — only load it when a project is opened.
 const ProjectsView = lazy(() => import('../components/ProjectsView'))
@@ -48,6 +49,7 @@ export default function Home() {
 
   return (
     <div className="flex h-full w-full overflow-hidden">
+      <CallManager />
       <Sidebar />
       <main className="relative flex min-w-0 flex-1 flex-col">
         {/* Floating controls when sidebar is collapsed (non-chat routes) */}
