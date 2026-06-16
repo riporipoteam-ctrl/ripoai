@@ -628,7 +628,7 @@ export default function Composer({
               <button
                 onClick={submit}
                 disabled={!text.trim() && attachments.length === 0}
-                className="pressable accent-gradient-bg flex h-10 w-10 items-center justify-center rounded-full shadow-[0_8px_20px_-8px_rgb(var(--ink)/0.6)] disabled:opacity-30"
+                className="pressable accent-gradient-bg flex h-9 w-9 items-center justify-center rounded-full disabled:opacity-25"
                 title="Send"
               >
                 <ArrowUp size={20} strokeWidth={2.5} />

@@ -71,6 +71,8 @@ export interface VoicePrefs {
   voiceURI?: string
   rate: number
   pitch: number
+  /** Preferred Puter.js neural TTS voice (OpenAI provider). Defaults to "nova". */
+  puterVoice?: string
 }
 
 const VOICE_KEY = 'ripoai:voice'

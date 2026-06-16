@@ -9,6 +9,8 @@
   --accent-ink: 255 255 255;
   --surface: 247 247 248;
   --surface-raised: 255 255 255;
+  --card: 255 255 255;
+  --line: 224 224 230;
   --ink: 13 13 13;
   --muted: 108 108 122;
   --glass-bg: 255 255 255;
@@ -30,6 +32,8 @@
   --accent-ink: 255 255 255;
   --surface: 33 33 33;
   --surface-raised: 47 47 47;
+  --card: 44 44 47;
+  --line: 64 64 70;
   --ink: 236 236 238;
   --muted: 154 154 166;
   --glass-bg: 52 52 54;
@@ -127,45 +131,26 @@ body {
   overflow: hidden;
 }
 
+/* Near-flat calm background. The old animated multi-gradient aurora + drifting
+   orbs made the UI feel "dizzy"; this is a single static surface with one very
+   faint top wash. (The clean-2026 layer reinforces this.) */
 .aurora {
   position: fixed;
   inset: 0;
   z-index: 0;
   overflow: hidden;
-  background:
-    linear-gradient(135deg, rgb(var(--page-grad-1) / 0.52), transparent 36%),
-    linear-gradient(225deg, rgb(var(--page-grad-3) / 0.56), transparent 42%),
-    linear-gradient(180deg, rgb(var(--page-grad-2) / 0.82), transparent 68%),
-    rgb(var(--surface));
-  background-size: 150% 150%, 160% 160%, 100% 100%, auto;
-  animation: surface-shift 22s ease-in-out infinite;
+  background: rgb(var(--surface));
 }
-.aurora::before,
-.aurora::after {
+.aurora::before {
   content: '';
   position: absolute;
   inset: 0;
-  filter: blur(26px);
-  opacity: 0.55;
-  will-change: transform;
   pointer-events: none;
-}
-.aurora::before {
-  background:
-    linear-gradient(90deg, transparent, rgb(var(--orb-1) / calc(var(--orb-alpha) * 0.8)), transparent),
-    linear-gradient(0deg, rgb(var(--orb-3) / calc(var(--orb-alpha) * 0.5)), transparent 48%);
-  animation: sheet-drift-a 28s ease-in-out infinite;
-}
-.aurora::after {
-  background:
-    linear-gradient(120deg, transparent 18%, rgb(var(--orb-2) / calc(var(--orb-alpha) * 0.7)), transparent 68%);
-  animation: sheet-drift-b 34s ease-in-out infinite;
+  background: radial-gradient(120% 80% at 50% -10%, rgb(var(--accent) / 0.05), transparent 60%);
 }
 .aurora > .aurora-orb {
   display: none;
 }
-.dark .aurora::before { opacity: 0.55; }
-.dark .aurora::after { opacity: 0.5; }
 
 @keyframes surface-shift {
   0%, 100% { background-position: 0% 0%, 100% 0%, 50% 0%, 0 0; }

@@ -18,6 +18,10 @@ const PlusPage = lazy(() => import('./PlusPage'))
 const TasksPage = lazy(() => import('./TasksPage'))
 const TeamPage = lazy(() => import('./TeamPage'))
 const AdminPage = lazy(() => import('./AdminPage'))
+const AgentsPage = lazy(() => import('./AgentsPage'))
+const JobsPage = lazy(() => import('./JobsPage'))
+const AppsPage = lazy(() => import('./AppsPage'))
+const AgentDetailPage = lazy(() => import('./AgentDetailPage'))
 
 export default function Home() {
   const { sidebarOpen, toggleSidebar, user } = useStore()
@@ -111,6 +115,38 @@ export default function Home() {
             element={
               <Suspense fallback={<div className="flex h-full items-center justify-center"><Spinner /></div>}>
                 <AdminPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/agents"
+            element={
+              <Suspense fallback={<div className="flex h-full items-center justify-center"><Spinner /></div>}>
+                <AgentsPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/agent/:agentId"
+            element={
+              <Suspense fallback={<div className="flex h-full items-center justify-center"><Spinner /></div>}>
+                <AgentDetailPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/jobs"
+            element={
+              <Suspense fallback={<div className="flex h-full items-center justify-center"><Spinner /></div>}>
+                <JobsPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/apps"
+            element={
+              <Suspense fallback={<div className="flex h-full items-center justify-center"><Spinner /></div>}>
+                <AppsPage />
               </Suspense>
             }
           />

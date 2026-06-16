@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Home, Users, Plus, Sparkles, Menu } from 'lucide-react'
+import { Home, Bot, Plus, Zap, LayoutGrid } from 'lucide-react'
 import { useStore } from '../../store'
 import { isNative } from '../../lib/native'
 import { haptic } from '../../lib/native'
@@ -16,8 +16,9 @@ export default function NativeTabBar() {
 
   const path = location.pathname
   const isHome = path === '/' || path.startsWith('/c/')
-  const onTeam = path.startsWith('/team')
-  const onPlus = path.startsWith('/plus')
+  const onAgents = path.startsWith('/agents') || path.startsWith('/agent/') || path.startsWith('/team')
+  const onJobs = path.startsWith('/jobs')
+  const onApps = path.startsWith('/apps')
 
   function go(fn: () => void) {
     haptic('light')
@@ -62,7 +63,7 @@ export default function NativeTabBar() {
     >
       <div className="native-tabbar-inner glass">
         <Tab icon={<Home size={21} />} label="Home" active={isHome} onClick={() => navigate('/')} />
-        <Tab icon={<Menu size={21} />} label="Chats" onClick={() => setSidebar(true)} />
+        <Tab icon={<Bot size={21} />} label="Agents" active={onAgents} onClick={() => navigate('/agents')} />
 
         {/* Raised center New-chat button */}
         <div className="relative flex w-16 shrink-0 items-end justify-center">
@@ -81,8 +82,8 @@ export default function NativeTabBar() {
           </motion.button>
         </div>
 
-        <Tab icon={<Users size={21} />} label="Agents" active={onTeam} onClick={() => navigate('/team')} />
-        <Tab icon={<Sparkles size={21} />} label="Plus" active={onPlus} onClick={() => navigate('/plus')} />
+        <Tab icon={<Zap size={21} />} label="Jobs" active={onJobs} onClick={() => navigate('/jobs')} />
+        <Tab icon={<LayoutGrid size={21} />} label="Apps" active={onApps} onClick={() => navigate('/apps')} />
       </div>
     </motion.nav>
   )

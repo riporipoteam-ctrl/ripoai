@@ -134,6 +134,20 @@ function CursorOverlay({ event }: { event?: AgentBrowserEvent }) {
   )
 }
 
+/** Counts up the seconds a live browse has been running, so the panel shows real
+ *  progress (and reassures the user the session is bounded, not hung). */
+function Elapsed({ events }: { events: AgentBrowserEvent[] }) {
+  const startedAt = events.find((e) => e.type === 'start')?.at ?? events[0]?.at
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [])
+  if (!startedAt) return null
+  const secs = Math.max(0, Math.round((now - startedAt) / 1000))
+  return <span className="tabular-nums">{secs}s</span>
+}
+
 export default function AgentBrowserPanel({ browser, live }: { browser?: AgentBrowserState; live?: boolean }) {
   if (!browser) return null
   const running = browser.status === 'running' || live
@@ -141,6 +155,11 @@ export default function AgentBrowserPanel({ browser, live }: { browser?: AgentBr
   const errored = browser.status === 'error'
   const events = browser.events?.length ? browser.events : []
   const lastEvent = events[events.length - 1]
+  // Count the meaningful actions taken (search / open / read / click) so the
+  // user can see how much work the agent actually did.
+  const actionCount = events.filter((e) =>
+    e.type === 'search' || e.type === 'open' || e.type === 'read' || e.type === 'click',
+  ).length
 
   return (
     <motion.div
@@ -198,7 +217,7 @@ export default function AgentBrowserPanel({ browser, live }: { browser?: AgentBr
               )}
               <div className="max-w-sm text-sm font-semibold">
                 {unavailable
-                  ? 'Real browser backend is not connected yet.'
+                  ? 'Live browsing is unavailable here — answering directly.'
                   : errored
                     ? 'The real browser session failed.'
                     : 'Opening a browser session…'}
@@ -215,9 +234,22 @@ export default function AgentBrowserPanel({ browser, live }: { browser?: AgentBr
 
         <aside className="agent-browser-actions border-t border-white/10 p-3 md:border-l md:border-t-0">
           <div className="mb-2 flex items-center justify-between gap-2">
-            <div className="text-xs font-bold uppercase text-muted">Live actions</div>
+            <div className="flex items-center gap-2 text-xs font-bold uppercase text-muted">
+              Live actions
+              {(running || actionCount > 0) && (
+                <span className="flex items-center gap-1 rounded-full bg-white/8 px-1.5 py-0.5 text-[10px] font-semibold normal-case text-muted">
+                  {actionCount > 0 && <span className="tabular-nums">{actionCount} step{actionCount === 1 ? '' : 's'}</span>}
+                  {running && (
+                    <>
+                      {actionCount > 0 && <span className="opacity-40">·</span>}
+                      <Elapsed events={events} />
+                    </>
+                  )}
+                </span>
+              )}
+            </div>
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${running ? 'bg-accent/15 text-accent' : errored || unavailable ? 'bg-amber-400/15 text-amber-400' : 'bg-emerald-400/15 text-emerald-400'}`}>
-              {running ? 'RUNNING' : errored || unavailable ? 'NEEDS BACKEND' : 'DONE'}
+              {running ? 'RUNNING' : unavailable ? 'SKIPPED' : errored ? 'FAILED' : 'DONE'}
             </span>
           </div>
           <div className="space-y-2">
