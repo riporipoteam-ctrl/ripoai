@@ -1,13 +1,16 @@
-// Apps / Integrations — connect external services that agents can act on,
-// mirroring Nebula's Apps tab. Each integration is a service (GitHub, Slack,
-// Gmail …) that, once connected, can be wired to one or more agents' tools.
+// Apps / Integrations — connect external services that agents (and chat) can
+// act on. Each integration is a service (GitHub, Slack, Gmail …) that, once
+// connected, can be wired to one or more agents' tools.
 //
-// IMPORTANT: real OAuth requires a backend we don't have in this client-only
-// build. `connect()` therefore performs a *simulated* (preview) connection —
-// it only records the connection locally so the UI and per-agent wiring can be
-// designed and demoed. The UI copy is honest about this ("Connect (preview)").
-// TODO: real OAuth — swap connect()/disconnect() for a backend OAuth flow that
-// exchanges a code for tokens and stores them server-side.
+// Two layers live in this file:
+//   1. The per-agent WIRING + local catalog state (connect/disconnect/toggleAgent)
+//      used by the Apps grid — unchanged, backed by localStorage.
+//   2. The real ONE-CLICK OAUTH client (startConnect / refreshStatus /
+//      disconnectProvider) that talks to the AskAI backend Worker. The user
+//      never enters API keys — OAuth is handled securely server-side. The
+//      connection state is cached in localStorage and exposed as an observable
+//      so chat AND agents can read it app-wide. If the Worker isn't deployed
+//      yet the client degrades gracefully (status simply stays disconnected).
 
 export type IntegrationCategory =
   | 'dev'
@@ -235,4 +238,261 @@ export function isAvailableToAgent(uid: string, id: string, agentId: string): bo
 export function connectedCount(uid: string): number {
   const state = readState(uid)
   return INTEGRATIONS.reduce((n, i) => n + (state[i.id]?.connected ? 1 : 0), 0)
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Real one-click OAuth — backed by the AskAI backend Worker.
+//
+// The user never enters API keys: clicking "Connect" opens the provider's OAuth
+// consent screen (popup/new tab) hosted by the Worker, and we then poll the
+// Worker for the resulting connection status. Status is cached locally and
+// broadcast through an observable so the whole app (chat + agents) sees it.
+//
+// Client ↔ Worker contract:
+//   GET  {base}/oauth/{provider}/start?uid=&redirect=  → { url }
+//   GET  {base}/integrations/status?uid=               → { connected: { github:bool, … } }
+//   POST {base}/integrations/{provider}/disconnect     body { uid }
+// ────────────────────────────────────────────────────────────────────────────
+
+import { getNvidiaProxyRoot } from './groq'
+
+/** Provider ids that have a real server-side OAuth flow. */
+export type ProviderId =
+  | 'github'
+  | 'slack'
+  | 'gmail'
+  | 'gcal'
+  | 'notion'
+  | 'linear'
+  | 'webhooks'
+
+export type ConnectionMap = Partial<Record<ProviderId, boolean>>
+
+/** Resolve the backend base URL. Prefers an explicit integrations base, then
+ *  the shared NVIDIA proxy/worker root, so a single deployed Worker can serve
+ *  both. */
+export function getIntegrationsBase(): string {
+  let base = ''
+  try {
+    base = ((import.meta.env.VITE_INTEGRATIONS_BASE as string) || '').trim()
+  } catch {
+    /* ignore */
+  }
+  if (!base) {
+    try {
+      base = getNvidiaProxyRoot()
+    } catch {
+      base = ''
+    }
+  }
+  return base.replace(/\/$/, '')
+}
+
+const STATUS_KEY = (uid: string) => `askai:integrations:status:${uid}`
+const STATUS_EVENT = 'askai-integrations-status'
+
+let memStatus: ConnectionMap = {}
+let memStatusUid: string | null = null
+
+function loadCachedStatus(uid: string): ConnectionMap {
+  if (memStatusUid === uid) return memStatus
+  try {
+    const raw = localStorage.getItem(STATUS_KEY(uid))
+    const obj = raw ? JSON.parse(raw) : {}
+    memStatus = obj && typeof obj === 'object' ? (obj as ConnectionMap) : {}
+  } catch {
+    memStatus = {}
+  }
+  memStatusUid = uid
+  return memStatus
+}
+
+function saveCachedStatus(uid: string, status: ConnectionMap) {
+  memStatus = status
+  memStatusUid = uid
+  try {
+    localStorage.setItem(STATUS_KEY(uid), JSON.stringify(status))
+  } catch {
+    /* ignore quota */
+  }
+  // Mirror into the per-integration catalog state so the existing Apps grid
+  // (and connectedCount) reflect real OAuth connections too.
+  try {
+    const state = readState(uid)
+    for (const meta of INTEGRATIONS) {
+      const connected = !!status[meta.id as ProviderId]
+      const prev = state[meta.id]
+      if (connected) {
+        state[meta.id] = {
+          connected: true,
+          connectedAt: prev?.connectedAt ?? Date.now(),
+          agentIds: prev?.agentIds ?? [],
+        }
+      } else if (prev?.connected) {
+        state[meta.id] = { ...prev, connected: false, connectedAt: undefined }
+      }
+    }
+    writeState(uid, state)
+  } catch {
+    /* ignore */
+  }
+  try {
+    window.dispatchEvent(new CustomEvent(STATUS_EVENT))
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Synchronously read the cached connection map (no network). Safe for render. */
+export function getConnectionStatus(uid: string): ConnectionMap {
+  return loadCachedStatus(uid)
+}
+
+/** True if a provider is connected, per the local status cache. */
+export function isProviderConnected(uid: string, provider: ProviderId): boolean {
+  return !!loadCachedStatus(uid)[provider]
+}
+
+/** Subscribe to OAuth connection-status changes (returns an unsubscribe fn).
+ *  Both chat and agents can use this to react to connect/disconnect anywhere. */
+export function onConnectionStatus(fn: () => void): () => void {
+  window.addEventListener(STATUS_EVENT, fn)
+  return () => window.removeEventListener(STATUS_EVENT, fn)
+}
+
+/** Fetch the live status from the Worker and update the local cache.
+ *  Degrades gracefully (returns the cached map) if the Worker is unreachable. */
+export async function refreshStatus(uid: string): Promise<ConnectionMap> {
+  const base = getIntegrationsBase()
+  if (!base || !uid) return loadCachedStatus(uid)
+  try {
+    const res = await fetch(
+      `${base}/integrations/status?uid=${encodeURIComponent(uid)}`,
+      { headers: { Accept: 'application/json' } },
+    )
+    if (!res.ok) return loadCachedStatus(uid)
+    const data = (await res.json()) as { connected?: ConnectionMap }
+    const next = (data && data.connected) || {}
+    saveCachedStatus(uid, next)
+    return next
+  } catch {
+    // Worker not deployed / offline — keep whatever we had.
+    return loadCachedStatus(uid)
+  }
+}
+
+export interface StartConnectResult {
+  ok: boolean
+  connected: boolean
+  error?: string
+}
+
+/** One-click OAuth: ask the Worker for the provider's consent URL, open it in a
+ *  popup (or new tab), then poll status until the provider flips to connected
+ *  or the popup closes / we time out. The user never types an API key. */
+export async function startConnect(
+  uid: string,
+  provider: ProviderId,
+  opts: { signal?: AbortSignal } = {},
+): Promise<StartConnectResult> {
+  const base = getIntegrationsBase()
+  if (!base) {
+    return {
+      ok: false,
+      connected: false,
+      error: 'Connections aren’t available yet — the AskAI backend isn’t configured.',
+    }
+  }
+  if (!uid) return { ok: false, connected: false, error: 'Please sign in first.' }
+
+  // The Worker redirects back here after consent; it closes its own tab.
+  const redirect = `${window.location.origin}/oauth/callback`
+  let url = ''
+  try {
+    const res = await fetch(
+      `${base}/oauth/${provider}/start?uid=${encodeURIComponent(uid)}&redirect=${encodeURIComponent(redirect)}`,
+      { headers: { Accept: 'application/json' } },
+    )
+    if (!res.ok) throw new Error(`start failed (${res.status})`)
+    const data = (await res.json()) as { url?: string }
+    url = (data && data.url) || ''
+  } catch {
+    return {
+      ok: false,
+      connected: false,
+      error: 'Couldn’t start the secure connection. The backend may not be deployed yet.',
+    }
+  }
+  if (!url) {
+    return { ok: false, connected: false, error: 'The backend didn’t return a sign-in link.' }
+  }
+
+  // Open the consent screen. Popup is nicer on desktop; falls back to a tab.
+  let popup: Window | null = null
+  try {
+    popup = window.open(url, 'askai-oauth', 'width=520,height=680,noopener=no')
+  } catch {
+    popup = null
+  }
+  if (!popup) {
+    // Popup blocked — navigate the current context as a fallback.
+    try {
+      window.open(url, '_blank')
+    } catch {
+      /* ignore */
+    }
+  }
+
+  // Poll the Worker for up to ~2 minutes, or until the popup closes.
+  const deadline = Date.now() + 120_000
+  while (Date.now() < deadline) {
+    if (opts.signal?.aborted) {
+      return { ok: false, connected: false, error: 'Cancelled.' }
+    }
+    await new Promise((r) => setTimeout(r, 1500))
+    const status = await refreshStatus(uid)
+    if (status[provider]) {
+      try {
+        popup?.close()
+      } catch {
+        /* ignore */
+      }
+      return { ok: true, connected: true }
+    }
+    // If the user closed the popup without finishing, stop waiting.
+    let closed = false
+    try {
+      closed = !!popup && popup.closed
+    } catch {
+      closed = false
+    }
+    if (closed) break
+  }
+
+  const finalStatus = await refreshStatus(uid)
+  return { ok: true, connected: !!finalStatus[provider] }
+}
+
+/** Disconnect a provider server-side, then refresh the local status cache. */
+export async function disconnectProvider(
+  uid: string,
+  provider: ProviderId,
+): Promise<StartConnectResult> {
+  const base = getIntegrationsBase()
+  // Always clear local state first so the UI feels instant.
+  const cached = { ...loadCachedStatus(uid) }
+  delete cached[provider]
+  saveCachedStatus(uid, cached)
+  if (!base || !uid) return { ok: true, connected: false }
+  try {
+    await fetch(`${base}/integrations/${provider}/disconnect`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid }),
+    })
+  } catch {
+    // Best-effort; local state is already cleared.
+  }
+  await refreshStatus(uid)
+  return { ok: true, connected: false }
 }
