@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { streamChat, complete, type ChatMessage, type ContentPart } from '../lib/groq'
+import { getInvitedAgents, delegationPrompt } from '../lib/chatParticipants'
 import { editImage, generateImage, styleSuffix, dimsFor } from '../lib/imagegen'
 import { wantsPlaces, searchPlaces, getUserLocation, getUserPlace, wantsLocationContext } from '../lib/places'
 import { wantsWeather, getWeather } from '../lib/weather'
@@ -583,6 +584,13 @@ export function useChat(chatId: string | undefined) {
           : opts.agent
             ? AGENT_SYSTEM + '\n\n' + buildSystemPrompt(model, settings, memories)
             : buildSystemPrompt(model, settings, memories))
+
+      // If the user invited other agents into this chat, let the lead agent
+      // coordinate + delegate to them (a real multi-agent reply).
+      if (personaAgent && !opts.systemOverride) {
+        const team = getInvitedAgents().filter((a) => a.id !== personaAgent.id)
+        if (team.length) system += delegationPrompt(personaAgent, team)
+      }
 
       const lastText = lastUser?.content ?? ''
 

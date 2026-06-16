@@ -19,6 +19,7 @@ import {
   GraduationCap,
 } from 'lucide-react'
 import { useChat } from '../hooks/useChat'
+import InviteAgents from './InviteAgents'
 import { useStore } from '../store'
 import { useT } from '../lib/i18n'
 import Composer from './Composer'
@@ -254,6 +255,9 @@ export default function ChatView() {
               </span>
             </span>
           </button>
+          <div className="pointer-events-auto ml-2">
+            <InviteAgents lead={activeAgent} />
+          </div>
         </div>
       )}
       <div ref={scrollRef} onScroll={onScroll} className="chat-scroll absolute inset-0 overflow-y-auto">
