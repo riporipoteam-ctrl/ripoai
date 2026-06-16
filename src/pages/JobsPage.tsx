@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Zap, Plus, Bell, ChevronRight } from 'lucide-react'
 import { useStore } from '../store'
 import { loadAgents, getAgent, setPendingAgentChat } from '../lib/agents'
+import { logActivity } from '../lib/agentActivity'
 import {
   loadJobs,
   upsertJob,
@@ -104,6 +105,9 @@ export default function JobsPage() {
     refresh()
     const agent = getAgent(uid, job.agentId)
     if (agent && job.prompt) {
+      logActivity(uid, agent.id, agent.name, 'job_run', `Ran "${job.title}"`, {
+        detail: job.prompt.slice(0, 80),
+      })
       setPendingAgentChat(agent)
       navigate('/')
       // Let the chat + composer mount, then drop the job prompt into the composer.

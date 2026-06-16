@@ -18,6 +18,8 @@ import {
   type Agent,
 } from './agents'
 import { isCodeBuild, needsWeb, isSmalltalk } from './agentTeam'
+import { instantiate, getTemplate, type AgentTemplate } from './agentTemplates'
+import { logActivity } from './agentActivity'
 
 /** The orchestrator's display identity (the intro card persona). */
 export const CHIEF = {
@@ -198,9 +200,13 @@ export function routeGoal(uid: string, text: string): GoalRoute | null {
     }
   }
 
-  // 2-4. Skill-based routing using the shared heuristics.
+  // 2-N. Skill-based routing using the shared heuristics + richer keyword map.
   const wantsCode = isCodeBuild(t)
   const wantsWeb = !wantsCode && needsWeb(t)
+  const wantsDesign =
+    !wantsCode && /\b(design|ui|ux|layout|logo|palette|brand|mockup|wireframe|typography|color scheme)\b/i.test(t)
+  const wantsData =
+    /\b(analy[sz]e|data|spreadsheet|sql|query|metric|chart|forecast|projection|numbers|csv|dataset)\b/i.test(t)
   const wantsWrite =
     !wantsCode &&
     /\b(write|draft|email|copy|blog|post|article|essay|caption|script|story|newsletter|summar(y|ize)|report|letter|doc(ument)?|content)\b/i.test(
@@ -215,15 +221,29 @@ export function routeGoal(uid: string, text: string): GoalRoute | null {
     agent = roleAgent(uid, 'ada') ?? byRole(list, /engineer|develop|code|build|full[- ]?stack|builder/i)
     action = 'build'
     reason = agent ? `Routing to ${agent.name} — this looks like a build.` : ''
+  } else if (wantsDesign) {
+    agent = roleAgent(uid, 'iris') ?? byRole(list, /design|ui|ux|brand|visual/i)
+    action = 'build'
+    reason = agent ? `Routing to ${agent.name} — a design task.` : ''
   } else if (wantsWeb) {
     agent = roleAgent(uid, 'max') ?? byRole(list, /research|analyst|fact|find|investigat/i)
     action = 'research'
     reason = agent ? `Routing to ${agent.name} — this needs research.` : ''
+  } else if (wantsData) {
+    agent =
+      roleAgent(uid, 'nova') ??
+      byRole(list, /analy|data|metric|forecast|spreadsheet/i)
+    action = 'research'
+    reason = agent ? `Routing to ${agent.name} — a data/analysis task.` : ''
   } else if (wantsWrite) {
     agent = roleAgent(uid, 'vera') ?? byRole(list, /writ|copy|content|market/i)
     action = 'write'
     reason = agent ? `Routing to ${agent.name} — this is a writing task.` : ''
   }
+
+  // Does the goal clearly span more than one discipline? If so, suggest the team.
+  const disciplines = [wantsCode, wantsDesign, wantsWeb || wantsData, wantsWrite].filter(Boolean).length
+  const teamSuggested = disciplines >= 2
 
   // 5. Fall back to a lead/coordinator, then the first agent.
   if (!agent) {
@@ -232,7 +252,12 @@ export function routeGoal(uid: string, text: string): GoalRoute | null {
     reason = `Routing to ${agent.name}.`
   }
 
-  return { agent, also: [], action, reason, teamSuggested: false }
+  // Also-relevant specialists (for delegation suggestions on the home screen).
+  const also = teamSuggested
+    ? list.filter((x) => x.id !== agent!.id && byRole([x], /engineer|design|research|analy|writ|market/i)).slice(0, 2)
+    : []
+
+  return { agent, also, action, reason, teamSuggested }
 }
 
 /** Map a goal to a coarse action label (used when an agent is pre-targeted). */
@@ -250,4 +275,114 @@ function actionFor(text: string): GoalAction {
  */
 export function handoffToAgent(agent: Agent): void {
   setPendingAgentChat(agent)
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Team setup wizard + hiring
+ * ────────────────────────────────────────────────────────────────────────── */
+
+/** A starter pack the Chief of Staff can recommend for a kind of work. */
+export interface StarterPack {
+  id: string
+  label: string
+  emoji: string
+  blurb: string
+  /** Template ids (from agentTemplates.ts) that make up the pack. */
+  templateIds: string[]
+}
+
+/** Curated starter packs surfaced by the team-setup wizard. */
+export const STARTER_PACKS: StarterPack[] = [
+  {
+    id: 'founder',
+    label: 'Solo founder',
+    emoji: '🚀',
+    blurb: 'Build, research and write — everything to ship a product alone.',
+    templateIds: ['builder', 'researcher', 'writer'],
+  },
+  {
+    id: 'content',
+    label: 'Content studio',
+    emoji: '✍️',
+    blurb: 'Long-form, social and SEO working as one editorial team.',
+    templateIds: ['writer', 'social', 'seo'],
+  },
+  {
+    id: 'growth',
+    label: 'Growth team',
+    emoji: '📈',
+    blurb: 'Marketing, sales and SEO to drive demand and conversions.',
+    templateIds: ['marketer', 'sales', 'seo'],
+  },
+  {
+    id: 'product',
+    label: 'Product squad',
+    emoji: '🛠️',
+    blurb: 'PM, engineer and designer to spec, build and polish features.',
+    templateIds: ['pm', 'builder', 'designer'],
+  },
+  {
+    id: 'ops',
+    label: 'Back office',
+    emoji: '⚙️',
+    blurb: 'Operations, support and a legal assistant to run the business.',
+    templateIds: ['ops', 'support', 'legal'],
+  },
+]
+
+/**
+ * Hire (instantiate + persist) an agent from a template for this user, logging
+ * the activity so it appears in the home feed. Returns the created agent. Skips
+ * persistence cleanly when uid is missing.
+ */
+export function hireFromTemplate(uid: string, template: AgentTemplate): Agent {
+  const agent = instantiate(template)
+  if (uid) {
+    upsertAgent(uid, agent)
+    logActivity(uid, agent.id, agent.name, 'created', `${agent.name} joined as your ${agent.role}`, {
+      detail: template.tagline,
+    })
+  }
+  return agent
+}
+
+/**
+ * Apply a starter pack: hire every template in it that the user doesn't already
+ * have (matched by role to avoid near-duplicates). Returns the agents created.
+ */
+export function applyStarterPack(uid: string, pack: StarterPack): Agent[] {
+  if (!uid) return []
+  const existingRoles = new Set(loadAgents(uid).map((a) => a.role.toLowerCase()))
+  const created: Agent[] = []
+  for (const id of pack.templateIds) {
+    const tpl = getTemplate(id)
+    if (!tpl || existingRoles.has(tpl.role.toLowerCase())) continue
+    created.push(hireFromTemplate(uid, tpl))
+    existingRoles.add(tpl.role.toLowerCase())
+  }
+  return created
+}
+
+/**
+ * Suggest who else on the roster could help with a goal — the "delegation
+ * suggestions" shown under the composer. Returns up to 3 agents (excluding the
+ * primary one already chosen by routeGoal).
+ */
+export function delegationSuggestions(uid: string, text: string, excludeId?: string): Agent[] {
+  const list = loadAgents(uid).filter((a) => a.id !== excludeId)
+  const t = (text || '').toLowerCase()
+  const scored = list
+    .map((a) => {
+      const hay = `${a.role} ${a.personality} ${(a.skills ?? []).join(' ')}`.toLowerCase()
+      const words = t.split(/\W+/).filter((w) => w.length > 3)
+      let score = words.reduce((n, w) => n + (hay.includes(w) ? 1 : 0), 0)
+      // Light topical boosts so an obvious specialist surfaces even with few word hits.
+      if (isCodeBuild(t) && /engineer|build|code/.test(hay)) score += 2
+      if (needsWeb(t) && /research|analy|fact/.test(hay)) score += 2
+      if (/write|copy|content|email|post/.test(t) && /writ|copy|content|market|social/.test(hay)) score += 2
+      return { a, score }
+    })
+    .filter((s) => s.score > 0)
+    .sort((x, y) => y.score - x.score)
+  return scored.slice(0, 3).map((s) => s.a)
 }

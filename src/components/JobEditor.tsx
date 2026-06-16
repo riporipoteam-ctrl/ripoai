@@ -10,12 +10,14 @@ import { loadAgents, getAgent, setPendingAgentChat } from '../lib/agents'
 import {
   CADENCE_LABEL,
   advance,
+  untilLabel,
   upsertJob,
   deleteJob,
   newJob,
   type Job,
   type JobCadence,
 } from '../lib/jobs'
+import { logActivity } from '../lib/agentActivity'
 
 const CADENCES: JobCadence[] = ['once', 'hourly', 'daily', 'weekly', 'monthly']
 
@@ -65,7 +67,14 @@ export default function JobEditor({ uid, job, open, onClose, onSaved }: Props) {
 
   function save() {
     if (!agentId) return
-    upsertJob(uid, buildJob())
+    const built = buildJob()
+    upsertJob(uid, built)
+    const agent = getAgent(uid, agentId)
+    if (isNew && agent) {
+      logActivity(uid, agent.id, agent.name, 'job_created', `Scheduled "${built.title}"`, {
+        detail: `${CADENCE_LABEL[built.cadence]} · runs ${untilLabel(built.nextRunAt)}`,
+      })
+    }
     onSaved()
     onClose()
   }
@@ -83,7 +92,12 @@ export default function JobEditor({ uid, job, open, onClose, onSaved }: Props) {
     saved.lastRunAt = Date.now()
     upsertJob(uid, saved)
     const agent = getAgent(uid, agentId)
-    if (agent) setPendingAgentChat(agent)
+    if (agent) {
+      setPendingAgentChat(agent)
+      logActivity(uid, agent.id, agent.name, 'job_run', `Ran "${saved.title}" now`, {
+        detail: saved.prompt.slice(0, 80),
+      })
+    }
     onSaved()
     onClose()
     navigate('/')
@@ -267,6 +281,25 @@ export default function JobEditor({ uid, job, open, onClose, onSaved }: Props) {
                   />
                 </span>
               </button>
+
+              {/* History — last run + next run for an existing, enabled job. */}
+              {!isNew && (
+                <div className="rounded-2xl border border-line bg-card px-4 py-3">
+                  <span className="mb-2 block text-xs font-bold uppercase tracking-wide text-muted">History</span>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted">Last run</span>
+                    <span className="font-medium text-ink">
+                      {job?.lastRunAt ? new Date(job.lastRunAt).toLocaleString() : 'Never'}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between text-sm">
+                    <span className="text-muted">Next run</span>
+                    <span className="font-medium text-ink">
+                      {enabled && job ? untilLabel(job.nextRunAt) : 'Paused'}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Footer actions */}
