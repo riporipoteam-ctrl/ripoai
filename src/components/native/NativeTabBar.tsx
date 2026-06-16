@@ -71,7 +71,7 @@ export default function NativeTabBar() {
             whileTap={{ scale: 0.88 }}
             onClick={() =>
               go(() => {
-                navigate('/')
+                navigate('/chat')
                 window.dispatchEvent(new CustomEvent('askai-focus-composer'))
               })
             }
