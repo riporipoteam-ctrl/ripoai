@@ -22,6 +22,9 @@ import {
   Coins,
   ListChecks,
   Users,
+  Bot,
+  Zap,
+  LayoutGrid,
 } from 'lucide-react'
 import { signOut } from 'firebase/auth'
 import BookmarksView from './BookmarksView'
@@ -226,7 +229,24 @@ export default function Sidebar() {
                           )
                         }
                       />
-                      <NavItem icon={<Users size={17} />} label={t('Agents')} to="/team" active={path === '/team'} />
+                      <NavItem
+                        icon={<Bot size={17} />}
+                        label={t('Agents')}
+                        to="/agents"
+                        active={path === '/agents' || path.startsWith('/agent/') || path === '/team'}
+                      />
+                      <NavItem
+                        icon={<Zap size={17} />}
+                        label={t('Jobs')}
+                        to="/jobs"
+                        active={path === '/jobs'}
+                      />
+                      <NavItem
+                        icon={<LayoutGrid size={17} />}
+                        label={t('Apps')}
+                        to="/apps"
+                        active={path === '/apps'}
+                      />
                       <NavItem
                         icon={<ListChecks size={17} />}
                         label={t('Daily tasks')}
