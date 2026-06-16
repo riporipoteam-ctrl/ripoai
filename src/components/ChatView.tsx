@@ -180,27 +180,27 @@ export default function ChatView() {
       {/* Top app bar — gives the screen real structure instead of two lonely
           floating icons. Shown when the sidebar is collapsed (i.e. on mobile). */}
       {!sidebarOpen && (
-        <header className="mobile-topbar top-app-bar sticky top-0 z-20 grid grid-cols-[1fr_auto_1fr] items-center px-1.5 py-1.5">
+        <header className="mobile-topbar top-app-bar cg-topbar sticky top-0 z-20 grid grid-cols-[1fr_auto_1fr] items-center px-2 py-2">
           <div className="justify-self-start">
             <button
               onClick={toggleSidebar}
-              className="pressable glass-control rounded-xl p-2 text-ink"
+              className="pressable cg-iconbtn"
               title="Open sidebar"
             >
-              <PanelLeftOpen size={22} />
+              <PanelLeftOpen size={20} />
             </button>
           </div>
           <div className="flex items-center gap-1.5 justify-self-center">
             <Logo size={20} variant="icon" />
-            <span className="text-[16px] font-semibold tracking-tight">AskAI</span>
+            <span className="text-[15px] font-semibold tracking-tight">AskAI</span>
           </div>
           <div className="justify-self-end">
             <button
               onClick={() => navigate('/')}
-              className="pressable glass-control rounded-xl p-2 text-ink"
+              className="pressable cg-iconbtn"
               title="New chat"
             >
-              <PenSquare size={22} />
+              <PenSquare size={20} />
             </button>
           </div>
         </header>
@@ -336,7 +336,7 @@ export default function ChatView() {
                       handleSend(chip, [])
                     }
                   }}
-                  className="glass pressable rounded-full border border-white/12 px-3.5 py-2 text-xs font-semibold hover:bg-white/10"
+                  className="pressable rounded-full border border-[rgb(var(--line))] bg-[rgb(var(--surface))] px-3.5 py-2 text-xs font-semibold text-ink hover:bg-[rgb(var(--ink)/0.06)] dark:bg-[rgb(var(--surface-raised))]"
                 >
                   {chip.trim()}
                 </button>
@@ -372,7 +372,7 @@ export default function ChatView() {
         ) : (
           /* Extra top clearance when the floating top bar overlays the scroll
              area — otherwise the first message + AskAI logo hide under it. */
-          <div className={`chat-thread mx-auto w-full max-w-3xl space-y-6 px-4 pb-44 sm:pb-48 ${sidebarOpen ? 'pt-6' : 'pt-[calc(env(safe-area-inset-top,0px)+4.75rem)]'}`}>
+          <div className={`chat-thread cg-thread space-y-7 px-4 pb-44 sm:pb-48 ${sidebarOpen ? 'pt-6' : 'pt-[calc(env(safe-area-inset-top,0px)+4.75rem)]'}`}>
             <AnimatePresence initial={false}>
               {messages.map((m, i) => {
                 const isLastAssistant =

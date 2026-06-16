@@ -134,51 +134,50 @@ export default function Sidebar() {
             animate={{ x: 0, width: 288 }}
             exit={{ x: -300, width: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 32 }}
-            className="askai-sidebar glass z-40 flex h-full shrink-0 flex-col overflow-hidden max-md:fixed max-md:left-0 max-md:top-0"
+            className="askai-sidebar cg-sidebar z-40 flex h-full shrink-0 flex-col overflow-hidden max-md:fixed max-md:left-0 max-md:top-0"
             style={{ width: 288 }}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-4 pb-2 pt-4">
-              <div className="flex items-center gap-2.5">
-                <div className="overflow-hidden rounded-xl shadow-[0_4px_14px_-6px_rgb(var(--ink)/0.55)] ring-1 ring-[rgb(var(--ink)/0.1)]">
-                  <Logo size={32} variant="icon" />
+            <div className="flex items-center justify-between px-3 pb-2 pt-3">
+              <div className="flex items-center gap-2">
+                <div className="overflow-hidden rounded-lg">
+                  <Logo size={28} variant="icon" />
                 </div>
-                <span className="font-display text-[1.4rem] font-bold tracking-tight">AskAI</span>
+                <span className="text-[1.05rem] font-semibold tracking-tight">AskAI</span>
               </div>
               <button
                 onClick={() => setSidebar(false)}
-                className="pressable rounded-xl p-2 text-muted transition hover:bg-white/10 hover:text-ink"
+                className="cg-iconbtn pressable"
                 title="Collapse sidebar"
               >
                 <PanelLeftClose size={18} />
               </button>
             </div>
 
-            <div className="space-y-2 px-3">
+            <div className="space-y-2 px-2.5">
               {/* Primary action */}
               <button
                 onClick={() => {
                   navigate('/')
                   if (isMobile) setSidebar(false)
                 }}
-                className="pressable accent-gradient-bg flex w-full items-center justify-center gap-2 rounded-2xl px-3 py-3 text-sm font-bold shadow-sm transition hover:brightness-110"
+                className="cg-newchat pressable"
               >
-                <PenSquare size={17} /> {t('New chat')}
+                <PenSquare size={16} /> {t('New chat')}
               </button>
 
               {/* Search */}
-              <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2.5 transition focus-within:border-accent/40">
+              <div className="cg-search">
                 <Search size={16} className="text-muted" />
                 <input
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder={t('Search chats')}
-                  className="w-full bg-transparent text-sm outline-none placeholder:text-muted"
                 />
               </div>
 
               {/* Navigation cluster */}
-              <div className="space-y-0.5 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-1.5">
+              <div className="space-y-0.5">
                 {(() => {
                   const NavItem = ({
                     icon,
@@ -201,11 +200,9 @@ export default function Sidebar() {
                         else if (to) navigate(to)
                         if (isMobile) setSidebar(false)
                       }}
-                      className={`pressable flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-                        active ? 'bg-accent/15 text-ink' : 'text-muted hover:bg-white/[0.06] hover:text-ink'
-                      }`}
+                      className={`cg-row pressable ${active ? 'is-active' : ''}`}
                     >
-                      <span className={active ? 'text-accent' : 'text-muted'}>{icon}</span>
+                      <span className="cg-row-icon">{icon}</span>
                       <span className="flex-1 text-left">{label}</span>
                       {trailing}
                     </button>
@@ -266,27 +263,25 @@ export default function Sidebar() {
             </div>
 
             {/* Scroll area */}
-            <div className="mt-2 flex-1 overflow-y-auto px-2">
+            <div className="mt-2 flex-1 overflow-y-auto px-2.5">
               {/* Projects */}
-              <div className="mb-1 flex items-center justify-between px-2 pt-1">
-                <span className="text-xs font-bold uppercase tracking-wide text-muted">{t('Projects')}</span>
+              <div className="flex items-center justify-between pt-1">
+                <span className="cg-section-label">{t('Projects')}</span>
                 <button
                   onClick={createProject}
-                  className="pressable rounded-lg p-1 text-muted hover:bg-white/10 hover:text-ink"
+                  className="cg-iconbtn pressable !h-8 !min-w-8"
                   title="New project"
                 >
                   <Plus size={16} />
                 </button>
               </div>
               {projects.length === 0 && (
-                <p className="px-2 pb-2 text-xs text-muted">Create a coding project with live preview.</p>
+                <p className="px-2.5 pb-2 text-xs text-muted">Create a coding project with live preview.</p>
               )}
               {projects.map((p) => (
                 <div
                   key={p.id}
-                  className={`group flex items-center gap-2 rounded-xl px-2 py-2 text-sm transition hover:bg-white/10 ${
-                    projectId === p.id ? 'bg-accent/15 text-ink' : ''
-                  }`}
+                  className={`cg-row group ${projectId === p.id ? 'is-active' : ''}`}
                 >
                   <button
                     onClick={() => {
@@ -295,7 +290,7 @@ export default function Sidebar() {
                     }}
                     className="flex min-w-0 flex-1 items-center gap-2 text-left"
                   >
-                    <FolderGit2 size={15} className="shrink-0 text-accent" />
+                    <FolderGit2 size={15} className="shrink-0 text-muted" />
                     <span className="truncate">{p.name}</span>
                   </button>
                   <button
@@ -305,7 +300,7 @@ export default function Sidebar() {
                         if (projectId === p.id) navigate('/')
                       }
                     }}
-                    className="rounded-lg p-1 text-muted opacity-0 transition hover:bg-white/10 hover:text-red-400 group-hover:opacity-100"
+                    className="rounded-md p-1 text-muted opacity-0 transition hover:bg-[rgb(var(--ink)/0.08)] hover:text-red-400 group-hover:opacity-100"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -313,21 +308,17 @@ export default function Sidebar() {
               ))}
 
               {/* Chats */}
-              <div className="mt-3">
+              <div className="mt-2">
                 {groups.length === 0 && (
                   <p className="px-2 py-4 text-center text-xs text-muted">No chats yet.</p>
                 )}
                 {groups.map(([label, items]) => (
-                  <div key={label} className="mb-2">
-                    <div className="px-2 py-1 text-xs font-bold uppercase tracking-wide text-muted">
-                      {label}
-                    </div>
+                  <div key={label} className="mb-1">
+                    <div className="cg-section-label">{label}</div>
                     {items.map((c) => (
                       <div
                         key={c.id}
-                        className={`group relative flex items-center gap-2 rounded-xl px-2 py-2 text-sm transition hover:bg-white/10 ${
-                          chatId === c.id ? 'bg-accent/15 text-ink' : ''
-                        }`}
+                        className={`cg-row group relative ${chatId === c.id ? 'is-active' : ''}`}
                       >
                         {renaming === c.id ? (
                           <input
@@ -342,7 +333,7 @@ export default function Sidebar() {
                               if (e.key === 'Enter') (e.target as HTMLInputElement).blur()
                               if (e.key === 'Escape') setRenaming(null)
                             }}
-                            className="w-full rounded-lg bg-white/10 px-2 py-1 outline-none"
+                            className="w-full rounded-lg bg-[rgb(var(--ink)/0.08)] px-2 py-1 outline-none"
                           />
                         ) : (
                           <>
@@ -354,7 +345,7 @@ export default function Sidebar() {
                               className="flex min-w-0 flex-1 items-center gap-2 text-left"
                             >
                               {c.pinned ? (
-                                <Pin size={14} className="shrink-0 rotate-45 text-accent" />
+                                <Pin size={14} className="shrink-0 rotate-45 text-muted" />
                               ) : c.agentId || c.agentName ? (
                                 <span className="shrink-0 text-sm leading-none" title={`Chat with ${c.agentName ?? 'agent'}`}>
                                   {c.agentEmoji || '🤖'}
@@ -364,17 +355,17 @@ export default function Sidebar() {
                               )}
                               <span className="truncate">{c.title}</span>
                               {(c.agentId || c.agentName) && (
-                                <span className="shrink-0 rounded-full bg-accent/15 px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-accent">
+                                <span className="shrink-0 rounded-full bg-[rgb(var(--ink)/0.08)] px-1.5 py-px text-[9px] font-bold uppercase tracking-wide text-muted">
                                   Agent
                                 </span>
                               )}
                               {unreadChats.includes(c.id) && (
-                                <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]" title="New reply" />
+                                <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-accent" title="New reply" />
                               )}
                             </button>
                             <button
                               onClick={() => setMenuFor(menuFor === c.id ? null : c.id)}
-                              className="rounded-lg p-1 text-muted opacity-0 transition hover:bg-white/10 hover:text-ink group-hover:opacity-100"
+                              className="rounded-md p-1 text-muted opacity-0 transition hover:bg-[rgb(var(--ink)/0.08)] hover:text-ink group-hover:opacity-100"
                             >
                               <MoreHorizontal size={16} />
                             </button>
@@ -384,7 +375,7 @@ export default function Sidebar() {
                                   initial={{ opacity: 0, scale: 0.95 }}
                                   animate={{ opacity: 1, scale: 1 }}
                                   exit={{ opacity: 0, scale: 0.95 }}
-                                  className="glass-strong absolute right-2 top-9 z-50 w-44 overflow-hidden rounded-2xl p-1"
+                                  className="absolute right-2 top-9 z-50 w-44 overflow-hidden rounded-xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-1 shadow-lg dark:bg-[rgb(var(--surface-raised))]"
                                   onMouseLeave={() => setMenuFor(null)}
                                 >
                                   <button
@@ -392,7 +383,7 @@ export default function Sidebar() {
                                       setMenuFor(null)
                                       if (user) await togglePinChat(user.uid, c.id)
                                     }}
-                                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-white/10"
+                                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-[rgb(var(--ink)/0.07)]"
                                   >
                                     <Pin size={14} /> {c.pinned ? 'Unpin' : 'Pin'}
                                   </button>
@@ -402,7 +393,7 @@ export default function Sidebar() {
                                       setRenameVal(c.title)
                                       setMenuFor(null)
                                     }}
-                                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-white/10"
+                                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-[rgb(var(--ink)/0.07)]"
                                   >
                                     <Pencil size={14} /> Rename
                                   </button>
@@ -417,7 +408,7 @@ export default function Sidebar() {
                                         .join('\n\n')}`
                                       navigator.clipboard.writeText(md)
                                     }}
-                                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-white/10"
+                                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-[rgb(var(--ink)/0.07)]"
                                   >
                                     <Download size={14} /> Copy as text
                                   </button>
@@ -427,7 +418,7 @@ export default function Sidebar() {
                                       if (user) await deleteChat(user.uid, c.id)
                                       if (chatId === c.id) navigate('/')
                                     }}
-                                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-red-400 hover:bg-white/10"
+                                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-red-500 hover:bg-[rgb(var(--ink)/0.07)]"
                                   >
                                     <Trash2 size={14} /> Delete
                                   </button>
@@ -444,9 +435,9 @@ export default function Sidebar() {
             </div>
 
             {/* Profile */}
-            <div className="p-2">
-              <div className="flex items-center gap-2 rounded-2xl border border-white/[0.07] bg-white/[0.03] px-2.5 py-2.5">
-                <Avatar name={settings.displayName || user?.displayName} photoURL={settings.avatar || user?.photoURL} size={34} />
+            <div className="border-t border-[rgb(var(--line))] p-2">
+              <div className="cg-account">
+                <Avatar name={settings.displayName || user?.displayName} photoURL={settings.avatar || user?.photoURL} size={32} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-semibold">
                     {settings.displayName || user?.displayName || 'Account'}
@@ -456,7 +447,7 @@ export default function Sidebar() {
                 {isAdmin(user) && (
                   <button
                     onClick={() => navigate('/admin')}
-                    className="pressable rounded-xl p-2 text-muted hover:bg-white/10 hover:text-ink"
+                    className="cg-iconbtn pressable !h-9 !min-w-9 text-muted"
                     title="Admin"
                   >
                     <ShieldCheck size={18} />
@@ -464,14 +455,14 @@ export default function Sidebar() {
                 )}
                 <button
                   onClick={openSettings}
-                  className="pressable rounded-xl p-2 text-muted hover:bg-white/10 hover:text-ink"
+                  className="cg-iconbtn pressable !h-9 !min-w-9 text-muted"
                   title="Settings"
                 >
                   <SettingsIcon size={18} />
                 </button>
                 <button
                   onClick={handleSignOut}
-                  className="pressable rounded-xl p-2 text-muted hover:bg-white/10 hover:text-ink"
+                  className="cg-iconbtn pressable !h-9 !min-w-9 text-muted"
                   title="Sign out"
                 >
                   <LogOut size={18} />
