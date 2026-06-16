@@ -112,6 +112,73 @@ export function newJob(owner: string, agentId: string, partial: Partial<Job> = {
   }
 }
 
+/** Does this message ask to schedule something for later (vs do it now)? */
+export function isScheduleIntent(text: string): boolean {
+  return /\b(tomorrow|tonight|later|every|daily|weekly|monthly|each (morning|day|week|night)|next (week|month|monday|tuesday|wednesday|thursday|friday|saturday|sunday)|at \d|in \d+\s*(min|hour|day|week)|schedule|remind me|set (a )?(job|task|reminder)|make (a )?(job|task))\b/i.test(
+    text,
+  )
+}
+
+/** Parse a natural-language time into a next-run + cadence. Returns null if no
+ *  time is found (caller can then default to "now"/daily). */
+export function parseWhen(text: string, now = Date.now()): { nextRunAt: number; cadence: JobCadence } | null {
+  const t = text.toLowerCase()
+  const HOUR = 3600_000
+  const DAY = 24 * HOUR
+  // cadence words
+  let cadence: JobCadence = 'once'
+  if (/\b(every day|daily|each (morning|day))\b/.test(t)) cadence = 'daily'
+  else if (/\b(every week|weekly|each week)\b/.test(t)) cadence = 'weekly'
+  else if (/\b(every month|monthly)\b/.test(t)) cadence = 'monthly'
+  else if (/\bevery hour|hourly\b/.test(t)) cadence = 'hourly'
+
+  // Pick a clock hour if given ("at 9", "at 9am", "9pm", "morning"=9, "tonight"=20)
+  const setHour = (base: Date, h: number) => {
+    base.setHours(h, 0, 0, 0)
+    return base
+  }
+  const hourMatch = t.match(/\bat (\d{1,2})\s*(am|pm)?\b/) || t.match(/\b(\d{1,2})\s*(am|pm)\b/)
+  let hour = 9
+  if (hourMatch) {
+    hour = parseInt(hourMatch[1], 10)
+    const mer = hourMatch[2]
+    if (mer === 'pm' && hour < 12) hour += 12
+    if (mer === 'am' && hour === 12) hour = 0
+  } else if (/\btonight|this evening\b/.test(t)) hour = 20
+  else if (/\bmorning\b/.test(t)) hour = 9
+  else if (/\bafternoon\b/.test(t)) hour = 14
+
+  // relative day
+  const d = new Date(now)
+  if (/\btomorrow\b/.test(t)) return { nextRunAt: setHour(new Date(now + DAY), hour).getTime(), cadence }
+  if (/\btonight|this evening\b/.test(t)) return { nextRunAt: setHour(new Date(now), hour).getTime(), cadence }
+  const inDays = t.match(/\bin (\d+)\s*days?\b/)
+  if (inDays) return { nextRunAt: now + parseInt(inDays[1], 10) * DAY, cadence }
+  const inHours = t.match(/\bin (\d+)\s*hours?\b/)
+  if (inHours) return { nextRunAt: now + parseInt(inHours[1], 10) * HOUR, cadence }
+  const inMins = t.match(/\bin (\d+)\s*(min|minute)s?\b/)
+  if (inMins) return { nextRunAt: now + parseInt(inMins[1], 10) * 60_000, cadence }
+  const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+  const wd = weekdays.findIndex((w) => new RegExp(`\\bnext ${w}\\b|\\b${w}\\b`).test(t))
+  if (wd >= 0) {
+    const target = new Date(now)
+    const delta = (wd - target.getDay() + 7) % 7 || 7
+    return { nextRunAt: setHour(new Date(now + delta * DAY), hour).getTime(), cadence }
+  }
+  if (cadence !== 'once') {
+    // "every morning" etc. → first run at the next occurrence of that hour
+    const next = setHour(new Date(now), hour)
+    if (next.getTime() <= now) next.setTime(next.getTime() + DAY)
+    return { nextRunAt: next.getTime(), cadence }
+  }
+  if (hourMatch) {
+    const next = setHour(new Date(now), hour)
+    if (next.getTime() <= now) next.setTime(next.getTime() + DAY)
+    return { nextRunAt: next.getTime(), cadence: 'once' }
+  }
+  return null
+}
+
 /** Jobs sorted by soonest run — what the "Upcoming" list renders. */
 export function upcomingJobs(uid: string): Job[] {
   return loadJobs(uid)

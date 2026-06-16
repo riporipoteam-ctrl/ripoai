@@ -4,7 +4,7 @@
 // editor with Visibility, Device, About, Goals, the tool catalog, triggers and
 // the system prompt. Every edit persists immediately via upsertAgent.
 import { useNavigate, useParams } from 'react-router-dom'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createPortal } from 'react-dom'
 import {
@@ -33,6 +33,7 @@ import {
   Clock,
   Zap,
   AtSign,
+  Upload,
   type LucideIcon,
 } from 'lucide-react'
 import {
@@ -266,6 +267,7 @@ export default function AgentDetailPage() {
   const [sheet, setSheet] = useState<null | 'model' | 'visibility' | 'device' | 'trigger'>(null)
 
   const [regenning, setRegenning] = useState(false)
+  const avatarFileRef = useRef<HTMLInputElement>(null)
   const [jobs, setJobs] = useState<Job[]>([])
   const [activity, setActivity] = useState<ActivityEvent[]>([])
 
@@ -347,9 +349,36 @@ export default function AgentDetailPage() {
     navigate('/')
   }
 
+  /** Upload a photo from the device as the agent's avatar. */
+  function onAvatarFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]
+    if (!f) return
+    const reader = new FileReader()
+    reader.onload = () => patch({ avatar: String(reader.result) })
+    reader.readAsDataURL(f)
+    e.target.value = ''
+  }
+
   // ── Tools ──
   function toggleTool(id: string, enabled: boolean) {
     patch({ tools: a!.tools.map((t) => (t.id === id ? { ...t, enabled } : t)) })
+  }
+
+  function addCustomTool(label: string, description: string) {
+    const name = label.trim()
+    if (!name) return
+    const tool: AgentTool = {
+      id: 'custom_' + Math.random().toString(36).slice(2, 8),
+      label: name,
+      description: description.trim() || 'Custom capability',
+      icon: 'Sparkles',
+      enabled: true,
+    }
+    patch({ tools: [...a!.tools, tool] })
+  }
+
+  function removeTool(id: string) {
+    patch({ tools: a!.tools.filter((t) => t.id !== id) })
   }
 
   // ── Triggers ──
@@ -423,11 +452,21 @@ export default function AgentDetailPage() {
           <button
             onClick={regenerateAvatar}
             disabled={regenning}
-            aria-label="Regenerate avatar"
+            aria-label="Regenerate avatar with AI"
+            title="Regenerate with AI"
             className="pressable accent-gradient-bg absolute -bottom-1 -right-1 flex h-9 w-9 items-center justify-center rounded-full text-white shadow-lg ring-2 ring-[rgb(var(--surface))] disabled:opacity-70"
           >
             {regenning ? <Loader2 size={15} className="animate-spin" /> : <Camera size={15} />}
           </button>
+          <button
+            onClick={() => avatarFileRef.current?.click()}
+            aria-label="Upload photo"
+            title="Upload a photo"
+            className="pressable absolute -bottom-1 -left-1 flex h-9 w-9 items-center justify-center rounded-full bg-card text-ink shadow-lg ring-2 ring-[rgb(var(--surface))]"
+          >
+            <Upload size={15} />
+          </button>
+          <input ref={avatarFileRef} type="file" accept="image/*" className="hidden" onChange={onAvatarFile} />
         </div>
 
         {/* Name + inline edit pencil */}
@@ -567,10 +606,16 @@ export default function AgentDetailPage() {
             {tab === 'tools' && (
               <div className="space-y-2">
                 {a.tools.map((t) => (
-                  <ToolRow key={t.id} tool={t} onToggle={(v) => toggleTool(t.id, v)} />
+                  <ToolRow
+                    key={t.id}
+                    tool={t}
+                    onToggle={(v) => toggleTool(t.id, v)}
+                    onRemove={t.id.startsWith('custom_') ? () => removeTool(t.id) : undefined}
+                  />
                 ))}
+                <CustomToolAdder onAdd={addCustomTool} />
                 <p className="px-1 pt-2 text-xs text-muted">
-                  Tools let {a.name || 'this agent'} take real actions. Toggle the ones it should use.
+                  Tools let {a.name || 'this agent'} take real actions. Toggle the ones it should use, or add your own.
                 </p>
               </div>
             )}
@@ -648,7 +693,7 @@ export default function AgentDetailPage() {
   )
 }
 
-function ToolRow({ tool, onToggle }: { tool: AgentTool; onToggle: (v: boolean) => void }) {
+function ToolRow({ tool, onToggle, onRemove }: { tool: AgentTool; onToggle: (v: boolean) => void; onRemove?: () => void }) {
   const Icon = (tool.icon && TOOL_ICONS[tool.icon]) || Sparkles
   return (
     <div className="glass flex items-center gap-3 rounded-2xl p-3.5">
@@ -663,7 +708,62 @@ function ToolRow({ tool, onToggle }: { tool: AgentTool; onToggle: (v: boolean) =
         <div className="text-sm font-semibold text-ink">{tool.label}</div>
         {tool.description && <div className="truncate text-xs text-muted">{tool.description}</div>}
       </div>
+      {onRemove && (
+        <button onClick={onRemove} className="pressable text-muted hover:text-red-500" aria-label="Remove tool">
+          <Trash2 size={16} />
+        </button>
+      )}
       <Toggle on={tool.enabled} onChange={onToggle} />
+    </div>
+  )
+}
+
+/** Inline form to add a custom tool (name + description). */
+function CustomToolAdder({ onAdd }: { onAdd: (label: string, desc: string) => void }) {
+  const [open, setOpen] = useState(false)
+  const [label, setLabel] = useState('')
+  const [desc, setDesc] = useState('')
+  if (!open)
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="pressable flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line py-3 text-sm font-semibold text-muted hover:text-ink"
+      >
+        <Plus size={16} /> Add custom tool
+      </button>
+    )
+  return (
+    <div className="glass space-y-2 rounded-2xl p-3.5">
+      <input
+        autoFocus
+        value={label}
+        onChange={(e) => setLabel(e.target.value)}
+        placeholder="Tool name (e.g. Send Slack message)"
+        className="w-full rounded-xl border border-line bg-card px-3 py-2 text-sm text-ink placeholder:text-muted"
+      />
+      <input
+        value={desc}
+        onChange={(e) => setDesc(e.target.value)}
+        placeholder="What it does (optional)"
+        className="w-full rounded-xl border border-line bg-card px-3 py-2 text-sm text-ink placeholder:text-muted"
+      />
+      <div className="flex justify-end gap-2">
+        <button onClick={() => setOpen(false)} className="pressable rounded-full px-3 py-1.5 text-sm font-semibold text-muted">
+          Cancel
+        </button>
+        <button
+          onClick={() => {
+            onAdd(label, desc)
+            setLabel('')
+            setDesc('')
+            setOpen(false)
+          }}
+          disabled={!label.trim()}
+          className="accent-gradient-bg pressable rounded-full px-4 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
+        >
+          Add
+        </button>
+      </div>
     </div>
   )
 }

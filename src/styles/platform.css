@@ -1,0 +1,61 @@
+/* ============================================================================
+ * Platform-native polish. The shared React app gets an iOS (Cupertino) or
+ * Android (Material) feel via a <html class="plat-ios|plat-android"> hook
+ * (see lib/platform.ts). Web stays neutral ChatGPT.
+ * ========================================================================== */
+
+/* ---- iOS: softer, rounder, San-Francisco-like, translucent bars ---------- */
+.plat-ios body {
+  font-family: -apple-system, 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif !important;
+}
+.plat-ios button,
+.plat-ios .rounded-2xl,
+.plat-ios .rounded-xl {
+  border-radius: 16px;
+}
+.plat-ios .native-tabbar-inner {
+  background: rgb(var(--surface-raised) / 0.82) !important;
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-top: 0.5px solid rgb(var(--line));
+}
+/* iOS momentum scrolling everywhere */
+.plat-ios .overflow-y-auto {
+  -webkit-overflow-scrolling: touch;
+}
+/* iOS-style large bold titles */
+.plat-ios h1 {
+  letter-spacing: -0.02em;
+}
+
+/* ---- Android: Material — flatter, tactile ripples, elevation shadows ------ */
+.plat-android body {
+  font-family: 'Roboto', 'Inter', system-ui, sans-serif !important;
+}
+.plat-android button {
+  border-radius: 12px;
+}
+.plat-android .native-tabbar-inner {
+  background: rgb(var(--surface-raised)) !important;
+  box-shadow: 0 -1px 0 rgb(var(--line)), 0 -8px 24px -16px rgb(0 0 0 / 0.4);
+  backdrop-filter: none !important;
+}
+/* Material tactile press */
+.plat-android .pressable:active {
+  transform: scale(0.97);
+  transition: transform 0.06s ease;
+}
+/* Material FAB elevation on the center new-chat button */
+.plat-android .native-fab {
+  box-shadow: 0 6px 16px -4px rgb(0 0 0 / 0.5);
+}
+
+/* ---- Shared native niceties: no text selection on chrome, no callouts ----- */
+.plat-ios .native-tabbar,
+.plat-android .native-tabbar,
+.plat-ios .askai-sidebar,
+.plat-android .askai-sidebar {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}

@@ -20,6 +20,7 @@ import {
 import { isCodeBuild, needsWeb, isSmalltalk } from './agentTeam'
 import { instantiate, getTemplate, type AgentTemplate } from './agentTemplates'
 import { logActivity } from './agentActivity'
+import { isScheduleIntent, parseWhen, newJob, upsertJob, type Job } from './jobs'
 
 /** The orchestrator's display identity (the intro card persona). */
 export const CHIEF = {
@@ -152,6 +153,29 @@ export interface GoalRoute {
 /** Find the roster agent that best matches one of our starting-team roles. */
 function roleAgent(uid: string, agentId: string): Agent | null {
   return getAgent(uid, agentId)
+}
+
+/** A goal that asks to do something later → create a scheduled job for the
+ *  routed agent instead of running it now. Returns the created job, or null if
+ *  it's not a scheduling request. */
+export function scheduleFromGoal(uid: string, text: string): { job: Job; agent: Agent } | null {
+  if (!uid || !isScheduleIntent(text)) return null
+  const route = routeGoal(uid, text)
+  if (!route) return null
+  const when = parseWhen(text) || { nextRunAt: Date.now() + 24 * 3600_000, cadence: 'once' as const }
+  // A concise title from the goal.
+  const clean = text.replace(/\b(tomorrow|tonight|later|every day|daily|weekly|monthly|each \w+|next \w+|at \d+\s*(am|pm)?|in \d+\s*\w+|schedule|remind me to?|set a (job|task|reminder) to?|make a (job|task) to?)\b/gi, '').trim()
+  const title = (clean.charAt(0).toUpperCase() + clean.slice(1)).slice(0, 60) || 'Scheduled task'
+  const job = newJob(uid, route.agent.id, {
+    title,
+    agentRole: route.agent.role,
+    prompt: clean || text,
+    cadence: when.cadence,
+    nextRunAt: when.nextRunAt,
+  })
+  upsertJob(uid, job)
+  logActivity(uid, route.agent.id, route.agent.name, 'job_created', `Scheduled: ${title}`)
+  return { job, agent: route.agent }
 }
 
 /** Pick the first roster agent whose role/personality matches a keyword test. */

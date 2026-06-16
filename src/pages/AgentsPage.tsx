@@ -46,9 +46,11 @@ import {
   delegationSuggestions,
   hireFromTemplate,
   applyStarterPack,
+  scheduleFromGoal,
   STARTER_PACKS,
   CHIEF,
 } from '../lib/orchestrator'
+import { untilLabel } from '../lib/jobs'
 import {
   loadActivity,
   logActivity,
@@ -139,6 +141,7 @@ export default function AgentsPage() {
   const [feedTab, setFeedTab] = useState<FeedTab>('mine')
   const [activity, setActivity] = useState<ActivityEvent[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [rosterQuery, setRosterQuery] = useState('')
 
   const intro = useMemo(() => chiefOfStaffIntro(), [])
 
@@ -202,6 +205,32 @@ export default function AgentsPage() {
     const text = (prefill ?? draft).trim()
     if (!uid || !text || routing) return
     haptic('medium')
+
+    // If the goal asks for something LATER ("tomorrow", "every morning"…),
+    // schedule it as a job for the right agent instead of running it now.
+    if (!forceAgent) {
+      const scheduled = scheduleFromGoal(uid, text)
+      if (scheduled) {
+        setDraft('')
+        setSuggested([])
+        setRouting(`Scheduled for ${scheduled.agent.name} · ${untilLabel(scheduled.job.nextRunAt)}`)
+        try {
+          window.dispatchEvent(
+            new CustomEvent('askai-notify', {
+              detail: { kind: 'job', title: 'Job scheduled', body: `${scheduled.job.title} · ${untilLabel(scheduled.job.nextRunAt)}`, to: '/jobs' },
+            }),
+          )
+        } catch {
+          /* ignore */
+        }
+        setTimeout(() => {
+          setRouting(null)
+          navigate('/jobs')
+        }, 800)
+        return
+      }
+    }
+
     const route = forceAgent ? null : routeGoal(uid, text)
     const agent = forceAgent ?? route?.agent
     if (!agent) return
@@ -477,8 +506,23 @@ export default function AgentsPage() {
           <Plus size={13} /> New agent
         </button>
       </div>
+      {agents.length > 4 && (
+        <div className="mb-3 flex items-center gap-2 rounded-2xl border border-line bg-card px-3 py-2">
+          <Search size={15} className="text-muted" />
+          <input
+            value={rosterQuery}
+            onChange={(e) => setRosterQuery(e.target.value)}
+            placeholder="Search your agents…"
+            className="w-full bg-transparent text-sm text-ink placeholder:text-muted"
+          />
+        </div>
+      )}
       <motion.div variants={container} initial="hidden" animate="show" className="flex flex-col gap-2">
-        {agents.map((a) => (
+        {agents
+          .filter((a) =>
+            `${a.name} ${a.role}`.toLowerCase().includes(rosterQuery.trim().toLowerCase()),
+          )
+          .map((a) => (
           <motion.button
             key={a.id}
             variants={item}
