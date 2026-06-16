@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/web-t0PPYi6O.js","assets/index-D3_DHmMN.js","assets/motion-TAHrZRye.js","assets/firebase-CKmZOBDm.js","assets/markdown-B5uOaCix.js","assets/index-C6GzdwxN.css"])))=>i.map(i=>d[i]);
+import{ar as t,_ as o}from"./index-D3_DHmMN.js";import"./motion-TAHrZRye.js";import"./firebase-CKmZOBDm.js";import"./markdown-B5uOaCix.js";const T=t("TextToSpeech",{web:()=>o(()=>import("./web-t0PPYi6O.js"),__vite__mapDeps([0,1,2,3,4,5])).then(e=>new e.TextToSpeechWeb)});export{T as TextToSpeech};
