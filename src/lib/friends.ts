@@ -213,6 +213,21 @@ export async function maybeAskAI(cid: string, history: DMMessage[], text: string
   }
 }
 
+/** A handful of people to suggest adding (recent profiles, excluding self). */
+export async function suggestedUsers(selfUid: string, exclude: string[] = []): Promise<UserProfile[]> {
+  const out: UserProfile[] = []
+  try {
+    const snap = await getDocs(query(collection(db, 'users'), limit(25)))
+    snap.forEach((d) => {
+      const p = toProfile(d.data(), d.id)
+      if (p && p.uid !== selfUid && !exclude.includes(p.uid)) out.push(p)
+    })
+  } catch {
+    /* ignore */
+  }
+  return out.slice(0, 12)
+}
+
 export async function getProfile(uid: string): Promise<UserProfile | null> {
   try {
     const s = await getDoc(doc(db, 'users', uid))

@@ -1,6 +1,6 @@
 import { Suspense, lazy, useEffect, useRef } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
-import { PanelLeftOpen, PenSquare } from 'lucide-react'
+import { PanelLeftOpen, PenSquare, ArrowLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
 import ChatView from '../components/ChatView'
@@ -24,6 +24,7 @@ const JobsPage = lazy(() => import('./JobsPage'))
 const AppsPage = lazy(() => import('./AppsPage'))
 const FriendsPage = lazy(() => import('./FriendsPage'))
 const HomeLanding = lazy(() => import('./HomeLanding'))
+const DMPage = lazy(() => import('./DMPage'))
 const AgentDetailPage = lazy(() => import('./AgentDetailPage'))
 
 export default function Home() {
@@ -35,6 +36,8 @@ export default function Home() {
   // ChatView renders its own top bar; only the Projects view needs the
   // floating fallback controls when the sidebar is collapsed.
   const onProject = location.pathname.startsWith('/project')
+  // Workspace pages render no top bar of their own — give them a back + menu.
+  const onWorkspace = /^\/(agents|agent|jobs|apps|friends|dm|tasks|team)\b/.test(location.pathname)
 
   // On a fresh open at the root, if a chat/agent task was interrupted by closing
   // the app, jump back into it so it resumes and finishes (handled in useChat).
@@ -54,22 +57,19 @@ export default function Home() {
       <Sidebar />
       <main className="relative flex min-w-0 flex-1 flex-col">
         {/* Floating controls when sidebar is collapsed (non-chat routes) */}
-        {!sidebarOpen && onProject && (
-          <div className="absolute left-3 top-3 z-20 flex gap-1 rounded-xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-1 shadow-sm dark:bg-[rgb(var(--surface-raised))]">
-            <button
-              onClick={toggleSidebar}
-              className="cg-iconbtn pressable !h-9 !min-w-9"
-              title="Open sidebar"
-            >
+        {!sidebarOpen && (onProject || onWorkspace) && (
+          <div className="absolute left-3 top-3 z-30 flex gap-1 rounded-xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-1 shadow-sm dark:bg-[rgb(var(--surface-raised))]">
+            <button onClick={() => navigate('/')} className="cg-iconbtn pressable !h-9 !min-w-9" title="Back home">
+              <ArrowLeft size={18} />
+            </button>
+            <button onClick={toggleSidebar} className="cg-iconbtn pressable !h-9 !min-w-9" title="Open menu">
               <PanelLeftOpen size={18} />
             </button>
-            <button
-              onClick={() => navigate('/chat')}
-              className="cg-iconbtn pressable !h-9 !min-w-9"
-              title="New chat"
-            >
-              <PenSquare size={18} />
-            </button>
+            {onProject && (
+              <button onClick={() => navigate('/chat')} className="cg-iconbtn pressable !h-9 !min-w-9" title="New chat">
+                <PenSquare size={18} />
+              </button>
+            )}
           </div>
         )}
 
@@ -167,6 +167,14 @@ export default function Home() {
             element={
               <Suspense fallback={<div className="flex h-full items-center justify-center"><Spinner /></div>}>
                 <FriendsPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/dm/:uid"
+            element={
+              <Suspense fallback={<div className="flex h-full items-center justify-center"><Spinner /></div>}>
+                <DMPage />
               </Suspense>
             }
           />
