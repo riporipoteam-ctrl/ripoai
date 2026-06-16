@@ -7,6 +7,9 @@ import { useI18n } from './lib/i18n'
 import { applyAutoTranslate } from './lib/autoTranslate'
 import { initNative, syncStatusBarTheme } from './lib/native'
 import { completeGoogleRedirect } from './lib/googleAuth'
+// Loaded here (last component-level import) so its rules win the cascade over
+// every prebuilt theme layer, including chatgpt-theme.css.
+import './styles/chatgpt-layout.css'
 import SignIn from './pages/SignIn'
 import SignUp from './pages/SignUp'
 import Home from './pages/Home'
@@ -101,9 +104,9 @@ export default function App() {
 
   return (
     <>
-      <div className="aurora" aria-hidden>
-        <div className="aurora-orb" />
-      </div>
+      {/* No decorative aurora — the ChatGPT shell is a flat neutral surface on
+          every platform (the prebuilt native skin painted a purple gradient
+          here, so we simply don't render it). */}
       <div className="relative z-10 h-full">
         <Routes>
           <Route

@@ -51,17 +51,17 @@ export default function Home() {
       <main className="relative flex min-w-0 flex-1 flex-col">
         {/* Floating controls when sidebar is collapsed (non-chat routes) */}
         {!sidebarOpen && onProject && (
-          <div className="absolute left-3 top-3 z-20 flex gap-1">
+          <div className="absolute left-3 top-3 z-20 flex gap-1 rounded-xl border border-[rgb(var(--line))] bg-[rgb(var(--surface))] p-1 shadow-sm dark:bg-[rgb(var(--surface-raised))]">
             <button
               onClick={toggleSidebar}
-              className="glass pressable rounded-xl p-2 text-ink hover:brightness-110"
+              className="cg-iconbtn pressable !h-9 !min-w-9"
               title="Open sidebar"
             >
               <PanelLeftOpen size={18} />
             </button>
             <button
               onClick={() => navigate('/')}
-              className="glass pressable rounded-xl p-2 text-ink hover:brightness-110"
+              className="cg-iconbtn pressable !h-9 !min-w-9"
               title="New chat"
             >
               <PenSquare size={18} />
