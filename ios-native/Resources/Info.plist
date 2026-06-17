@@ -26,6 +26,11 @@
   <string>AskAI uses the microphone for voice input so you can dictate messages.</string>
   <key>NSSpeechRecognitionUsageDescription</key>
   <string>AskAI converts your speech to text for hands-free messaging.</string>
+  <key>UIBackgroundModes</key>
+  <array>
+    <string>audio</string>
+    <string>voip</string>
+  </array>
   <key>UILaunchScreen</key>
   <dict>
     <key>UIColorName</key><string></string>

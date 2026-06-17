@@ -179,37 +179,47 @@ struct ActiveCallView: View {
     @EnvironmentObject var store: AppStore
     let call: CallCenter.ActiveCall
     let onEnd: () -> Void
+    @StateObject private var rtc = WebRTCManager()
     @State private var state = "Connecting…"
-    @State private var timer: Timer?
+    @State private var statusTimer: Timer?
+    @State private var muted = false
 
     var body: some View {
         ZStack {
-            LinearGradient(colors: [Color(hex: 0x0E0E10), Color(hex: 0x1b1b20)], startPoint: .top, endPoint: .bottom).ignoresSafeArea()
+            if call.kind == "video", let remote = rtc.remoteVideoTrack {
+                RTCVideoView(track: remote).ignoresSafeArea()
+            } else {
+                LinearGradient(colors: [Color(hex: 0x0E0E10), Color(hex: 0x1b1b20)], startPoint: .top, endPoint: .bottom).ignoresSafeArea()
+            }
             VStack(spacing: 14) {
                 Spacer()
-                Image(systemName: call.kind == "video" ? "video.fill" : "phone.fill").font(.system(size: 40)).foregroundStyle(.white).frame(width: 110, height: 110).background(Color.white.opacity(0.1), in: Circle())
-                Text(call.name).font(.system(size: 24, weight: .bold)).foregroundStyle(.white)
-                Text(state).font(.callout).foregroundStyle(.white.opacity(0.7))
-                Text("Live \(call.kind) is rolling out — the call is connected.").font(.caption2).foregroundStyle(.white.opacity(0.45)).multilineTextAlignment(.center).padding(.horizontal, 40)
-                Spacer()
-                Button(action: onEnd) { Image(systemName: "phone.down.fill").font(.system(size: 26)).frame(width: 72, height: 72).background(Color.red, in: Circle()).foregroundStyle(.white) }.buttonStyle(.plain).padding(.bottom, 50)
-            }
-        }
-        .onAppear { watch() }
-        .onDisappear { timer?.invalidate() }
-    }
-
-    private func watch() {
-        timer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in
-            guard let u = store.user else { return }
-            Task {
-                let st = await CallService.status(u, call.id)
-                await MainActor.run {
-                    if st == "active" { state = "Connected" }
-                    else if st == "ended" { onEnd() }
-                    else { state = call.outgoing ? "Ringing…" : "Connected" }
+                if call.kind != "video" || rtc.remoteVideoTrack == nil {
+                    Image(systemName: call.kind == "video" ? "video.fill" : "phone.fill").font(.system(size: 40)).foregroundStyle(.white).frame(width: 110, height: 110).background(Color.white.opacity(0.1), in: Circle())
+                    Text(call.name).font(.system(size: 24, weight: .bold)).foregroundStyle(.white)
                 }
+                Text(rtc.connected ? "Connected" : state).font(.callout).foregroundStyle(.white.opacity(0.8))
+                Spacer()
+                HStack(spacing: 28) {
+                    Button { muted.toggle() } label: {
+                        Image(systemName: muted ? "mic.slash.fill" : "mic.fill").font(.system(size: 22)).frame(width: 60, height: 60).background(muted ? Color.white : Color.white.opacity(0.16), in: Circle()).foregroundStyle(muted ? .black : .white)
+                    }.buttonStyle(.plain)
+                    Button { rtc.end(); onEnd() } label: {
+                        Image(systemName: "phone.down.fill").font(.system(size: 26)).frame(width: 72, height: 72).background(Color.red, in: Circle()).foregroundStyle(.white)
+                    }.buttonStyle(.plain)
+                }.padding(.bottom, 50)
+            }
+            // local self-view PiP for video calls
+            if call.kind == "video", let local = rtc.localVideoTrack {
+                VStack { HStack { Spacer(); RTCVideoView(track: local).frame(width: 110, height: 150).clipShape(RoundedRectangle(cornerRadius: 14)).padding(.top, 60).padding(.trailing, 16) }; Spacer() }
             }
         }
+        .onAppear {
+            if let u = store.user { rtc.start(user: u, callId: call.id, isCaller: call.outgoing, kind: call.kind) }
+            statusTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: true) { _ in
+                guard let u = store.user else { return }
+                Task { let st = await CallService.status(u, call.id); await MainActor.run { if st == "ended" { rtc.end(); onEnd() } else if call.outgoing && !rtc.connected { state = "Ringing…" } } }
+            }
+        }
+        .onDisappear { statusTimer?.invalidate(); rtc.end() }
     }
 }
