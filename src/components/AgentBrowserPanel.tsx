@@ -272,6 +272,9 @@ function Elapsed({ events }: { events: AgentBrowserEvent[] }) {
 }
 
 export default function AgentBrowserPanel({ browser, live }: { browser?: AgentBrowserState; live?: boolean }) {
+  // Collapsed by default — like Nebula's "view activity": the chat stays clean
+  // and the big live viewport only opens when the user taps to expand it.
+  const [expanded, setExpanded] = useState(false)
   if (!browser) return null
   const running = browser.status === 'running' || live
   const unavailable = browser.status === 'unavailable'
@@ -284,6 +287,47 @@ export default function AgentBrowserPanel({ browser, live }: { browser?: AgentBr
     e.type === 'search' || e.type === 'open' || e.type === 'read' || e.type === 'click',
   ).length
 
+  // ── Collapsed pill ────────────────────────────────────────────────────────
+  // A compact one-liner that summarizes the browse session; tap to expand.
+  if (!expanded) {
+    return (
+      <motion.button
+        type="button"
+        onClick={() => setExpanded(true)}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="agent-browser-pill pressable mb-3 flex w-full items-center gap-2 rounded-2xl border border-white/12 px-3 py-2 text-left"
+      >
+        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-orange-500/15 px-2 py-1 text-[11px] font-extrabold uppercase tracking-wide text-orange-500">
+          🐾 OpenClaw
+        </span>
+        {running ? (
+          <Loader2 size={14} className="shrink-0 animate-spin text-accent" />
+        ) : unavailable || errored ? (
+          <AlertTriangle size={14} className="shrink-0 text-amber-400" />
+        ) : (
+          <Check size={14} className="shrink-0 text-emerald-400" />
+        )}
+        <span className="min-w-0 flex-1 truncate text-xs font-semibold text-ink/85">
+          {running
+            ? lastEvent?.label || 'Browsing the live web…'
+            : unavailable
+              ? 'Live browsing unavailable — answered directly'
+              : errored
+                ? 'Browser session failed'
+                : `Browsed the web · ${actionCount} action${actionCount === 1 ? '' : 's'}`}
+        </span>
+        {(running || actionCount > 0) && (
+          <span className="flex shrink-0 items-center gap-1 rounded-full bg-white/8 px-1.5 py-0.5 text-[10px] font-semibold text-muted">
+            {actionCount > 0 && <span className="tabular-nums">{actionCount}</span>}
+            {running && <Elapsed events={events} />}
+          </span>
+        )}
+        <span className="shrink-0 text-[11px] font-semibold text-accent">view activity</span>
+      </motion.button>
+    )
+  }
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10, scale: 0.98 }}
@@ -292,6 +336,14 @@ export default function AgentBrowserPanel({ browser, live }: { browser?: AgentBr
       className="agent-browser-panel mb-3 overflow-hidden rounded-[24px] border border-white/12"
     >
       <div className="agent-browser-chrome flex items-center gap-2 border-b border-white/10 px-3 py-2">
+        <button
+          type="button"
+          onClick={() => setExpanded(false)}
+          className="pressable mr-1 flex h-7 items-center rounded-full border border-white/10 bg-white/25 px-2 text-[11px] font-semibold text-ink hover:bg-white/40 dark:bg-white/10"
+          title="Hide browser"
+        >
+          Hide
+        </button>
         <span className="h-2.5 w-2.5 rounded-full bg-red-400/85" />
         <span className="h-2.5 w-2.5 rounded-full bg-yellow-400/85" />
         <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/85" />

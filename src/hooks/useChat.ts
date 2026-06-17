@@ -12,7 +12,7 @@ import { MAX_IMAGES_PER_MESSAGE } from '../lib/files'
 import { earnFromChat, tryImageGen } from '../lib/plus'
 import { wantsSlides, generateDeck } from '../lib/slides'
 import { wantsAppBuild, newApp, saveApp, buildAppFiles, titleFor, guessKind } from '../lib/agentApps'
-import { scheduleFromGoal } from '../lib/orchestrator'
+import { scheduleFromGoal, requestedSpecialists } from '../lib/orchestrator'
 import { untilLabel } from '../lib/jobs'
 import { getModel, resolveAutoModel, DEFAULT_MODEL, type ModelTier } from '../lib/models'
 import { buildSystemPrompt, buildAgentSystemPrompt, AGENT_SYSTEM, WEB3D_INSTRUCTIONS, wantsWebsite, wants3D, needsDeepThinking } from '../lib/prompt'
@@ -657,14 +657,18 @@ export function useChat(chatId: string | undefined) {
             ? AGENT_SYSTEM + '\n\n' + buildSystemPrompt(model, settings, memories)
             : buildSystemPrompt(model, settings, memories))
 
-      // If the user invited other agents into this chat, let the lead agent
-      // coordinate + delegate to them (a real multi-agent reply).
+      const lastText = lastUser?.content ?? ''
+
+      // If the user invited other agents into this chat — OR this turn explicitly
+      // asks the lead to assign/bring in a kind of agent ("get a research agent")
+      // — let the lead coordinate + delegate to them (a real multi-agent reply).
       if (personaAgent && !opts.systemOverride) {
-        const team = getInvitedAgents().filter((a) => a.id !== personaAgent.id)
+        const invited = getInvitedAgents()
+        const asked = requestedSpecialists(user.uid, lastText, personaAgent.id)
+        const team = [...invited, ...asked]
+          .filter((a, i, arr) => a.id !== personaAgent.id && arr.findIndex((x) => x.id === a.id) === i)
         if (team.length) system += delegationPrompt(personaAgent, team)
       }
-
-      const lastText = lastUser?.content ?? ''
 
       // 1-on-1 agent chat: let the agent actually browse the live web with
       // OpenClaw. It browses when the agent has browsing enabled AND either the

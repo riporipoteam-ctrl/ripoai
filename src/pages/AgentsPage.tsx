@@ -72,6 +72,22 @@ import {
 import { haptic } from '../lib/native'
 import '../styles/agents.css'
 
+/** Stable id for the single shared "Agents room" chat (one general thread for
+ *  all agents, per user). Minted once and reused so the composer always reopens
+ *  the same AskAI-led conversation instead of spawning a new chat each time. */
+function agentsRoomId(uid: string): string {
+  const key = `askai:agents-room:${uid}`
+  try {
+    const existing = localStorage.getItem(key)
+    if (existing) return existing
+    const id = crypto.randomUUID()
+    localStorage.setItem(key, id)
+    return id
+  } catch {
+    return `agents-room-${uid}`
+  }
+}
+
 /** Relative timestamp ("just now", "3h ago", "2d ago"). */
 function relativeTime(ts: number): string {
   const diff = Date.now() - ts
@@ -235,40 +251,37 @@ export default function AgentsPage() {
       }
     }
 
-    // Tapped a specific agent → 1-on-1 with just them.
-    if (forceAgent) {
-      setInvitedScope(forceAgent.id)
-      clearInvited()
-      setRouting(`Handing this to ${forceAgent.name}.`)
-      logActivity(uid, forceAgent.id, forceAgent.name, 'goal', text.length > 70 ? text.slice(0, 67) + '…' : text)
-      handoffToAgent(forceAgent)
-    } else {
-      // Orchestrate: AskAI (Chief of Staff) responds first, then brings the
-      // routed specialist(s) INTO the chat and delegates to them.
-      const route = routeGoal(uid, text)
-      const lead = getAgent(uid, 'bob') ?? route?.agent
-      if (!lead) return
-      const specialists = [route?.agent, ...(route?.also ?? [])].filter(
-        (a): a is Agent => !!a && a.id !== lead.id,
-      )
-      setRouting(specialists.length ? `AskAI is bringing in ${specialists.map((s) => s.name).join(', ')}…` : 'AskAI is on it…')
-      logActivity(uid, lead.id, lead.name, 'goal', text.length > 70 ? text.slice(0, 67) + '…' : text, {
-        detail: specialists.length ? `Delegating to ${specialists.map((s) => s.role).join(', ')}` : undefined,
-      })
-      setInvitedScope(lead.id)
-      clearInvited()
-      specialists.forEach(inviteAgent)
-      handoffToAgent(lead)
-    }
+    // Everything goes to ONE general AskAI-led room (like Nebula). AskAI (Chief
+    // of Staff) is always the lead who responds first; the routed specialist(s)
+    // — or the agent whose "could also help" chip was tapped — are pulled INTO
+    // that same thread for AskAI to delegate to. No more one-chat-per-agent.
+    const route = routeGoal(uid, text)
+    const lead = getAgent(uid, 'bob') ?? route?.agent ?? forceAgent
+    if (!lead) return
+    const specialists = (forceAgent ? [forceAgent] : [route?.agent, ...(route?.also ?? [])]).filter(
+      (a): a is Agent => !!a && a.id !== lead.id,
+    )
+    setRouting(specialists.length ? `AskAI is bringing in ${specialists.map((s) => s.name).join(', ')}…` : 'AskAI is on it…')
+    logActivity(uid, lead.id, lead.name, 'goal', text.length > 70 ? text.slice(0, 67) + '…' : text, {
+      detail: specialists.length ? `Delegating to ${specialists.map((s) => s.role).join(', ')}` : undefined,
+    })
+    // Scope invites to the lead (AskAI) — matches InviteAgents in the chat so
+    // the picked specialists survive into the room and the lead delegates.
+    setInvitedScope(lead.id)
+    clearInvited()
+    specialists.forEach(inviteAgent)
+    handoffToAgent(lead)
+
     setDraft('')
     setSuggested([])
-    // Drop the goal into the new chat's composer once it mounts.
+    const roomId = agentsRoomId(uid)
+    // Drop the goal into the room's composer once it mounts.
     setTimeout(() => {
-      navigate('/chat')
+      navigate(`/c/${roomId}`)
       window.setTimeout(() => {
         window.dispatchEvent(new CustomEvent('askai-prefill', { detail: text }))
         setRouting(null)
-      }, 320)
+      }, 340)
     }, 420)
   }
 
