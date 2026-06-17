@@ -132,8 +132,8 @@ struct TeamScreen: View {
                                         Spacer(minLength: 50)
                                         Text(ev.text)
                                             .padding(.horizontal, 15).padding(.vertical, 11)
-                                            .background(Color.primary, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-                                            .foregroundStyle(Color(uiColor: .systemBackground))
+                                            .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                                            .foregroundStyle(.primary)
                                     }
                                 } else if let a = agent(ev.agentId) {
                                     HStack(alignment: .top, spacing: 10) {
@@ -146,7 +146,7 @@ struct TeamScreen: View {
                                             Text(LocalizedStringKey(ev.text.isEmpty ? "…" : ev.text))
                                                 .font(.system(size: 15))
                                                 .padding(.horizontal, 13).padding(.vertical, 10)
-                                                .liquidGlass(cornerRadius: 18)
+                                                .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
                                         }
                                         Spacer(minLength: 30)
                                     }
