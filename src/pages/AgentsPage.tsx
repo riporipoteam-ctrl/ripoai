@@ -243,7 +243,7 @@ export default function AgentsPage() {
     setSuggested([])
     // Drop the goal into the new chat's composer once it mounts.
     setTimeout(() => {
-      navigate('/')
+      navigate('/chat')
       window.setTimeout(() => {
         window.dispatchEvent(new CustomEvent('askai-prefill', { detail: text }))
         setRouting(null)
@@ -275,7 +275,7 @@ export default function AgentsPage() {
   const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }
 
   return (
-    <div className="ag-page mx-auto w-full max-w-2xl px-4 pt-5 sm:pt-6">
+    <div className="ag-page mx-auto h-full w-full max-w-2xl overflow-y-auto px-4 pt-5 sm:pt-6">
       {/* 1. Header */}
       <div className="mb-5 flex items-center justify-between">
         <h1 className="font-display text-2xl font-bold tracking-tight text-ink">Agents</h1>
