@@ -88,7 +88,6 @@ extension Notification.Name { static let askaiStartCall = Notification.Name("ask
 /// also listens for outgoing-call requests from DM screens.
 struct CallCenter: View {
     @EnvironmentObject var store: AppStore
-    @State private var incoming: IncomingCall?
     @State private var active: ActiveCall?
     @State private var pollTimer: Timer?
 
@@ -96,7 +95,7 @@ struct CallCenter: View {
 
     var body: some View {
         Color.clear
-            .onAppear { startPolling() }
+            .onAppear { wireCallKit(); startPolling() }
             .onDisappear { pollTimer?.invalidate() }
             .onReceive(NotificationCenter.default.publisher(for: .askaiStartCall)) { note in
                 guard let info = note.userInfo as? [String: String], let uid = info["uid"], let user = store.user else { return }
@@ -104,35 +103,40 @@ struct CallCenter: View {
                 let kind = info["kind"] ?? "audio"
                 Task {
                     if let id = await CallService.startCall(user, calleeUid: uid, calleeName: name, callerName: store.user?.email.split(separator: "@").first.map(String.init) ?? "You", kind: kind) {
-                        active = ActiveCall(id: id, name: name, kind: kind, outgoing: true)
+                        await MainActor.run { active = ActiveCall(id: id, name: name, kind: kind, outgoing: true) }
                     }
                 }
-            }
-            .fullScreenCover(item: $incoming) { c in
-                IncomingCallView(call: c,
-                    onAnswer: {
-                        if let u = store.user { Task { await CallService.setStatus(u, c.id, "active") } }
-                        active = ActiveCall(id: c.id, name: c.callerName, kind: c.kind, outgoing: false)
-                        incoming = nil
-                    },
-                    onDecline: {
-                        if let u = store.user { Task { await CallService.setStatus(u, c.id, "ended") } }
-                        incoming = nil
-                    })
             }
             .fullScreenCover(item: $active) { a in
                 ActiveCallView(call: a) {
                     if let u = store.user { Task { await CallService.setStatus(u, a.id, "ended") } }
+                    CallKitManager.shared.endCall(callId: a.id)
                     active = nil
                 }
+                .environmentObject(store)
             }
+    }
+
+    private func wireCallKit() {
+        CallKitManager.shared.onAnswer = { callId, name, kind in
+            if let u = store.user { Task { await CallService.setStatus(u, callId, "active") } }
+            DispatchQueue.main.async { active = ActiveCall(id: callId, name: name, kind: kind, outgoing: false) }
+        }
+        CallKitManager.shared.onEnd = { callId in
+            if let u = store.user { Task { await CallService.setStatus(u, callId, "ended") } }
+            DispatchQueue.main.async { if active?.id == callId { active = nil } }
+        }
     }
 
     private func startPolling() {
         pollTimer?.invalidate()
         pollTimer = Timer.scheduledTimer(withTimeInterval: 4, repeats: true) { _ in
-            guard let u = store.user, incoming == nil, active == nil else { return }
-            Task { let c = await CallService.incoming(u); if let c = c { await MainActor.run { incoming = c } } }
+            guard let u = store.user, active == nil else { return }
+            Task {
+                if let c = await CallService.incoming(u), !CallKitManager.shared.isReported(c.id) {
+                    await MainActor.run { CallKitManager.shared.reportIncoming(callId: c.id, name: c.callerName, kind: c.kind) }
+                }
+            }
         }
     }
 }
