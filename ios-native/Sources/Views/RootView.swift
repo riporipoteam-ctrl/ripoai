@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum AppScreen { case chat, team, projects, settings, plus, friends }
+enum AppScreen { case home, chat, team, projects, settings, plus, friends, jobs, apps }
 
 struct RootView: View {
     @EnvironmentObject var store: AppStore
@@ -8,7 +8,7 @@ struct RootView: View {
         let a = ProcessInfo.processInfo.arguments
         if a.contains("-demo-settings") { return .settings }
         if a.contains("-demo-plus") { return .plus }
-        return .chat
+        return .home
     }()
     @State private var showMenu = ProcessInfo.processInfo.arguments.contains("-demo-menu")
     @State private var showVoiceCall = false
@@ -27,7 +27,13 @@ struct RootView: View {
             case .plus:
                 PlusScreen(back: { screen = .chat })
             case .friends:
-                FriendsScreen(back: { screen = .chat })
+                FriendsScreen(back: { screen = .home })
+            case .home:
+                HomeScreen(go: { screen = $0 }, openMenu: { showMenu = true })
+            case .jobs:
+                JobsScreen(back: { screen = .home })
+            case .apps:
+                AppsScreen(back: { screen = .home })
             }
         }
         // Background must NOT be a ZStack sibling — a sibling that ignores the
