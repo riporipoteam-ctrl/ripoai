@@ -11,6 +11,7 @@ import { streamPuter, shouldUsePuterFable } from '../lib/puter'
 import { MAX_IMAGES_PER_MESSAGE } from '../lib/files'
 import { earnFromChat, tryImageGen } from '../lib/plus'
 import { wantsSlides, generateDeck } from '../lib/slides'
+import { wantsAppBuild, newApp, saveApp, buildAppFiles, titleFor, guessKind } from '../lib/agentApps'
 import { getModel, resolveAutoModel, DEFAULT_MODEL, type ModelTier } from '../lib/models'
 import { buildSystemPrompt, buildAgentSystemPrompt, AGENT_SYSTEM, WEB3D_INSTRUCTIONS, wantsWebsite, wants3D, needsDeepThinking } from '../lib/prompt'
 import { getAgent, agentCanBrowse, agentWantsBrowse, type Agent } from '../lib/agents'
@@ -355,6 +356,44 @@ export function useChat(chatId: string | undefined) {
         })
         setStreaming(false)
         if (titleRef.current === 'New chat') titleRef.current = (deck?.title || prompt).slice(0, 40)
+        await persist(finalMsgs, id, opts.model, opts.projectId)
+        return
+      }
+
+      // App/website build → create a real app in the APPS page (don't dump code
+      // inline in chat). The agent builds it and links the user to Apps.
+      if (!opts.image && !opts.systemOverride && wantsAppBuild(lastUser?.content ?? '')) {
+        const prompt = (lastUser?.content ?? '').trim()
+        const assistantId = uid4()
+        setMessages((m) => [
+          ...m,
+          { id: assistantId, role: 'assistant', content: '🛠️ Building this and adding it to your **Apps**…', model: opts.model, createdAt: Date.now() },
+        ])
+        setStreaming(true)
+        const agentId = agentTagRef.current.agentId ?? 'askai'
+        const agentName = agentTagRef.current.agentName ?? 'AskAI'
+        const draft = newApp({ title: prompt.slice(0, 40), description: prompt, agentId, agentName, kind: guessKind(prompt), prompt })
+        saveApp(user.uid, draft)
+        let finalMsgs: StoredMessage[] = []
+        try {
+          const [{ files }, title] = await Promise.all([buildAppFiles(prompt), titleFor(prompt)])
+          saveApp(user.uid, { ...draft, title: title || draft.title, files })
+          setMessages((m) => {
+            finalMsgs = m.map((x) =>
+              x.id === assistantId
+                ? { ...x, content: `✅ Done — I built **${title || draft.title}** and added it to your **Apps** tab. Open Apps to see it run live and edit the code.` }
+                : x,
+            )
+            return finalMsgs
+          })
+        } catch {
+          setMessages((m) => {
+            finalMsgs = m.map((x) => (x.id === assistantId ? { ...x, content: "I couldn't finish building that — try rephrasing what you want built." } : x))
+            return finalMsgs
+          })
+        }
+        setStreaming(false)
+        if (titleRef.current === 'New chat') titleRef.current = prompt.slice(0, 40)
         await persist(finalMsgs, id, opts.model, opts.projectId)
         return
       }

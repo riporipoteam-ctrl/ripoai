@@ -144,6 +144,18 @@ export function deleteApp(uid: string, id: string) {
   )
 }
 
+/** Does this message ask an agent to BUILD an app/site/component? If so the
+ *  chat should create a real AgentApp (Apps page) instead of coding inline. */
+export function wantsAppBuild(text: string): boolean {
+  const t = (text || '').toLowerCase().trim()
+  if (!t) return false
+  // Skip questions / fixes / explanations — those stay in chat.
+  if (/^\s*(how|what|why|when|where|who|explain|fix|debug|error|review|why is)\b/.test(t)) return false
+  return /\b(build|make|create|design|generate|develop|code|whip up|put together|spin up)\b[^.?!]{0,60}\b(web ?site|web ?app|web ?page|landing(\s*page)?|home ?page|app|application|component|dashboard|portfolio|micro ?site|site|tool|game|clone|ui|widget|form|calculator)\b/.test(
+    t,
+  )
+}
+
 /** Guess the best kind from a free-form build prompt. */
 export function guessKind(prompt: string): AgentAppKind {
   const t = prompt.toLowerCase()
