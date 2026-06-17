@@ -12,6 +12,8 @@ import { MAX_IMAGES_PER_MESSAGE } from '../lib/files'
 import { earnFromChat, tryImageGen } from '../lib/plus'
 import { wantsSlides, generateDeck } from '../lib/slides'
 import { wantsAppBuild, newApp, saveApp, buildAppFiles, titleFor, guessKind } from '../lib/agentApps'
+import { scheduleFromGoal } from '../lib/orchestrator'
+import { untilLabel } from '../lib/jobs'
 import { getModel, resolveAutoModel, DEFAULT_MODEL, type ModelTier } from '../lib/models'
 import { buildSystemPrompt, buildAgentSystemPrompt, AGENT_SYSTEM, WEB3D_INSTRUCTIONS, wantsWebsite, wants3D, needsDeepThinking } from '../lib/prompt'
 import { getAgent, agentCanBrowse, agentWantsBrowse, type Agent } from '../lib/agents'
@@ -358,6 +360,37 @@ export function useChat(chatId: string | undefined) {
         if (titleRef.current === 'New chat') titleRef.current = (deck?.title || prompt).slice(0, 40)
         await persist(finalMsgs, id, opts.model, opts.projectId)
         return
+      }
+
+      // "Do X tomorrow / every morning / next monday" → schedule a Job for the
+      // right agent (don't run it now). Agents can now start jobs from chat.
+      if (!opts.image && !opts.systemOverride) {
+        const scheduled = scheduleFromGoal(user.uid, lastUser?.content ?? '')
+        if (scheduled) {
+          const assistantId = uid4()
+          let finalMsgs: StoredMessage[] = []
+          setMessages((m) => {
+            finalMsgs = [
+              ...m,
+              {
+                id: assistantId,
+                role: 'assistant',
+                content: `📅 Scheduled **${scheduled.job.title}** for ${scheduled.agent.name} — ${untilLabel(scheduled.job.nextRunAt)}. It's in your **Jobs** tab and will run automatically.`,
+                model: opts.model,
+                createdAt: Date.now(),
+              },
+            ]
+            return finalMsgs
+          })
+          if (titleRef.current === 'New chat') titleRef.current = scheduled.job.title.slice(0, 40)
+          await persist(finalMsgs, id, opts.model, opts.projectId)
+          try {
+            window.dispatchEvent(new CustomEvent('askai-notify', { detail: { kind: 'job', title: 'Job scheduled', body: `${scheduled.job.title} · ${untilLabel(scheduled.job.nextRunAt)}`, to: '/jobs' } }))
+          } catch {
+            /* ignore */
+          }
+          return
+        }
       }
 
       // App/website build → create a real app in the APPS page (don't dump code

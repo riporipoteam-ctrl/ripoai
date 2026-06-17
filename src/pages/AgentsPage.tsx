@@ -86,10 +86,12 @@ function relativeTime(ts: number): string {
 /** Avatar bubble shared by roster + thread cards (image with emoji fallback). */
 function AgentBubble({ agent, size = 40 }: { agent: Pick<Agent, 'avatar' | 'emoji' | 'color' | 'name'>; size?: number }) {
   const px = `${size}px`
-  return agent.avatar ? (
+  const [failed, setFailed] = useState(false)
+  return agent.avatar && !failed ? (
     <img
       src={agent.avatar}
       alt={agent.name}
+      onError={() => setFailed(true)}
       className="shrink-0 rounded-xl object-cover"
       style={{ width: px, height: px, boxShadow: `0 0 0 1px ${agent.color}55` }}
     />
