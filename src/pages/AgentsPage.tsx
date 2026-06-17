@@ -33,11 +33,13 @@ import {
 import { useStore } from '../store'
 import {
   loadAgents,
+  getAgent,
   aiDesignAgent,
   upsertAgent,
   statusMeta,
   type Agent,
 } from '../lib/agents'
+import { setInvitedScope, inviteAgent, clearInvited } from '../lib/chatParticipants'
 import {
   ensureStartingTeam,
   chiefOfStaffIntro,
@@ -233,14 +235,31 @@ export default function AgentsPage() {
       }
     }
 
-    const route = forceAgent ? null : routeGoal(uid, text)
-    const agent = forceAgent ?? route?.agent
-    if (!agent) return
-    setRouting(route?.reason ?? `Handing this to ${agent.name}.`)
-    logActivity(uid, agent.id, agent.name, 'goal', text.length > 70 ? text.slice(0, 67) + '…' : text, {
-      detail: route?.teamSuggested ? 'Suggested looping in the team' : undefined,
-    })
-    handoffToAgent(agent)
+    // Tapped a specific agent → 1-on-1 with just them.
+    if (forceAgent) {
+      setInvitedScope(forceAgent.id)
+      clearInvited()
+      setRouting(`Handing this to ${forceAgent.name}.`)
+      logActivity(uid, forceAgent.id, forceAgent.name, 'goal', text.length > 70 ? text.slice(0, 67) + '…' : text)
+      handoffToAgent(forceAgent)
+    } else {
+      // Orchestrate: AskAI (Chief of Staff) responds first, then brings the
+      // routed specialist(s) INTO the chat and delegates to them.
+      const route = routeGoal(uid, text)
+      const lead = getAgent(uid, 'bob') ?? route?.agent
+      if (!lead) return
+      const specialists = [route?.agent, ...(route?.also ?? [])].filter(
+        (a): a is Agent => !!a && a.id !== lead.id,
+      )
+      setRouting(specialists.length ? `AskAI is bringing in ${specialists.map((s) => s.name).join(', ')}…` : 'AskAI is on it…')
+      logActivity(uid, lead.id, lead.name, 'goal', text.length > 70 ? text.slice(0, 67) + '…' : text, {
+        detail: specialists.length ? `Delegating to ${specialists.map((s) => s.role).join(', ')}` : undefined,
+      })
+      setInvitedScope(lead.id)
+      clearInvited()
+      specialists.forEach(inviteAgent)
+      handoffToAgent(lead)
+    }
     setDraft('')
     setSuggested([])
     // Drop the goal into the new chat's composer once it mounts.
