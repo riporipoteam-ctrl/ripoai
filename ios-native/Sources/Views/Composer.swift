@@ -114,7 +114,11 @@ struct Composer: View {
                 .padding(.trailing, 5).padding(.bottom, 4)
                 .animation(.spring(response: 0.32, dampingFraction: 0.6), value: canSend)
             }
-            .liquidGlass(cornerRadius: 26, interactive: true)
+            .background(
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(Color.primary.opacity(0.05))
+                    .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).strokeBorder(Color.primary.opacity(0.10), lineWidth: 1))
+            )
             .padding(.horizontal, 12)
             .padding(.bottom, 6)
         }

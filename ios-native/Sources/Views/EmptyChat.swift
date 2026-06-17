@@ -17,23 +17,23 @@ struct EmptyChat: View {
     var body: some View {
         VStack(spacing: 13) {
             Spacer(minLength: 8)
-            Image(systemName: "circle.hexagongrid.fill")
-                .font(.system(size: 28, weight: .bold))
-                .foregroundStyle(.primary)
-                .frame(width: 66, height: 66)
-                .liquidGlass(cornerRadius: 22)
+            Image(systemName: "sparkle")
+                .font(.system(size: 30, weight: .bold))
+                .foregroundStyle(.white)
+                .frame(width: 70, height: 70)
+                .background(LinearGradient(colors: [Color.accentColor, Color.accentColor.opacity(0.7)], startPoint: .topLeading, endPoint: .bottomTrailing), in: Circle())
                 .rotationEffect(.degrees(breathe ? 8 : -8))
                 .scaleEffect(appear ? (breathe ? 1.04 : 0.98) : 0.8)
                 .shadow(color: Color.accentColor.opacity(breathe ? 0.35 : 0.12), radius: breathe ? 18 : 8)
                 .opacity(appear ? 1 : 0)
                 .animation(.easeInOut(duration: 2.6).repeatForever(autoreverses: true), value: breathe)
 
-            VStack(spacing: 2) {
+            VStack(spacing: 4) {
                 Text(store.t(greeting))
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                Text(store.t("What are we making?"))
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
+                    .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(.secondary)
+                Text(store.t("What can I help with?"))
+                    .font(.system(size: 27, weight: .bold))
             }
             .multilineTextAlignment(.center)
             .entrance(appear, index: 1)
