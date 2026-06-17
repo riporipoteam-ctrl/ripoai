@@ -82,27 +82,34 @@ function toProfile(data: any, uid: string): UserProfile | null {
   return { uid, name: p.name || 'User', handle: p.handle || '', photoURL: p.photoURL || undefined }
 }
 
-/** Prefix search by handle. Returns up to 20 matches (excluding self). */
-export async function searchUsers(term: string, selfUid: string): Promise<UserProfile[]> {
-  const t = term.trim().toLowerCase()
-  if (!t) return []
+/** Fetch every published user profile (excluding self). This is the source of
+ *  truth for BOTH search and suggestions, so the friends UI reliably shows
+ *  everyone who has an AskAI account — no fragile prefix queries or composite
+ *  indexes that silently return nothing. */
+export async function fetchAllProfiles(selfUid: string, max = 300): Promise<UserProfile[]> {
   const out: UserProfile[] = []
   try {
-    const q = query(
-      collection(db, 'users'),
-      where('profile.handle', '>=', t),
-      where('profile.handle', '<=', t + ''),
-      limit(20),
-    )
-    const snap = await getDocs(q)
+    const snap = await getDocs(query(collection(db, 'users'), limit(max)))
     snap.forEach((d) => {
       const p = toProfile(d.data(), d.id)
       if (p && p.uid !== selfUid) out.push(p)
     })
   } catch {
-    /* index/rules may not be ready */
+    /* rules/network not ready */
   }
-  return out
+  return out.sort((a, b) => a.name.localeCompare(b.name))
+}
+
+/** Search users by name OR handle (substring, case-insensitive). Returns every
+ *  matching account — done client-side over the full list so partial names work
+ *  (a plain Firestore prefix query only matched an exact handle start). */
+export async function searchUsers(term: string, selfUid: string): Promise<UserProfile[]> {
+  const t = term.trim().toLowerCase()
+  if (!t) return []
+  const all = await fetchAllProfiles(selfUid)
+  return all
+    .filter((p) => p.name.toLowerCase().includes(t) || p.handle.toLowerCase().includes(t))
+    .slice(0, 30)
 }
 
 export async function sendFriendRequest(me: UserProfile, target: UserProfile): Promise<void> {
@@ -215,17 +222,8 @@ export async function maybeAskAI(cid: string, history: DMMessage[], text: string
 
 /** A handful of people to suggest adding (recent profiles, excluding self). */
 export async function suggestedUsers(selfUid: string, exclude: string[] = []): Promise<UserProfile[]> {
-  const out: UserProfile[] = []
-  try {
-    const snap = await getDocs(query(collection(db, 'users'), limit(25)))
-    snap.forEach((d) => {
-      const p = toProfile(d.data(), d.id)
-      if (p && p.uid !== selfUid && !exclude.includes(p.uid)) out.push(p)
-    })
-  } catch {
-    /* ignore */
-  }
-  return out.slice(0, 12)
+  const all = await fetchAllProfiles(selfUid)
+  return all.filter((p) => !exclude.includes(p.uid)).slice(0, 20)
 }
 
 export async function getProfile(uid: string): Promise<UserProfile | null> {

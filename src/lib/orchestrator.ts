@@ -284,6 +284,51 @@ export function routeGoal(uid: string, text: string): GoalRoute | null {
   return { agent, also, action, reason, teamSuggested }
 }
 
+// Role keyword → roster matcher. Used to resolve "a research agent", "a writer",
+// "the web browser agent" etc. to actual agents on the user's roster.
+const ROLE_MATCHERS: Array<{ re: RegExp; match: RegExp; prefer: string }> = [
+  { re: /\b(research|researcher|web|browse|browser|search|find|look ?up|investigat|fact)\b/i, match: /research|analyst|fact|find|investigat|browse/i, prefer: 'max' },
+  { re: /\b(writ(e|er|ing)|copy|content|blog|article|email|draft|newsletter)\b/i, match: /writ|copy|content|market|social/i, prefer: 'vera' },
+  { re: /\b(build|builder|engineer|develop(er)?|code|coding|program|app)\b/i, match: /engineer|develop|code|build|full[- ]?stack/i, prefer: 'ada' },
+  { re: /\b(design|designer|ui|ux|logo|brand|visual|mockup)\b/i, match: /design|ui|ux|brand|visual/i, prefer: 'iris' },
+  { re: /\b(data|analy(st|ze|sis|tics)|metric|forecast|spreadsheet|chart)\b/i, match: /analy|data|metric|forecast/i, prefer: 'nova' },
+]
+
+/** Does the message ask the lead to bring in / assign one or more agents? */
+export function wantsDelegation(text: string): boolean {
+  return /\b(assign|get|bring( in)?|add|use|have|hand( this)? (to|off)|delegate|tell|ask|put|pull in|loop in|two agents|a couple( of)? agents|both agents|some agents|the team|a [a-z]+ agent|an? agent)\b/i.test(
+    text,
+  ) && /\bagent|researcher|writer|builder|engineer|designer|analyst|team\b/i.test(text)
+}
+
+/**
+ * Resolve the specialist agents the user explicitly asked the lead to bring in.
+ * E.g. "assign a research agent" → [Max], "get a writer and a designer" → [Vera, Iris].
+ * Returns [] when no delegation was requested. Never includes the lead itself.
+ */
+export function requestedSpecialists(uid: string, text: string, leadId = 'bob'): Agent[] {
+  if (!uid || !wantsDelegation(text)) return []
+  const list = loadAgents(uid)
+  if (!list.length) return []
+  const t = text || ''
+  const picked: Agent[] = []
+  const add = (a?: Agent | null) => {
+    if (a && a.id !== leadId && !picked.some((p) => p.id === a.id)) picked.push(a)
+  }
+  // First honor any explicit @mentions / addressed agents.
+  mentionedAgents(uid, t).forEach(add)
+  // Then resolve role keywords to roster agents.
+  for (const m of ROLE_MATCHERS) {
+    if (!m.re.test(t)) continue
+    add(getAgent(uid, m.prefer) ?? byRole(list, m.match))
+  }
+  // "two agents" / "a couple of agents" with no specifics → top suggestions.
+  if (!picked.length && /\b(two|2|couple|few|some|multiple|several)\b.*\bagents?\b/i.test(t)) {
+    delegationSuggestions(uid, t, leadId).slice(0, 2).forEach(add)
+  }
+  return picked
+}
+
 /** Map a goal to a coarse action label (used when an agent is pre-targeted). */
 function actionFor(text: string): GoalAction {
   if (isCodeBuild(text)) return 'build'
