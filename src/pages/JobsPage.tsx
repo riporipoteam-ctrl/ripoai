@@ -109,7 +109,7 @@ export default function JobsPage() {
         detail: job.prompt.slice(0, 80),
       })
       setPendingAgentChat(agent)
-      navigate('/')
+      navigate('/chat')
       // Let the chat + composer mount, then drop the job prompt into the composer.
       window.setTimeout(() => {
         window.dispatchEvent(new CustomEvent('askai-prefill', { detail: job.prompt }))

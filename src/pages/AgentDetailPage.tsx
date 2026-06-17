@@ -346,7 +346,7 @@ export default function AgentDetailPage() {
     haptic('medium')
     if (uid && agent) logActivity(uid, agent.id, agent.name, 'chat', `Started a chat with ${agent.name}`)
     setPendingAgentChat(agent!)
-    navigate('/')
+    navigate('/chat')
   }
 
   /** Upload a photo from the device as the agent's avatar. */
