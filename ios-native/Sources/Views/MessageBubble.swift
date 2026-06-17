@@ -1,96 +1,125 @@
 import SwiftUI
 
+// ChatGPT-style message row: the assistant speaks full-width as plain text with
+// a small gradient avatar; the user gets a soft light-gray rounded bubble. Each
+// row fades + slides in. (Rewritten for the new clean look.)
 struct MessageBubble: View {
     @EnvironmentObject var store: AppStore
     let message: Message
     var streaming: Bool = false
     var isLast: Bool = false
     @State private var copied = false
+    @State private var appeared = false
+
+    private var userBubble: Color { Color.primary.opacity(0.06) }
 
     var body: some View {
-        HStack {
-            if message.role == .user { Spacer(minLength: 40) }
-            VStack(alignment: message.role == .user ? .trailing : .leading, spacing: 4) {
-                if message.role == .assistant {
-                    Text("AskAI").font(.system(size: 12, weight: .bold)).foregroundStyle(.secondary)
-                }
+        Group {
+            if message.role == .user { userRow } else { assistantRow }
+        }
+        .opacity(appeared ? 1 : 0)
+        .offset(y: appeared ? 0 : 10)
+        .onAppear { withAnimation(.spring(response: 0.5, dampingFraction: 0.85)) { appeared = true } }
+    }
 
-                // Attached photos (vision input)
-                if !message.attachments.isEmpty {
-                    HStack(spacing: 6) {
-                        ForEach(Array(message.attachments.prefix(4).enumerated()), id: \.offset) { _, dataURL in
-                            if let img = UIImage.fromDataURL(dataURL) {
-                                Image(uiImage: img).resizable().scaledToFill()
-                                    .frame(width: 84, height: 84)
-                                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                            }
-                        }
-                    }
-                }
-
+    // MARK: User
+    private var userRow: some View {
+        HStack(alignment: .bottom, spacing: 0) {
+            Spacer(minLength: 48)
+            VStack(alignment: .trailing, spacing: 6) {
+                attachments
                 if let img = message.imageURL {
                     GeneratedImage(source: img)
-                } else if !(message.text.isEmpty && message.attachments.isEmpty) || streaming {
-                    Group {
-                        if message.text.isEmpty && streaming {
-                            TypingDots()
-                        } else if !message.text.isEmpty {
-                            if message.role == .assistant {
-                                MarkdownText(text: message.text)
-                                    .textSelection(.enabled)
-                            } else {
-                                Text(message.text)
-                                    .font(.system(size: 16))
-                                    .textSelection(.enabled)
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 15).padding(.vertical, 11)
-                    .foregroundStyle(message.role == .user ? Color(uiColor: .systemBackground) : Color.primary)
-                    .background(bubbleBackground)
-                    .contextMenu {
-                        Button {
-                            UIPasteboard.general.string = message.text
-                        } label: { Label(store.t("Copy"), systemImage: "doc.on.doc") }
-                        ShareLink(item: message.text) { Label(store.t("Share"), systemImage: "square.and.arrow.up") }
-                    }
-                }
-
-                if message.role == .assistant && !streaming && !message.text.isEmpty {
-                    HStack(spacing: 14) {
-                        Button {
-                            UIPasteboard.general.string = message.text
-                            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                            copied = true
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) { copied = false }
-                        } label: {
-                            Label(copied ? store.t("Copied") : store.t("Copy"), systemImage: copied ? "checkmark" : "doc.on.doc")
-                        }
-                        if isLast {
-                            Button {
-                                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                                store.regenerate()
-                            } label: { Label(store.t("Regenerate"), systemImage: "arrow.clockwise") }
-                        }
-                    }
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .buttonStyle(.plain)
-                    .padding(.top, 2)
+                } else if !message.text.isEmpty {
+                    Text(message.text)
+                        .font(.system(size: 16))
+                        .foregroundStyle(.primary)
+                        .padding(.horizontal, 15).padding(.vertical, 11)
+                        .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(userBubble))
+                        .textSelection(.enabled)
+                        .contextMenu { copyShare }
                 }
             }
-            if message.role == .assistant { Spacer(minLength: 40) }
         }
     }
 
-    @ViewBuilder private var bubbleBackground: some View {
-        if message.role == .user {
-            // Black bubble in light / white bubble in dark — like the web design.
-            RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Color.primary)
-        } else {
-            RoundedRectangle(cornerRadius: 22, style: .continuous).fill(.clear)
-                .liquidGlass(cornerRadius: 22)
+    // MARK: Assistant
+    private var assistantRow: some View {
+        HStack(alignment: .top, spacing: 10) {
+            AssistantAvatar()
+            VStack(alignment: .leading, spacing: 6) {
+                Text("AskAI").font(.system(size: 13, weight: .bold)).foregroundStyle(.primary)
+                if let img = message.imageURL {
+                    GeneratedImage(source: img)
+                } else if message.text.isEmpty && streaming {
+                    TypingDots().padding(.top, 2)
+                } else if !message.text.isEmpty {
+                    MarkdownText(text: message.text)
+                        .textSelection(.enabled)
+                        .contextMenu { copyShare }
+                }
+                if !streaming && !message.text.isEmpty { actions }
+            }
+            Spacer(minLength: 16)
         }
+    }
+
+    @ViewBuilder private var attachments: some View {
+        if !message.attachments.isEmpty {
+            HStack(spacing: 6) {
+                ForEach(Array(message.attachments.prefix(4).enumerated()), id: \.offset) { _, dataURL in
+                    if let img = UIImage.fromDataURL(dataURL) {
+                        Image(uiImage: img).resizable().scaledToFill()
+                            .frame(width: 84, height: 84)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder private var copyShare: some View {
+        Button { UIPasteboard.general.string = message.text } label: { Label(store.t("Copy"), systemImage: "doc.on.doc") }
+        ShareLink(item: message.text) { Label(store.t("Share"), systemImage: "square.and.arrow.up") }
+    }
+
+    private var actions: some View {
+        HStack(spacing: 16) {
+            Button {
+                UIPasteboard.general.string = message.text
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                copied = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) { copied = false }
+            } label: {
+                Label(copied ? store.t("Copied") : store.t("Copy"), systemImage: copied ? "checkmark" : "doc.on.doc")
+            }
+            if isLast {
+                Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                    store.regenerate()
+                } label: { Label(store.t("Regenerate"), systemImage: "arrow.clockwise") }
+            }
+        }
+        .font(.system(size: 12, weight: .semibold))
+        .foregroundStyle(.secondary)
+        .buttonStyle(.plain)
+        .padding(.top, 2)
+    }
+}
+
+/// Small gradient AskAI avatar shown beside every assistant message.
+struct AssistantAvatar: View {
+    var body: some View {
+        Image(systemName: "sparkle")
+            .font(.system(size: 14, weight: .bold))
+            .foregroundStyle(.white)
+            .frame(width: 30, height: 30)
+            .background(
+                LinearGradient(colors: [Color.accentColor, Color.accentColor.opacity(0.7)],
+                               startPoint: .topLeading, endPoint: .bottomTrailing),
+                in: Circle()
+            )
+            .shadow(color: Color.accentColor.opacity(0.35), radius: 5, y: 2)
     }
 }
 
@@ -158,8 +187,10 @@ struct TypingDots: View {
                 Circle().frame(width: 7, height: 7)
                     .foregroundStyle(.secondary)
                     .opacity(phase == Double(i) ? 1 : 0.3)
+                    .scaleEffect(phase == Double(i) ? 1.15 : 1)
             }
         }
+        .animation(.easeInOut(duration: 0.25), value: phase)
         .onAppear {
             Timer.scheduledTimer(withTimeInterval: 0.3, repeats: true) { _ in
                 phase = (phase + 1).truncatingRemainder(dividingBy: 3)

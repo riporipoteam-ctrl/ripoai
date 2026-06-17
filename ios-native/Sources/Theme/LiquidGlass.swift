@@ -36,8 +36,8 @@ struct GlassBackground: View {
 
     private var base: LinearGradient {
         scheme == .dark
-            ? LinearGradient(colors: [Color(hex: 0x0B0B0C), Color(hex: 0x161618)], startPoint: .top, endPoint: .bottom)
-            : LinearGradient(colors: [Color(hex: 0xFFFFFF), Color(hex: 0xF3F4F6)], startPoint: .top, endPoint: .bottom)
+            ? LinearGradient(colors: [Color(hex: 0x171717), Color(hex: 0x212121)], startPoint: .top, endPoint: .bottom)
+            : LinearGradient(colors: [Color(hex: 0xFFFFFF), Color(hex: 0xF7F7F8)], startPoint: .top, endPoint: .bottom)
     }
 
     var body: some View {
@@ -46,16 +46,16 @@ struct GlassBackground: View {
                 GeometryReader { geo in
                     let w = geo.size.width, h = geo.size.height
                     ZStack {
-                        AuroraBlob(color: Color.accentColor.opacity(scheme == .dark ? 0.22 : 0.14))
+                        AuroraBlob(color: Color.accentColor.opacity(scheme == .dark ? 0.12 : 0.07))
                             .frame(width: w * 0.9, height: w * 0.9)
                             .offset(x: drift ? -w * 0.22 : w * 0.18,
                                     y: drift ? h * 0.06 : -h * 0.04)
-                        AuroraBlob(color: (scheme == .dark ? Color.indigo : Color.cyan).opacity(scheme == .dark ? 0.18 : 0.12))
+                        AuroraBlob(color: Color.accentColor.opacity(scheme == .dark ? 0.07 : 0.04))
                             .frame(width: w * 0.8, height: w * 0.8)
                             .offset(x: drift ? w * 0.24 : -w * 0.16,
                                     y: drift ? h * 0.42 : h * 0.6)
                     }
-                    .blur(radius: 60)
+                    .blur(radius: 80)
                     .animation(.easeInOut(duration: 14).repeatForever(autoreverses: true), value: drift)
                 }
                 .allowsHitTesting(false)
