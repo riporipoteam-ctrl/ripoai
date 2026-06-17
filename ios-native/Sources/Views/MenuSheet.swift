@@ -50,6 +50,7 @@ struct MenuSheet: View {
                         // Navigation
                         NavRow(icon: "waveform", title: store.t("Voice call"), subtitle: store.t("Talk with AskAI live")) { voiceCall() }
                         NavRow(icon: "person.2", title: store.t("Agents"), subtitle: store.t("Your AI team")) { go(.team) }
+                        NavRow(icon: "person.2.wave.2", title: store.t("Friends"), subtitle: store.t("Chat, voice & video call")) { go(.friends) }
                         NavRow(icon: "folder", title: store.t("Projects"), subtitle: store.t("Code with live files")) { go(.projects) }
                         NavRow(icon: "crown", title: store.t("AskAI+"), subtitle: store.t("Unlock more power")) { go(.plus) }
                         NavRow(icon: "gearshape", title: store.t("Settings"), subtitle: store.t("Models, account, appearance")) { go(.settings) }

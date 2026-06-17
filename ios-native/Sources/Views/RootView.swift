@@ -1,6 +1,6 @@
 import SwiftUI
 
-enum AppScreen { case chat, team, projects, settings, plus }
+enum AppScreen { case chat, team, projects, settings, plus, friends }
 
 struct RootView: View {
     @EnvironmentObject var store: AppStore
@@ -26,6 +26,8 @@ struct RootView: View {
                 SettingsScreen(back: { screen = .chat })
             case .plus:
                 PlusScreen(back: { screen = .chat })
+            case .friends:
+                FriendsScreen(back: { screen = .chat })
             }
         }
         // Background must NOT be a ZStack sibling — a sibling that ignores the
