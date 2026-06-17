@@ -288,8 +288,8 @@ struct DMThread: View {
                 Button { back() } label: { Image(systemName: "chevron.left").font(.system(size: 17, weight: .semibold)) }.buttonStyle(.plain).foregroundStyle(.primary)
                 Text(other.name).font(.system(size: 17, weight: .bold))
                 Spacer()
-                Image(systemName: "phone").foregroundStyle(.secondary)
-                Image(systemName: "video").foregroundStyle(.secondary)
+                Button { NotificationCenter.default.post(name: .askaiStartCall, object: nil, userInfo: ["uid": other.id, "name": other.name, "kind": "audio"]) } label: { Image(systemName: "phone").foregroundStyle(.primary) }.buttonStyle(.plain)
+                Button { NotificationCenter.default.post(name: .askaiStartCall, object: nil, userInfo: ["uid": other.id, "name": other.name, "kind": "video"]) } label: { Image(systemName: "video").foregroundStyle(.primary) }.buttonStyle(.plain)
             }.padding(.horizontal, 16).padding(.vertical, 12)
 
             ScrollViewReader { proxy in

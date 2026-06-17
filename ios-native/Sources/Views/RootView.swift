@@ -40,6 +40,7 @@ struct RootView: View {
         // keyboard safe area defeats the composer's keyboard avoidance. As a
         // .background it fills behind while the screen keeps its safe areas.
         .background(GlassBackground())
+        .overlay(CallCenter().environmentObject(store))
         .sheet(isPresented: $showMenu) {
             MenuSheet(
                 go: { dest in showMenu = false; screen = dest },

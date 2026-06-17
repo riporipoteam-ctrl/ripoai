@@ -76,7 +76,7 @@ struct HomeScreen: View {
 // MARK: - Firestore-backed simple records
 
 struct JobRecord: Identifiable { let id: String; var title: String; var prompt: String; var when: String }
-struct AppRecord: Identifiable { let id: String; var title: String; var kind: String }
+struct AppRecord: Identifiable { let id: String; var title: String; var kind: String; var html: String }
 
 enum WorkspaceService {
     private static func s(_ any: Any?) -> String? { (any as? [String: Any])?["stringValue"] as? String }
@@ -109,8 +109,18 @@ enum WorkspaceService {
         (await list("users/\(user.uid)/agentApps", user)).compactMap { d in
             guard let name = d["name"] as? String, let f = d["fields"] as? [String: Any] else { return nil }
             let id = name.split(separator: "/").last.map(String.init) ?? UUID().uuidString
-            return AppRecord(id: id, title: s(f["title"]) ?? "App", kind: s(f["kind"]) ?? "app")
+            return AppRecord(id: id, title: s(f["title"]) ?? "App", kind: s(f["kind"]) ?? "app", html: s(f["html"]) ?? "")
         }
+    }
+
+    static func seedSample(_ user: AuthUser) async {
+        let html = "<!doctype html><html><head><meta name=viewport content='width=device-width,initial-scale=1'><style>body{font-family:-apple-system,sans-serif;margin:0;background:#0b0b0c;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh}h1{font-size:34px;margin:0}p{opacity:.7}button{margin-top:18px;padding:12px 22px;border:0;border-radius:14px;background:#10a37f;color:#fff;font-weight:700;font-size:16px}</style></head><body><h1>Nimbus</h1><p>A landing page your agent built.</p><button onclick=\"this.textContent='Thanks! ✓'\">Get started</button></body></html>"
+        var req = URLRequest(url: URL(string: "\(FB.docBase)/users/\(user.uid)/agentApps")!)
+        req.httpMethod = "POST"; req.setValue("Bearer \(user.idToken)", forHTTPHeaderField: "Authorization"); req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: ["fields": [
+            "title": ["stringValue": "Nimbus landing page"], "kind": ["stringValue": "website"], "html": ["stringValue": html],
+        ]])
+        _ = try? await URLSession.shared.data(for: req)
     }
 }
 
@@ -174,6 +184,7 @@ struct AppsScreen: View {
     @EnvironmentObject var store: AppStore
     let back: () -> Void
     @State private var apps: [AppRecord] = []
+    @State private var openApp: AppRecord?
 
     var body: some View {
         ZStack {
@@ -188,16 +199,26 @@ struct AppsScreen: View {
                         Text("Websites and apps your agents build for you.").font(.callout).foregroundStyle(.secondary).frame(maxWidth: .infinity, alignment: .leading)
                         if apps.isEmpty { Text("No apps yet — ask an agent to build one in chat.").font(.callout).foregroundStyle(.secondary).padding(.top, 24) }
                         ForEach(apps) { a in
-                            HStack {
-                                Image(systemName: "square.grid.2x2").foregroundStyle(.purple)
-                                VStack(alignment: .leading, spacing: 2) { Text(a.title).font(.system(size: 15, weight: .semibold)); Text(a.kind.capitalized).font(.system(size: 12)).foregroundStyle(.secondary) }
-                                Spacer(); Image(systemName: "chevron.right").font(.system(size: 12)).foregroundStyle(.secondary)
-                            }.padding(.horizontal, 14).padding(.vertical, 12).frame(maxWidth: .infinity, alignment: .leading).liquidGlass(cornerRadius: 18)
+                            Button { openApp = a } label: {
+                                HStack {
+                                    Image(systemName: "square.grid.2x2").foregroundStyle(.purple)
+                                    VStack(alignment: .leading, spacing: 2) { Text(a.title).font(.system(size: 15, weight: .semibold)); Text(a.kind.capitalized).font(.system(size: 12)).foregroundStyle(.secondary) }
+                                    Spacer(); Image(systemName: "chevron.right").font(.system(size: 12)).foregroundStyle(.secondary)
+                                }.padding(.horizontal, 14).padding(.vertical, 12).frame(maxWidth: .infinity, alignment: .leading).liquidGlass(cornerRadius: 18)
+                            }.buttonStyle(PressableButtonStyle()).foregroundStyle(.primary)
                         }
                     }.padding(.horizontal, 16).padding(.bottom, 30)
                 }
             }
         }
-        .task { if let u = store.user { apps = await WorkspaceService.apps(u) } }
+        .task {
+            if let u = store.user {
+                apps = await WorkspaceService.apps(u)
+                if apps.isEmpty { await WorkspaceService.seedSample(u); apps = await WorkspaceService.apps(u) }
+            }
+        }
+        .fullScreenCover(item: $openApp) { a in
+            AppDetailView(title: a.title, html: a.html, back: { openApp = nil })
+        }
     }
 }
