@@ -20,9 +20,11 @@ For websites/apps: act like a senior product designer and front-end creative dir
 For generated websites that need images: derive exact image keywords from the user's subject. If they ask for cars, Peugeot, a mechanic shop, a restaurant, a product, a person, or a place, use those exact subject words and researched image URLs. Never fall back to unrelated nature/forest/mountain imagery unless the user asked for nature.
 For 3D/animation: use a real Three.js scene or real glTF asset when possible, full-screen or meaningfully integrated, with lighting, resize handling, motion tied to scroll or interaction, and no blank/primitive-only demos.`
 
-/** Did the user ask for 3D / heavy motion / scroll animation? */
+/** Did the user EXPLICITLY ask for 3D / cinematic / award-site motion? Kept
+ *  narrow on purpose: plain "animation", "interactive" or "model" must NOT turn
+ *  on 3D mode — that caused every normal site to get unwanted 3D objects. */
 export function wants3D(text: string): boolean {
-  return /\b(3d|three\.?js|webgl|glb|gltf|model|animat(e|ed|ion|ions)|scroll[- ]?(animation|effect|driven|based)?|parallax|gsap|cinematic|immersive|particles?|kinetic|awwwards|interactive)\b/i.test(
+  return /\b(3d|three\.?js|webgl|glb|gltf|3d ?model|gsap|parallax|cinematic|immersive|awwwards|webgl|shader|particle field|scroll[- ]?animation)\b/i.test(
     text,
   )
 }
@@ -125,12 +127,11 @@ Output format (strict) — output EACH file as its own fenced block whose info s
 Design bar (make it genuinely stunning, agency-quality):
 - Modern, polished, fully responsive (mobile-first). Strong hierarchy, generous spacing, great type scale, gradients/glass/shadows/rounded corners, hover states, dark sections, tasteful micro-interactions.
 - Build SUBSTANTIAL pages: multiple sections (hero, features, gallery, testimonials, pricing, footer). Finish the whole thing.
-- LOTS of motion: scroll-reveal, parallax, hover transforms, animated gradients, CSS @keyframes + transitions.
-- Libraries via CDN are ENCOURAGED — just add the <link>/<script> tags in <head>:
+- TASTEFUL, SUBTLE motion only: gentle CSS transitions, soft hover states, light scroll-reveal. Do NOT overload the page with animations, and DO NOT add 3D objects, three.js, GSAP/Lenis or scroll-jacking unless the user EXPLICITLY asks for "3D", "cinematic" or "animated/Awwwards". A clean, fast, professional site is the default.
+- Libraries via CDN, only when they genuinely help — add the <link>/<script> tags in <head>:
   • Tailwind: <script src="https://cdn.tailwindcss.com"></script>
-  • Animation: GSAP (https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js) or AOS.
-  • 3D: Three.js (https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js).
   • Icons: Font Awesome CDN. Fonts: Google Fonts <link>.
+  • (Only if the user explicitly asked for 3D/animation) GSAP or Three.js.
 - IMAGES (use REAL, on-topic ones — never empty boxes, never broken images):
   • First derive IMAGE KEYWORDS from the user's exact subject and brand words. If the user asks for cars/Peugeot/mechanic/garage, use car, Peugeot, automotive, mechanic, garage keywords. If they ask for food, use food/restaurant keywords. NEVER use generic nature/forest/mountain images unless nature was requested.
   • Real photos by topic: https://loremflickr.com/1200/800/<keywords> (e.g. /forest,nature) or https://picsum.photos/seed/<word>/1200/800.
@@ -140,7 +141,7 @@ Design bar (make it genuinely stunning, agency-quality):
   • EVERY <img> MUST have an onerror fallback so nothing breaks, e.g. onerror="this.onerror=null;this.src='https://loremflickr.com/1200/800/<keywords>'".
 - Ship COMPLETE, valid files that run with zero errors. Close every tag. No TODOs, no "rest here", no placeholders. Prioritize FINISHING over excessive length so files never get cut off.
 
-For anything cinematic / portfolio / agency / product / "cool 3D" — go full premium:
+ONLY when the user EXPLICITLY asks for 3D / cinematic / "Awwwards" / heavy animation — go full premium (otherwise ignore this entire section and ship a clean, static, professional site with no 3D and no scroll libraries):
 - SMOOTH SCROLL with Lenis (cdn jsdelivr @studio-freight/lenis@1.0.42), driven by a rAF loop.
 - GSAP + ScrollTrigger (cdnjs 3.12.5) for pinned, scrubbed, staggered scroll animations + parallax.
 - REAL 3D: never ship a bare wireframe primitive as "3D". For a creature/character/object, LOAD a free animated glTF with THREE.GLTFLoader (add GLTFLoader.js + OrbitControls.js from https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/...) and play gltf.animations[0] via THREE.AnimationMixer. Free CORS models: Fox (KhronosGroup/glTF-Sample-Models@master/2.0/Fox/glTF-Binary/Fox.glb), Horse/Parrot/Flamingo/Stork/Soldier/RobotExpressive (mrdoob/three.js@r128/examples/models/gltf/…). Use sRGB encoding, ACESFilmic tone mapping, Hemisphere+Directional lights, shadows; center/scale the model; full-screen canvas behind the content; drive rotation/camera with scroll.
