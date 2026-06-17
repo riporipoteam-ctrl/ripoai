@@ -1,4 +1,5 @@
 import { isNative } from './native'
+import { searchWeb, readPage as readPageCore, hostOf } from './webResearch'
 
 export type AgentBrowserStatus = 'idle' | 'running' | 'done' | 'error' | 'unavailable'
 
@@ -164,11 +165,6 @@ export async function runAgentBrowserTask(
 // ============================================================================
 
 const MAX_STEPS = 12
-// Per-fetch read timeout. The browse loop runs through CORS proxies (Jina /
-// allorigins / DuckDuckGo / thum.io) that are noticeably less reliable from
-// inside the native WKWebView/Android WebView than from a desktop browser, so
-// keep each request short there to avoid stacking up multi-second stalls.
-const READER_TIMEOUT = isNative ? 9000 : 14000
 // Hard wall-clock budget for the whole browse loop. The agent reply is gated
 // behind this phase (it runs inline before the model streams), so it must never
 // be able to block the answer indefinitely — on native, where the third-party
@@ -187,92 +183,37 @@ function shotUrl(url: string): string {
   return `https://image.thum.io/get/width/1200/crop/800/noanimate/${url}`
 }
 
-function hostOf(url: string): string {
-  try {
-    return new URL(url).hostname.replace(/^www\./, '')
-  } catch {
-    return url.slice(0, 40)
-  }
-}
-
-function fetchTimeout(url: string, signal?: AbortSignal, ms = READER_TIMEOUT): Promise<Response> {
-  const ac = new AbortController()
-  const t = setTimeout(() => ac.abort(), ms)
-  signal?.addEventListener('abort', () => ac.abort(), { once: true })
-  return fetch(url, { signal: ac.signal }).finally(() => clearTimeout(t))
-}
-
-/** Quick reachability probe for the read proxy. On native WebViews the CORS
- *  proxies are sometimes blocked outright (ATS / network policy); when that's
- *  the case we want to find out in ~4s and skip browsing entirely rather than
- *  burning the whole budget on doomed requests while the user waits. Returns
- *  true if the web is reachable, false if browsing should be skipped. */
+/** Quick reachability probe. On native WebViews the CORS proxies are sometimes
+ *  blocked outright (ATS / network policy); when that's the case we want to find
+ *  out fast and skip browsing entirely rather than burning the whole budget on
+ *  doomed requests. Returns true if the web is reachable. */
 async function browsingReachable(signal?: AbortSignal): Promise<boolean> {
   try {
-    const res = await fetchTimeout('https://r.jina.ai/https://example.com', signal, 4500)
-    return res.ok
+    const page = await readPageCore('https://example.com', signal, 200)
+    return !!page
   } catch (e: any) {
     if (e?.name === 'AbortError' && signal?.aborted) throw e
     return false
   }
 }
 
-/** Read a page like a human would: full text content, title included. */
+/** Read a page like a human would: full text content, title included.
+ *  Throws if every reader proxy failed so the loop can try a different page. */
 async function readPage(url: string, signal?: AbortSignal): Promise<{ title: string; text: string }> {
-  // Primary reader: Jina (CORS-enabled, returns clean markdown with Title:).
-  try {
-    const res = await fetchTimeout(`https://r.jina.ai/${url}`, signal)
-    if (res.ok) {
-      const text = await res.text()
-      const title = text.match(/^Title:\s*(.+)$/m)?.[1]?.trim() || hostOf(url)
-      return { title, text: text.slice(0, 7000) }
-    }
-  } catch {
-    /* fall through to the proxy reader */
-  }
-  // Fallback reader: CORS proxy + strip the HTML ourselves.
-  const res = await fetchTimeout(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, signal)
-  if (!res.ok) throw new Error(`Could not load ${hostOf(url)} (${res.status}).`)
-  const html = await res.text()
-  const title = html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1]?.trim() || hostOf(url)
-  const text = html
-    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&[a-z#0-9]+;/gi, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-  return { title, text: text.slice(0, 7000) }
+  const page = await readPageCore(url, signal, 7000)
+  if (!page) throw new Error(`Could not load ${hostOf(url)}.`)
+  return page
 }
 
-/** Search the web (DuckDuckGo) and extract organic result links. */
+/** Search the web (multi-engine) and return organic result links. */
 async function webSearch(
   query: string,
   signal?: AbortSignal,
 ): Promise<{ serpUrl: string; serpText: string; links: { title: string; url: string }[] }> {
-  const serpUrl = `https://lite.duckduckgo.com/lite/?q=${encodeURIComponent(query)}`
-  const { text } = await readPage(serpUrl, signal)
-  const links: { title: string; url: string }[] = []
-  const seen = new Set<string>()
-  const re = /\[([^\]]{3,120})\]\((https?:\/\/[^\s)]+)\)/g
-  let m: RegExpExecArray | null
-  while ((m = re.exec(text)) && links.length < 10) {
-    let url = m[2]
-    // DuckDuckGo wraps results in a redirect — unwrap to the real site.
-    const uddg = url.match(/[?&]uddg=([^&]+)/)?.[1]
-    if (uddg) {
-      try {
-        url = decodeURIComponent(uddg)
-      } catch {
-        /* keep wrapped */
-      }
-    }
-    const host = hostOf(url)
-    if (/duckduckgo\.com|duck\.co/.test(host) || seen.has(url)) continue
-    seen.add(url)
-    links.push({ title: m[1].replace(/\s+/g, ' ').trim(), url })
-  }
-  return { serpUrl, serpText: text.slice(0, 3500), links }
+  const serpUrl = `https://duckduckgo.com/?q=${encodeURIComponent(query)}`
+  const links = await searchWeb(query, { signal, limit: 10 })
+  const serpText = links.map((l, i) => `${i + 1}. ${l.title} — ${l.url}`).join('\n')
+  return { serpUrl, serpText, links }
 }
 
 interface BrowserDecision {
