@@ -154,13 +154,19 @@ export default function FriendsPage() {
         </Section>
       )}
 
-      {!term && suggested.length > 0 && (
+      {!term && (
         <Section title="Suggestions">
-          {suggested.map((p) => (
-            <Row key={p.uid} p={p}>
-              <AddBtn p={p} />
-            </Row>
-          ))}
+          {suggested.length === 0 ? (
+            <p className="py-3 text-center text-sm text-muted">
+              No suggestions yet — as more people join, they'll show here. Search a username above to add someone.
+            </p>
+          ) : (
+            suggested.map((p) => (
+              <Row key={p.uid} p={p}>
+                <AddBtn p={p} />
+              </Row>
+            ))
+          )}
         </Section>
       )}
 
