@@ -18,7 +18,26 @@ struct GroqClient {
         }
     }
 
+    /// Public entry: try the requested provider, and on ANY failure fall back to
+    /// the NVIDIA worker (which holds a key server-side), so agents + chat keep
+    /// working even if the baked-in Groq key is missing/expired or a Groq model
+    /// was deprecated.
     func stream(model: String,
+                provider: Provider = .groq,
+                messages: [Message],
+                onToken: @escaping (String) -> Void) async throws {
+        do {
+            try await attempt(model: model, provider: provider, messages: messages, onToken: onToken)
+        } catch {
+            if provider != .nvidia {
+                try await attempt(model: "meta/llama-4-maverick-17b-128e-instruct", provider: .nvidia, messages: messages, onToken: onToken)
+            } else {
+                throw error
+            }
+        }
+    }
+
+    private func attempt(model: String,
                 provider: Provider = .groq,
                 messages: [Message],
                 onToken: @escaping (String) -> Void) async throws {
