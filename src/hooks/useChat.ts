@@ -12,7 +12,7 @@ import { MAX_IMAGES_PER_MESSAGE } from '../lib/files'
 import { earnFromChat, tryImageGen } from '../lib/plus'
 import { wantsSlides, generateDeck } from '../lib/slides'
 import { getModel, resolveAutoModel, DEFAULT_MODEL, type ModelTier } from '../lib/models'
-import { buildSystemPrompt, buildAgentSystemPrompt, AGENT_SYSTEM, WEB3D_INSTRUCTIONS, wantsWebsite, needsDeepThinking } from '../lib/prompt'
+import { buildSystemPrompt, buildAgentSystemPrompt, AGENT_SYSTEM, WEB3D_INSTRUCTIONS, wantsWebsite, wants3D, needsDeepThinking } from '../lib/prompt'
 import { getAgent, agentCanBrowse, agentWantsBrowse, type Agent } from '../lib/agents'
 import { extractSocialImages, buildSocialPrompt } from '../lib/social'
 import { searchModel, shouldAutoSearch } from '../lib/search'
@@ -635,8 +635,10 @@ export function useChat(chatId: string | undefined) {
         if (dinfo) system += '\n\n' + desktopCapabilityPrompt(dinfo)
       }
 
-      // Premium 3D website mode when the user asks to build a site.
-      const buildingSite = !opts.image && !opts.systemOverride && wantsWebsite(lastText)
+      // Premium 3D website mode ONLY when the user explicitly asks for 3D /
+      // cinematic / animation — a plain "make a website" stays clean (no forced
+      // 3D objects or scroll libraries). Fixes the global over-3D bug.
+      const buildingSite = !opts.image && !opts.systemOverride && wantsWebsite(lastText) && wants3D(lastText)
       if (buildingSite) {
         system += '\n\n' + WEB3D_INSTRUCTIONS
         // Let the user drop ANY 3D asset: "use this model: <url>" or a bare .glb/.gltf link.
