@@ -225,7 +225,9 @@ final class VoiceOut: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
         guard !t.isEmpty else { return }
         let u = AVSpeechUtterance(string: t)
         u.voice = Self.bestVoice(for: langCode)
-        u.rate = 0.5
+        u.rate = 0.52
+        u.pitchMultiplier = 1.0
+        u.preUtteranceDelay = 0
         pending += 1
         synth.speak(u)
     }
@@ -251,11 +253,13 @@ final class VoiceOut: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
     static func bestVoice(for lang: String) -> AVSpeechSynthesisVoice? {
         let base = String(lang.prefix(2)).lowercased()
         let voices = AVSpeechSynthesisVoice.speechVoices().filter { $0.language.lowercased().hasPrefix(base) }
-        func rank(_ q: AVSpeechSynthesisVoiceQuality) -> Int {
-            if #available(iOS 16.0, *), q == .premium { return 3 }
-            return q == .enhanced ? 2 : 1
+        func rank(_ v: AVSpeechSynthesisVoice) -> Int {
+            var r = 0
+            if #available(iOS 16.0, *), v.quality == .premium { r = 3 } else if v.quality == .enhanced { r = 2 } else { r = 1 }
+            if v.identifier.lowercased().contains("siri") { r += 4 }  // Siri voices are the most natural
+            return r
         }
-        return voices.max(by: { rank($0.quality) < rank($1.quality) }) ?? AVSpeechSynthesisVoice(language: lang)
+        return voices.max(by: { rank($0) < rank($1) }) ?? AVSpeechSynthesisVoice(language: lang)
     }
 
     /// Map an app-language selection to a TTS locale.
