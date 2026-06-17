@@ -32,14 +32,16 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      - name: Inject Groq API key from secret
+      - name: Inject API keys from secrets
         env:
           GROQ_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
+          ELEVEN_KEY: ${{ secrets.ELEVENLABS_KEY }}
         run: |
           cat > ios-native/Sources/Services/Secrets.swift <<EOF
           import Foundation
           enum Secrets {
               static let groqKey = "${GROQ_KEY}"
+              static let elevenKey = "${ELEVEN_KEY}"
           }
           EOF
 

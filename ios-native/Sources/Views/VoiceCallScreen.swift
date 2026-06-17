@@ -199,70 +199,141 @@ struct VoiceCallScreen: View {
     }
 }
 
-/// Text-to-speech: picks the best (premium/enhanced) voice for the language and
-/// can speak incrementally (sentence-by-sentence) so replies start instantly.
+/// Text-to-speech with ElevenLabs neural voices (realistic), spoken sentence-
+/// by-sentence for instant starts. Falls back to the best on-device voice if
+/// ElevenLabs is unavailable. NOTE: the API key ships in the app — rotate it /
+/// move it behind the Worker when convenient.
 @MainActor
-final class VoiceOut: NSObject, ObservableObject, AVSpeechSynthesizerDelegate {
+final class VoiceOut: NSObject, ObservableObject, AVSpeechSynthesizerDelegate, AVAudioPlayerDelegate {
     private let synth = AVSpeechSynthesizer()
     private var onAllDone: (() -> Void)?
-    private var pending = 0
     private var finishing = false
     private var langCode = "en-US"
 
+    // ElevenLabs
+    private static let elKey = Secrets.elevenKey
+    private static let voiceId = "21m00Tcm4TlvDq8ikWAM" // Rachel — natural, multilingual
+    private static let model = "eleven_flash_v2_5"        // lowest-latency multilingual
+
+    private var queue: [String] = []
+    private var running = false
+    private var stopped = false
+    private var player: AVAudioPlayer?
+    private var playCont: CheckedContinuation<Void, Never>?
+    private var speechCont: CheckedContinuation<Void, Never>?
+
     override init() { super.init(); synth.delegate = self }
 
-    /// Start a fresh spoken turn in the given app-language.
     func begin(language: String) {
         langCode = Self.ttsLocale(language)
-        finishing = false; pending = 0
-        try? AVAudioSession.sharedInstance().setCategory(.playback, options: .duckOthers)
+        finishing = false; stopped = false; queue = []
+        try? AVAudioSession.sharedInstance().setCategory(.playback, options: [.duckOthers])
         try? AVAudioSession.sharedInstance().setActive(true)
     }
 
-    /// Speak one chunk (queued — earlier chunks finish first).
+    /// Queue a sentence; processed strictly in order.
     func enqueue(_ text: String) {
         let t = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !t.isEmpty else { return }
-        let u = AVSpeechUtterance(string: t)
-        u.voice = Self.bestVoice(for: langCode)
-        u.rate = 0.52
-        u.pitchMultiplier = 1.0
-        u.preUtteranceDelay = 0
-        pending += 1
-        synth.speak(u)
+        queue.append(t)
+        if !running { running = true; Task { await pump() } }
     }
 
-    /// No more chunks coming — call done once everything has been spoken.
     func finish(done: @escaping () -> Void) { onAllDone = done; finishing = true; checkDone() }
 
-    /// One-shot convenience (used by camera/screen vision).
     func speak(_ text: String, done: @escaping () -> Void) {
         begin(language: "auto"); enqueue(text); finish(done: done)
     }
 
-    func stop() { synth.stopSpeaking(at: .immediate); pending = 0; finishing = false; onAllDone = nil }
+    func stop() {
+        stopped = true
+        synth.stopSpeaking(at: .immediate)
+        player?.stop(); player = nil
+        queue = []
+        running = false; finishing = false; onAllDone = nil
+        playCont?.resume(); playCont = nil
+        speechCont?.resume(); speechCont = nil
+    }
+
+    private func pump() async {
+        while !stopped, !queue.isEmpty {
+            let next = queue.removeFirst()
+            if let data = await fetchElevenLabs(next), !stopped {
+                await play(data)
+            } else if !stopped {
+                await speakOnDevice(next)
+            }
+        }
+        running = false
+        checkDone()
+    }
 
     private func checkDone() {
-        if finishing && pending == 0 { let d = onAllDone; onAllDone = nil; finishing = false; d?() }
-    }
-    nonisolated func speechSynthesizer(_ s: AVSpeechSynthesizer, didFinish u: AVSpeechUtterance) {
-        Task { @MainActor in self.pending -= 1; self.checkDone() }
+        if finishing && !running && queue.isEmpty {
+            let d = onAllDone; onAllDone = nil; finishing = false; d?()
+        }
     }
 
-    /// Highest-quality installed voice for a language (premium > enhanced > default).
+    private func fetchElevenLabs(_ text: String) async -> Data? {
+        guard let url = URL(string: "https://api.elevenlabs.io/v1/text-to-speech/\(Self.voiceId)?output_format=mp3_44100_128") else { return nil }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.timeoutInterval = 20
+        req.setValue(Self.elKey, forHTTPHeaderField: "xi-api-key")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "text": text,
+            "model_id": Self.model,
+            "voice_settings": ["stability": 0.45, "similarity_boost": 0.8, "style": 0.0, "use_speaker_boost": true],
+        ])
+        guard let (data, resp) = try? await URLSession.shared.data(for: req),
+              let http = resp as? HTTPURLResponse, http.statusCode == 200, !data.isEmpty else { return nil }
+        return data
+    }
+
+    private func play(_ data: Data) async {
+        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+            do {
+                let p = try AVAudioPlayer(data: data)
+                p.delegate = self
+                self.player = p
+                self.playCont = cont
+                p.prepareToPlay(); p.play()
+            } catch {
+                cont.resume()
+            }
+        }
+    }
+
+    private func speakOnDevice(_ t: String) async {
+        await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+            self.speechCont = cont
+            let u = AVSpeechUtterance(string: t)
+            u.voice = Self.bestVoice(for: langCode)
+            u.rate = 0.52
+            synth.speak(u)
+        }
+    }
+
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor in let c = self.playCont; self.playCont = nil; c?.resume() }
+    }
+    nonisolated func speechSynthesizer(_ s: AVSpeechSynthesizer, didFinish u: AVSpeechUtterance) {
+        Task { @MainActor in let c = self.speechCont; self.speechCont = nil; c?.resume() }
+    }
+
     static func bestVoice(for lang: String) -> AVSpeechSynthesisVoice? {
         let base = String(lang.prefix(2)).lowercased()
         let voices = AVSpeechSynthesisVoice.speechVoices().filter { $0.language.lowercased().hasPrefix(base) }
         func rank(_ v: AVSpeechSynthesisVoice) -> Int {
             var r = 0
             if #available(iOS 16.0, *), v.quality == .premium { r = 3 } else if v.quality == .enhanced { r = 2 } else { r = 1 }
-            if v.identifier.lowercased().contains("siri") { r += 4 }  // Siri voices are the most natural
+            if v.identifier.lowercased().contains("siri") { r += 4 }
             return r
         }
         return voices.max(by: { rank($0) < rank($1) }) ?? AVSpeechSynthesisVoice(language: lang)
     }
 
-    /// Map an app-language selection to a TTS locale.
     static func ttsLocale(_ selection: String) -> String {
         let code = selection == "auto" ? (Languages.device().code) : selection
         let map: [String: String] = ["en": "en-US", "es": "es-ES", "fr": "fr-FR", "de": "de-DE",

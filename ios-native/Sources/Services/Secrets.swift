@@ -5,4 +5,5 @@ import Foundation
 /// Locally it stays empty; the app then shows a friendly "not configured" note.
 enum Secrets {
     static let groqKey = ""
+    static let elevenKey = ""
 }
