@@ -37,6 +37,7 @@ import {
   aiDesignAgent,
   upsertAgent,
   statusMeta,
+  setPendingAgentPrompt,
   type Agent,
 } from '../lib/agents'
 import { setInvitedScope, inviteAgent, clearInvited } from '../lib/chatParticipants'
@@ -274,14 +275,14 @@ export default function AgentsPage() {
 
     setDraft('')
     setSuggested([])
+    // Stash the goal so the room AUTO-SENDS it once AskAI is applied as the lead
+    // (ChatView consumes this only after the agent handoff lands, so the reply is
+    // agent-led and delegates — instead of landing as a plain chat).
+    setPendingAgentPrompt(text)
     const roomId = agentsRoomId(uid)
-    // Drop the goal into the room's composer once it mounts.
     setTimeout(() => {
       navigate(`/c/${roomId}`)
-      window.setTimeout(() => {
-        window.dispatchEvent(new CustomEvent('askai-prefill', { detail: text }))
-        setRouting(null)
-      }, 340)
+      setRouting(null)
     }, 420)
   }
 

@@ -496,6 +496,40 @@ export function takePendingAgentChat(): Agent | null {
   }
 }
 
+/* --- Pending agent prompt -------------------------------------------------
+   A goal handed off from the Agents page that should be AUTO-SENT once the
+   target chat mounts with its agent applied (so the reply is agent-led and the
+   user doesn't have to press send again). Consumed by ChatView. */
+const PENDING_PROMPT_KEY = 'askai:chat:agent-prompt'
+
+export function setPendingAgentPrompt(text: string) {
+  try {
+    sessionStorage.setItem(PENDING_PROMPT_KEY, text)
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Read the pending prompt WITHOUT consuming it (so the sender can wait until the
+ *  agent handoff is applied before actually sending). */
+export function peekPendingAgentPrompt(): string | null {
+  try {
+    return sessionStorage.getItem(PENDING_PROMPT_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function takePendingAgentPrompt(): string | null {
+  try {
+    const v = sessionStorage.getItem(PENDING_PROMPT_KEY)
+    if (v) sessionStorage.removeItem(PENDING_PROMPT_KEY)
+    return v
+  } catch {
+    return null
+  }
+}
+
 /** Does this message ask to dispatch / mobilize the team of agents? */
 export function wantsTeamDispatch(text: string): boolean {
   return /\b(dispatch|mobiliz|assemble|the (whole|hole|entire) team|all (the )?agents|whole team|team of agents|get the team|whole squad)\b/i.test(
