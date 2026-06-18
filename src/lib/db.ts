@@ -63,6 +63,9 @@ export interface StoredMessage {
   agentName?: string
   agentEmoji?: string
   agentColor?: string
+  /** On the lead's message: the specialists it is calling in to take over (shows
+   *  an animated "Calling Max (Researcher)…" hand-off chip). */
+  callingAgents?: { name: string; role: string; emoji: string; color: string }[]
   createdAt: number
 }
 
