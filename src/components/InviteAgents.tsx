@@ -43,7 +43,7 @@ export default function InviteAgents({ lead }: { lead: Agent }) {
           className="flex h-7 w-7 items-center justify-center rounded-full text-xs ring-2 ring-[rgb(var(--surface))]"
           style={{ background: a.color + '2a' }}
         >
-          {a.avatar ? <img src={a.avatar} alt="" className="h-7 w-7 rounded-full object-cover" /> : a.emoji}
+          {a.emoji}
         </span>
       ))}
       <button
@@ -99,7 +99,7 @@ export default function InviteAgents({ lead }: { lead: Agent }) {
                         }`}
                       >
                         <span className="flex h-9 w-9 items-center justify-center rounded-full text-base" style={{ background: a.color + '2a' }}>
-                          {a.avatar ? <img src={a.avatar} alt="" className="h-9 w-9 rounded-full object-cover" /> : a.emoji}
+                          {a.emoji}
                         </span>
                         <span className="min-w-0 flex-1">
                           <span className="block font-semibold text-ink">{a.name}</span>

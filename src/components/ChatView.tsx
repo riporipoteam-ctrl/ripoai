@@ -235,16 +235,12 @@ export default function ChatView() {
             title={`View ${activeAgent.name}'s profile`}
           >
             <span className="relative shrink-0">
-              {activeAgent.avatar ? (
-                <img src={activeAgent.avatar} alt={activeAgent.name} className="h-8 w-8 rounded-full object-cover" />
-              ) : (
-                <span
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-base"
-                  style={{ background: activeAgent.color + '2a' }}
-                >
-                  {activeAgent.emoji}
-                </span>
-              )}
+              <span
+                className="flex h-8 w-8 items-center justify-center rounded-full text-base"
+                style={{ background: `linear-gradient(135deg, ${activeAgent.color}3a, ${activeAgent.color}14)` }}
+              >
+                {activeAgent.emoji}
+              </span>
               {/* online dot */}
               <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[rgb(var(--surface))] bg-emerald-400" />
             </span>
@@ -297,21 +293,12 @@ export default function ChatView() {
                 className="pointer-events-none absolute inset-0 -z-10 -m-6 rounded-full blur-3xl"
                 style={{ background: activeAgent.color + '22' }}
               />
-              {activeAgent.avatar ? (
-                <img
-                  src={activeAgent.avatar}
-                  alt={activeAgent.name}
-                  className="animate-float h-24 w-24 rounded-[1.7rem] object-cover"
-                  style={{ boxShadow: `0 0 0 2px ${activeAgent.color}55, 0 20px 50px -22px ${activeAgent.color}` }}
-                />
-              ) : (
-                <span
-                  className="animate-float flex h-24 w-24 items-center justify-center rounded-[1.7rem] text-5xl"
-                  style={{ background: activeAgent.color + '2a', boxShadow: `0 0 0 2px ${activeAgent.color}55` }}
-                >
-                  {activeAgent.emoji}
-                </span>
-              )}
+              <span
+                className="animate-float flex h-24 w-24 items-center justify-center rounded-[1.7rem] text-5xl"
+                style={{ background: `linear-gradient(135deg, ${activeAgent.color}4a, ${activeAgent.color}18)`, boxShadow: `0 0 0 2px ${activeAgent.color}55` }}
+              >
+                {activeAgent.emoji}
+              </span>
             </motion.button>
             <motion.h1
               initial={{ opacity: 0, y: 10 }}
@@ -405,7 +392,11 @@ export default function ChatView() {
                     message={m}
                     streaming={streaming}
                     isLastAssistant={isLastAssistant}
-                    agent={activeAgent ?? undefined}
+                    agent={
+                      m.agentName
+                        ? { name: m.agentName, emoji: m.agentEmoji ?? '🤖', color: m.agentColor ?? '#6366f1' }
+                        : (activeAgent ?? undefined)
+                    }
                     onAgentClick={() => setProfileOpen(true)}
                     onRegenerate={isLastAssistant && !streaming ? () => regenerate(opts) : undefined}
                     onEdit={

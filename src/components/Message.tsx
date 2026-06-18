@@ -191,16 +191,12 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
             style={{ boxShadow: `0 4px 12px -6px ${agent.color}` }}
             title={`${agent.name}'s profile`}
           >
-            {agent.avatar ? (
-              <img src={agent.avatar} alt={agent.name} className="h-8 w-8 object-cover" />
-            ) : (
-              <span
-                className="flex h-8 w-8 items-center justify-center text-lg"
-                style={{ background: agent.color + '2a' }}
-              >
-                {agent.emoji}
-              </span>
-            )}
+            <span
+              className="flex h-8 w-8 items-center justify-center text-lg"
+              style={{ background: `linear-gradient(135deg, ${agent.color}3a, ${agent.color}14)` }}
+            >
+              {agent.emoji}
+            </span>
           </button>
         ) : (
           <div className="overflow-hidden rounded-xl shadow-[0_4px_12px_-6px_rgb(var(--ink)/0.5)] ring-1 ring-[rgb(var(--ink)/0.08)]">

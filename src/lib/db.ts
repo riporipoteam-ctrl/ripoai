@@ -56,6 +56,13 @@ export interface StoredMessage {
   skillInstalled?: { name: string; description: string }
   /** User-saved/bookmarked message. */
   bookmarked?: boolean
+  /** Per-message agent identity — set on a delegated specialist's own bubble so
+   *  the thread shows each agent (lead + specialists) with their own name/avatar,
+   *  Nebula-style, even though they share one chat. */
+  agentId?: string
+  agentName?: string
+  agentEmoji?: string
+  agentColor?: string
   createdAt: number
 }
 

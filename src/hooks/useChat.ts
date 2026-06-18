@@ -661,13 +661,21 @@ export function useChat(chatId: string | undefined) {
 
       // If the user invited other agents into this chat — OR this turn explicitly
       // asks the lead to assign/bring in a kind of agent ("get a research agent")
-      // — let the lead coordinate + delegate to them (a real multi-agent reply).
-      if (personaAgent && !opts.systemOverride) {
+      // — the lead acts as Chief of Staff: it gives a SHORT intro saying who it's
+      // bringing in, then each specialist takes over and answers in their OWN
+      // bubble (Nebula style). `delegationTeam` drives that second pass below.
+      let delegationTeam: Agent[] = []
+      if (personaAgent && !opts.systemOverride && !opts.image && !opts.projectId) {
         const invited = getInvitedAgents()
         const asked = requestedSpecialists(user.uid, lastText, personaAgent.id)
-        const team = [...invited, ...asked]
-          .filter((a, i, arr) => a.id !== personaAgent.id && arr.findIndex((x) => x.id === a.id) === i)
-        if (team.length) system += delegationPrompt(personaAgent, team)
+        delegationTeam = [...invited, ...asked].filter(
+          (a, i, arr) => a.id !== personaAgent.id && arr.findIndex((x) => x.id === a.id) === i,
+        )
+        if (delegationTeam.length) {
+          const names = delegationTeam.map((a) => `${a.name} (${a.role || 'Specialist'})`).join(', ')
+          system +=
+            `\n\n--- YOU ARE THE CHIEF OF STAFF ---\nYou, ${personaAgent.name}, lead this chat. The user's task is being handled by your specialist teammate(s): ${names}. They will EACH reply in their own message right after you. So your reply must be ONLY a short, friendly ONE-LINE hand-off naming who you're putting on it (e.g. "On it — bringing in ${delegationTeam[0].name} to handle this."). Do NOT do the work yourself, do NOT write their answer, do NOT add lists or details — just the one-line hand-off.`
+        }
       }
 
       // 1-on-1 agent chat: let the agent actually browse the live web with
@@ -1311,13 +1319,123 @@ export function useChat(chatId: string | undefined) {
       }
 
       await persist(finalMsgs, id, opts.model, opts.projectId)
+
+      // ── Multi-agent hand-off ──────────────────────────────────────────────
+      // After the lead's short intro, each delegated specialist TAKES OVER and
+      // answers in their OWN bubble (their name + avatar, their own live
+      // browsing/activity), all in this same chat — exactly like Nebula.
+      if (delegationTeam.length && !opts.image && !opts.projectId) {
+        // Keep the chat in the streaming state so each specialist bubble shows
+        // its live "thinking / browsing / writing" animation, and stop() still
+        // works mid-hand-off.
+        if (isLive()) setStreaming(true)
+        abortRef.current = ac
+        let convo = finalMsgs
+        for (const spec of delegationTeam) {
+          if (ac.signal.aborted) break
+          const specId = uid4()
+          let specBrowser: AgentBrowserState | undefined
+          const specMsg = {
+            id: specId,
+            role: 'assistant' as const,
+            content: '',
+            model: effModel,
+            agentId: spec.id,
+            agentName: spec.name,
+            agentEmoji: spec.emoji,
+            agentColor: spec.color,
+            createdAt: Date.now(),
+          } as StoredMessage & { agentBrowser?: AgentBrowserState }
+          convo = [...convo, specMsg]
+          if (isLive()) setMessages(convo)
+
+          // The specialist browses the live web if it can AND the task needs it.
+          if (agentCanBrowse(spec) && (opts.forceBrowse === true || agentWantsBrowse(lastText))) {
+            const evts: AgentBrowserEvent[] = []
+            const applyB = (st: AgentBrowserState) => {
+              specBrowser = st
+              if (isLive())
+                setMessages((m) =>
+                  m.map((x) => (x.id === specId ? ({ ...x, agentBrowser: st } as StoredMessage & { agentBrowser?: AgentBrowserState }) : x)),
+                )
+            }
+            try {
+              const r = await runAgentBrowserTask(lastText, {
+                signal: ac.signal,
+                onEvent: (e) => {
+                  evts.push(e)
+                  applyB({
+                    ...(specBrowser ?? { status: 'running', events: [] }),
+                    status: 'running',
+                    events: [...evts],
+                    screenshot: e.screenshot ?? specBrowser?.screenshot,
+                    currentUrl: e.url ?? specBrowser?.currentUrl,
+                    title: e.title ?? specBrowser?.title,
+                  })
+                },
+              })
+              applyB({ ...r, events: r.events?.length ? r.events : evts })
+            } catch (e: any) {
+              if (e?.name === 'AbortError') break
+            }
+          }
+
+          // Build the specialist's persona prompt + any of its own browse findings.
+          let specSys = buildAgentSystemPrompt(spec, model, settings, memories)
+          specSys += `\n\nThe Chief of Staff (${personaAgent?.name ?? 'AskAI'}) just assigned you this task. Do YOUR part fully and concretely in first person, in your area of expertise — don't re-introduce yourself, get straight to the work. Use Markdown when helpful.`
+          if (specBrowser?.summary || specBrowser?.sources?.length) {
+            const notes = [
+              specBrowser?.summary ? `Findings: ${specBrowser.summary}` : '',
+              specBrowser?.sources?.length ? `Sources: ${specBrowser.sources.map((s) => `${s.title || s.url} (${s.url})`).join('; ')}` : '',
+            ]
+              .filter(Boolean)
+              .join('\n')
+            specSys += `\n\nYOU just browsed the live web — these are YOUR OWN results. Present them confidently and cite the source URLs. Never say you can't browse.\n${notes}`
+          }
+
+          let specContent = ''
+          try {
+            const res = await streamChat({
+              provider: 'groq',
+              model: fallback.groqModel,
+              messages: [
+                { role: 'system', content: specSys },
+                { role: 'user', content: lastText },
+              ],
+              temperature: model.temperature,
+              maxTokens: 2048,
+              topP: model.topP,
+              signal: ac.signal,
+              onToken: (t) => {
+                specContent += t
+                if (isLive()) setMessages((m) => m.map((x) => (x.id === specId ? { ...x, content: specContent } : x)))
+              },
+              onReasoning: () => {},
+              onTool: () => {},
+            })
+            specContent = res.content || specContent
+          } catch (e: any) {
+            if (e?.name === 'AbortError') break
+            specContent = specContent || `(${spec.name} couldn't respond right now.)`
+          }
+          const finished = { ...specMsg, content: specContent || '…', agentBrowser: specBrowser } as StoredMessage & {
+            agentBrowser?: AgentBrowserState
+          }
+          convo = convo.map((x) => (x.id === specId ? finished : x))
+          if (isLive()) setMessages(convo)
+          await persist(convo, id, opts.model, opts.projectId).catch(() => {})
+        }
+        abortRef.current = null
+        if (isLive()) setStreaming(false)
+      }
+
       // If the user navigated away while this finished, flag the chat as unread
       // (blue dot in the sidebar) instead of silently completing.
       if (!isLive()) markUnread(id)
 
       // Suggested follow-up prompts — generated after the answer so the user can
       // keep the conversation going with one tap. Best-effort, never blocks.
-      if (finalContent && finalContent.trim().length > 40 && !opts.projectId) {
+      if (finalContent && finalContent.trim().length > 40 && !opts.projectId && !delegationTeam.length) {
         complete(
           'llama-3.1-8b-instant',
           [
