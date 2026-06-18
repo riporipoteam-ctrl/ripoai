@@ -6,10 +6,9 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { Check, Sparkles, ArrowRight, Loader2 } from 'lucide-react'
-import { useStore } from '../store'
-import { ONBOARDING_USECASES, createTeamForUseCases, agentHello } from '../lib/orchestrator'
-import { ASKAI_LEAD, type Agent } from '../lib/agents'
-import { saveChat, type StoredMessage } from '../lib/db'
+import { ONBOARDING_USECASES, createTeamForUseCases } from '../lib/orchestrator'
+import { ASKAI_LEAD, setPendingAgentChat, setPendingAgentPrompt, type Agent } from '../lib/agents'
+import { setInvitedScope, clearInvited, inviteAgent } from '../lib/chatParticipants'
 import { haptic } from '../lib/native'
 
 const ONBOARDED = (uid: string) => `askai:agents:onboarded:${uid}`
@@ -21,11 +20,10 @@ export const hasOnboarded = (uid: string) => {
   }
 }
 
-const uid4 = () => crypto.randomUUID()
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 export default function AgentsOnboarding({ uid, onClose }: { uid: string; onClose: () => void }) {
   const navigate = useNavigate()
-  const defaultModel = useStore((s) => s.settings.defaultModel)
   const [picked, setPicked] = useState<string[]>([])
   const [phase, setPhase] = useState<'pick' | 'creating'>('pick')
   const [created, setCreated] = useState<Agent[]>([])
@@ -53,60 +51,31 @@ export default function AgentsOnboarding({ uid, onClose }: { uid: string; onClos
     window.dispatchEvent(new Event('askai-agents-changed'))
     // Reveal the created agents one-by-one for the "hiring" animation.
     for (let i = 0; i < team.length; i++) {
-      await new Promise((r) => setTimeout(r, 650))
+      await sleep(650)
       setRevealed(i + 1)
     }
-    await new Promise((r) => setTimeout(r, 700))
+    await sleep(600)
 
-    // Seed the welcome chat: AskAI greets the user, then each agent says hi.
-    const now = Date.now()
+    // Hand off to a fresh AskAI-led chat and AUTO-SEND a welcome request — this
+    // reuses the proven live pipeline: AskAI greets the user, then each newly
+    // hired teammate (invited below) takes over and introduces itself in its own
+    // bubble. No fragile pre-seeded chat.
+    setPendingAgentChat({ ...ASKAI_LEAD })
+    setInvitedScope(ASKAI_LEAD.id)
+    clearInvited()
+    team.forEach((a) => inviteAgent(a))
+
     const labels = ONBOARDING_USECASES.filter((u) => picked.includes(u.id)).map((u) => u.label.toLowerCase())
     const want = labels.length ? labels.join(', ') : 'get things done'
-    const messages: StoredMessage[] = [
-      { id: uid4(), role: 'user', content: `I want to use agents to ${want}. Set up my team.`, createdAt: now },
-      {
-        id: uid4(),
-        role: 'assistant',
-        content:
-          `Welcome aboard! 👋 I'm **AskAI**, your Chief of Staff. Based on what you picked, I've hired your starting team — they're saying hi below.\n\nWhenever you have a goal, just tell me and I'll put the right specialist(s) on it. You can also ask me to **hire more agents** anytime.`,
-        agentId: ASKAI_LEAD.id,
-        agentName: ASKAI_LEAD.name,
-        agentEmoji: ASKAI_LEAD.emoji,
-        agentColor: ASKAI_LEAD.color,
-        callingAgents: team.length
-          ? team.map((a) => ({ name: a.name, role: a.role, emoji: a.emoji, color: a.color }))
-          : undefined,
-        createdAt: now + 1,
-      },
-      ...team.map((a, i) => ({
-        id: uid4(),
-        role: 'assistant' as const,
-        content: agentHello(a),
-        agentId: a.id,
-        agentName: a.name,
-        agentEmoji: a.emoji,
-        agentColor: a.color,
-        createdAt: now + 2 + i,
-      })),
-    ]
-    const chatId = uid4()
-    try {
-      await saveChat(uid, {
-        id: chatId,
-        title: 'Meet your team',
-        model: defaultModel,
-        messages,
-        agentId: ASKAI_LEAD.id,
-        agentName: ASKAI_LEAD.name,
-        agentEmoji: ASKAI_LEAD.emoji,
-        updatedAt: now,
-        createdAt: now,
-      })
-    } catch {
-      /* ignore — still navigate */
-    }
+    const names = team.length ? team.map((t) => t.name).join(', ') : ''
+    setPendingAgentPrompt(
+      team.length
+        ? `I just set up my AskAI workspace — I want help to ${want}. Welcome me to my new team, and have each of my new teammates (${names}) introduce themselves in one short line.`
+        : `I just set up my AskAI workspace — I want help to ${want}. Welcome me and tell me how you'll help and how I can put you to work.`,
+    )
+
     finish()
-    navigate(`/c/${chatId}`)
+    navigate('/chat')
   }
 
   return (
