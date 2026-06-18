@@ -71,6 +71,7 @@ import {
   type AgentCategory,
 } from '../lib/agentTemplates'
 import { haptic } from '../lib/native'
+import AgentsOnboarding, { hasOnboarded } from '../components/AgentsOnboarding'
 import '../styles/agents.css'
 
 /** Relative timestamp ("just now", "3h ago", "2d ago"). */
@@ -139,15 +140,18 @@ export default function AgentsPage() {
   const [activity, setActivity] = useState<ActivityEvent[]>([])
   const [pickerOpen, setPickerOpen] = useState(false)
   const [rosterQuery, setRosterQuery] = useState('')
+  const [onboarding, setOnboarding] = useState(false)
 
   const intro = useMemo(() => chiefOfStaffIntro(), [])
 
-  // Seed the starting team (idempotent) then load the roster + activity.
+  // Load the roster + activity; first-time visitors get the onboarding flow
+  // (which hires their tailored team) instead of a pre-seeded roster.
   useEffect(() => {
     if (!uid) return
     ensureStartingTeam(uid)
     setAgents(loadAgents(uid))
     setActivity(loadActivity(uid))
+    if (!hasOnboarded(uid)) setOnboarding(true)
   }, [uid])
 
   // Keep the roster + activity fresh when they change elsewhere in the app.
@@ -569,6 +573,18 @@ export default function AgentsPage() {
           navigate(`/agent/${agent.id}`)
         }}
       />
+
+      <AnimatePresence>
+        {onboarding && uid && (
+          <AgentsOnboarding
+            uid={uid}
+            onClose={() => {
+              setOnboarding(false)
+              setAgents(loadAgents(uid))
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }
