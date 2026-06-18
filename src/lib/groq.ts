@@ -395,3 +395,44 @@ export async function complete(
   text = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
   return text
 }
+
+// The NVIDIA proxy model used as a universal fallback. The proxy holds its own
+// key server-side, so it keeps working even when the shared Groq key is dead,
+// expired or rate-limited — the situation that otherwise makes every agent go
+// silent. See getNvidiaBase() for the proxy endpoint.
+const NVIDIA_FALLBACK_MODEL = 'moonshotai/kimi-k2.6'
+
+/**
+ * Resilient completion: try Groq first (when a key/proxy is available), then
+ * fall back to the NVIDIA proxy (server-side key, no client key required) so a
+ * dead/rate-limited Groq key never makes an agent return nothing. Returns '' only
+ * if every backend fails.
+ */
+export async function completeResilient(
+  messages: ChatMessage[],
+  opts: { temperature?: number; maxTokens?: number; groqModel?: string } = {},
+): Promise<string> {
+  const groqModel = opts.groqModel ?? 'llama-3.3-70b-versatile'
+  // 1. Groq (only when we can actually reach it).
+  if (getApiKey() || getRipoaiProxyUrl()) {
+    try {
+      const text = await complete(groqModel, messages, opts)
+      if (text.trim()) return text
+    } catch {
+      /* fall through to the NVIDIA proxy */
+    }
+  }
+  // 2. NVIDIA proxy — carries its own key, so it survives a dead Groq key.
+  try {
+    const res = await streamChat({
+      provider: 'nvidia',
+      model: NVIDIA_FALLBACK_MODEL,
+      messages,
+      temperature: opts.temperature ?? 0.4,
+      maxTokens: opts.maxTokens ?? 1024,
+    })
+    return res.content.trim()
+  } catch {
+    return ''
+  }
+}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { streamChat, complete, type ChatMessage, type ContentPart } from '../lib/groq'
+import { streamChat, complete, completeResilient, type ChatMessage, type ContentPart } from '../lib/groq'
 import { getInvitedAgents, delegationPrompt } from '../lib/chatParticipants'
 import { editImage, generateImage, styleSuffix, dimsFor } from '../lib/imagegen'
 import { wantsPlaces, searchPlaces, getUserLocation, getUserPlace, wantsLocationContext } from '../lib/places'
@@ -1127,6 +1127,15 @@ export function useChat(chatId: string | undefined) {
           attempts.push({ provider: 'groq', model: 'llama-3.1-8b-instant', maxTokens: 2048 })
       }
 
+      // Universal last-resort: the NVIDIA proxy carries its own server-side key,
+      // so it keeps answering (and streaming) even when the shared Groq key is
+      // dead, expired or rate-limited — the failure that otherwise leaves every
+      // reply empty. Skip for image turns (this model is text-only) and when an
+      // NVIDIA attempt is already queued.
+      if (!hasImages && !attempts.some((a) => a.provider === 'nvidia')) {
+        attempts.push({ provider: 'nvidia', model: 'moonshotai/kimi-k2.6', maxTokens: bigOutput ? 8192 : 4096 })
+      }
+
       let usedAttempt: Attempt | null = null
       let lastFinish: string | undefined
       try {
@@ -1296,16 +1305,23 @@ export function useChat(chatId: string | undefined) {
             .slice(0, 7000)
           const question = lastUser?.content ?? history[history.length - 1]?.content ?? ''
           try {
-            finalContent = await complete(
-              'llama-3.3-70b-versatile',
-              [
-                {
-                  role: 'system',
-                  content:
-                    'Write a clear, direct, well-formatted answer to the user using the research notes. Never mention "notes", "tools", or your process. If the notes contain findings (prices, places, facts), present them cleanly.',
-                },
-                { role: 'user', content: `Question: ${question}\n\nResearch notes:\n${notes || '(none)'}` },
-              ],
+            // Use the resilient completer so a dead/rate-limited Groq key falls
+            // back to the NVIDIA proxy instead of leaving the answer empty. When
+            // there are no research notes, just answer the question directly.
+            finalContent = await completeResilient(
+              notes
+                ? [
+                    {
+                      role: 'system',
+                      content:
+                        'Write a clear, direct, well-formatted answer to the user using the research notes. Never mention "notes", "tools", or your process. If the notes contain findings (prices, places, facts), present them cleanly.',
+                    },
+                    { role: 'user', content: `Question: ${question}\n\nResearch notes:\n${notes}` },
+                  ]
+                : [
+                    { role: 'system', content: 'You are a helpful assistant. Answer the user clearly and directly.' },
+                    { role: 'user', content: question },
+                  ],
               { temperature: 0.4, maxTokens: 1800 },
             )
           } catch {
@@ -1501,13 +1517,13 @@ export function useChat(chatId: string | undefined) {
             if (e?.name === 'AbortError') break
             /* fall through to the non-streaming retry below */
           }
-          // Retry once with a plain completion if streaming returned nothing
-          // (transient rate-limit / empty stream) so a specialist never shows a
-          // "couldn't respond" placeholder when it can actually answer.
+          // Retry with a resilient completion if streaming returned nothing
+          // (transient rate-limit / empty stream / dead Groq key). This tries
+          // Groq then falls back to the NVIDIA proxy, so a specialist never shows
+          // a "couldn't respond" placeholder when any backend can answer.
           if (!specContent.trim() && !ac.signal.aborted) {
             try {
-              specContent = await complete(
-                'llama-3.3-70b-versatile',
+              specContent = await completeResilient(
                 [
                   { role: 'system', content: specSys },
                   { role: 'user', content: lastText },

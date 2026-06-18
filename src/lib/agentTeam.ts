@@ -4,7 +4,7 @@
 // character. For a task, the lead plans & delegates, specialists work (seeing
 // each other's output), and the lead assembles the final deliverable. Everything
 // streams so the Team room shows the agents talking live.
-import { streamChat, complete } from './groq'
+import { streamChat, complete, completeResilient } from './groq'
 import { CODER_MODEL, COMPOUND_MODEL } from './models'
 import type { Agent } from './agents'
 import type { Attachment } from './db'
@@ -88,8 +88,25 @@ async function streamAgent(
       },
     })
     text = res.content || text
-  } catch (e: any) {
-    text = text || `(${agent.name} couldn't respond: ${e?.message ?? 'error'})`
+  } catch {
+    /* fall back to the resilient completer below */
+  }
+  // If the Groq stream returned nothing (dead/rate-limited key, empty stream),
+  // retry through the resilient completer, which falls back to the NVIDIA proxy
+  // so a teammate never goes silent.
+  if (!text.trim() && !signal?.aborted) {
+    try {
+      text = await completeResilient(
+        [
+          { role: 'system', content: system },
+          { role: 'user', content: userMsg },
+        ],
+        { temperature: 0.85, maxTokens: opts.maxTokens ?? 1400, groqModel: opts.model },
+      )
+      if (text.trim()) onEvent({ ...ev, text, done: false })
+    } catch {
+      /* leave empty */
+    }
   }
   onEvent({ ...ev, text, done: true })
   return text
