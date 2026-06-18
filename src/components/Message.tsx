@@ -39,6 +39,39 @@ interface Props {
 
 const THINKING_PHRASES = ['Thinking', 'Reasoning', 'Working on it', 'Putting it together']
 
+/** Animated "Calling Max (Researcher)…" hand-off chip shown on the lead's
+ *  message when AskAI brings specialists into the chat (Nebula-style). */
+function CallingAgents({ agents }: { agents: NonNullable<StoredMessage['callingAgents']> }) {
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      {agents.map((a, i) => (
+        <motion.span
+          key={a.name + i}
+          initial={{ opacity: 0, y: 6, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ delay: i * 0.12, type: 'spring', stiffness: 320, damping: 22 }}
+          className="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-semibold"
+          style={{ borderColor: a.color + '55', background: a.color + '14', color: 'rgb(var(--ink))' }}
+        >
+          <span
+            className="flex h-5 w-5 items-center justify-center rounded-full text-[11px]"
+            style={{ background: `linear-gradient(135deg, ${a.color}4a, ${a.color}18)` }}
+          >
+            {a.emoji}
+          </span>
+          <span className="shimmer-text">Calling {a.name}</span>
+          <span className="text-muted">· {a.role}</span>
+          <span className="flex gap-0.5">
+            <span className="h-1 w-1 animate-pulse-dot rounded-full" style={{ background: a.color }} />
+            <span className="h-1 w-1 animate-pulse-dot rounded-full [animation-delay:0.2s]" style={{ background: a.color }} />
+            <span className="h-1 w-1 animate-pulse-dot rounded-full [animation-delay:0.4s]" style={{ background: a.color }} />
+          </span>
+        </motion.span>
+      ))}
+    </div>
+  )
+}
+
 function ThinkingIndicator() {
   const [s, setS] = useState(0)
   useEffect(() => {
@@ -280,6 +313,7 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
             <Markdown>{pcActions.length ? stripPcActions(message.content) : message.content}</Markdown>
           </div>
         )}
+        {!!message.callingAgents?.length && <CallingAgents agents={message.callingAgents} />}
         {!isUser && !liveStreaming && pcActions.length > 0 && (
           <DesktopActionCard actions={pcActions} messageId={message.id} />
         )}

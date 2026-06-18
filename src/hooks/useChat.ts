@@ -691,8 +691,11 @@ export function useChat(chatId: string | undefined) {
         (opts.forceBrowse === true || agentWantsBrowse(lastText))
 
       // Either the global Agent mode OR a browsing-enabled agent chat runs the
-      // live OpenClaw browser panel below.
-      const runBrowser = (opts.agent || agentChatBrowse) && (settings.agentBrowserPreview ?? true)
+      // live OpenClaw browser panel below — BUT when the lead is about to
+      // delegate, the lead must NOT browse itself (it only thinks + hands off);
+      // the specialists do the real browsing in their own bubbles.
+      const runBrowser =
+        (opts.agent || agentChatBrowse) && (settings.agentBrowserPreview ?? true) && !delegationTeam.length
 
       // Ground the answer on the real search results we just fetched.
       if (groundedSearch) {
@@ -1293,6 +1296,9 @@ export function useChat(chatId: string | undefined) {
         map: placesData ?? undefined,
         weather: weatherData ?? undefined,
         agentBrowser,
+        callingAgents: delegationTeam.length
+          ? delegationTeam.map((a) => ({ name: a.name, role: a.role || 'Specialist', emoji: a.emoji, color: a.color }))
+          : undefined,
         createdAt: Date.now(),
       } as StoredMessage & { agentBrowser?: AgentBrowserState }
       const finalMsgs: StoredMessage[] = [...history, assistantMsg]
@@ -1397,14 +1403,15 @@ export function useChat(chatId: string | undefined) {
           try {
             const res = await streamChat({
               provider: 'groq',
-              model: fallback.groqModel,
+              // Specialists run on a fast, reliable Groq model (NOT the lead's
+              // 3o/OpenRouter mapping, which rate-limits and was making them fail).
+              model: 'llama-3.3-70b-versatile',
               messages: [
                 { role: 'system', content: specSys },
                 { role: 'user', content: lastText },
               ],
-              temperature: model.temperature,
+              temperature: 0.6,
               maxTokens: 2048,
-              topP: model.topP,
               signal: ac.signal,
               onToken: (t) => {
                 specContent += t
@@ -1416,8 +1423,27 @@ export function useChat(chatId: string | undefined) {
             specContent = res.content || specContent
           } catch (e: any) {
             if (e?.name === 'AbortError') break
-            specContent = specContent || `(${spec.name} couldn't respond right now.)`
+            /* fall through to the non-streaming retry below */
           }
+          // Retry once with a plain completion if streaming returned nothing
+          // (transient rate-limit / empty stream) so a specialist never shows a
+          // "couldn't respond" placeholder when it can actually answer.
+          if (!specContent.trim() && !ac.signal.aborted) {
+            try {
+              specContent = await complete(
+                'llama-3.3-70b-versatile',
+                [
+                  { role: 'system', content: specSys },
+                  { role: 'user', content: lastText },
+                ],
+                { temperature: 0.6, maxTokens: 1800 },
+              )
+              if (isLive()) setMessages((m) => m.map((x) => (x.id === specId ? { ...x, content: specContent } : x)))
+            } catch {
+              /* leave empty → handled below */
+            }
+          }
+          if (!specContent.trim()) specContent = `${spec.name} couldn't pull that together just now — try again in a moment.`
           const finished = { ...specMsg, content: specContent || '…', agentBrowser: specBrowser } as StoredMessage & {
             agentBrowser?: AgentBrowserState
           }
