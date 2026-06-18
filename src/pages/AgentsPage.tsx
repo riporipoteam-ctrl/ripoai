@@ -93,13 +93,13 @@ function AgentBubble({ agent, size = 40 }: { agent: Pick<Agent, 'avatar' | 'emoj
   const px = `${size}px`
   return (
     <span
-      className="flex shrink-0 items-center justify-center rounded-xl"
+      className="flex shrink-0 items-center justify-center rounded-[14px]"
       style={{
         width: px,
         height: px,
         fontSize: size * 0.45,
-        background: `linear-gradient(135deg, ${agent.color}3a, ${agent.color}12)`,
-        boxShadow: `0 0 0 1px ${agent.color}33`,
+        background: `linear-gradient(135deg, ${agent.color}45, ${agent.color}14)`,
+        boxShadow: `0 0 0 1px ${agent.color}38, inset 0 1px 0 ${agent.color}22`,
       }}
     >
       {agent.emoji}
@@ -290,12 +290,19 @@ export default function AgentsPage() {
   const item = { hidden: { opacity: 0, y: 12 }, show: { opacity: 1, y: 0 } }
 
   return (
-    <div className="ag-page mx-auto h-full w-full max-w-2xl overflow-y-auto px-4 pt-5 sm:pt-6">
-      {/* 1. Header */}
-      <div className="mb-5 flex items-center justify-between">
-        <h1 className="font-display text-2xl font-bold tracking-tight text-ink">Agents</h1>
+    <div className="ag-page nb-page mx-auto h-full w-full max-w-2xl overflow-y-auto px-4 pt-5 sm:pt-6">
+      {/* 1. Header / hero */}
+      <div className="mb-5 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="nebula-display text-3xl font-bold leading-tight tracking-tight text-ink sm:text-4xl">
+            Your <span className="nb-grad-text">agents</span>
+          </h1>
+          <p className="mt-1 text-sm text-muted">
+            A team of AI specialists, ready to take on whatever you throw at them.
+          </p>
+        </div>
         <button
-          className="glass pressable flex h-10 w-10 items-center justify-center rounded-full text-muted hover:text-ink"
+          className="glass pressable nb-pop flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted hover:text-accent"
           title="Notifications"
           aria-label="Notifications"
         >
@@ -349,7 +356,7 @@ export default function AgentsPage() {
       {!routing && suggested.length > 0 && (
         <div className="mt-2 px-1">
           <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">Could also help</span>
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
+          <div className="nb-stagger mt-1.5 flex flex-wrap gap-1.5">
             {suggested.map((s) => (
               <button
                 key={s.id}
@@ -357,7 +364,7 @@ export default function AgentsPage() {
                 className="ag-chip pressable gap-1.5"
                 title={`Hand this to ${s.name}`}
               >
-                <span className="h-2 w-2 rounded-full" style={{ background: s.color }} />
+                <span className="h-2 w-2 rounded-full animate-pulse-dot" style={{ background: s.color }} />
                 {s.name} · {s.role}
               </button>
             ))}
@@ -374,8 +381,11 @@ export default function AgentsPage() {
       >
         <div className="flex items-start gap-3 px-4 pb-3 pt-4">
           <span
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-xl"
-            style={{ background: CHIEF.color + '22', boxShadow: `0 0 0 1px ${CHIEF.color}33` }}
+            className="nb-breathe flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-xl"
+            style={{
+              background: `linear-gradient(135deg, ${CHIEF.color}3a, ${CHIEF.color}12)`,
+              boxShadow: `0 0 0 1px ${CHIEF.color}38, inset 0 1px 0 ${CHIEF.color}22`,
+            }}
           >
             {intro.emoji}
           </span>
@@ -397,7 +407,7 @@ export default function AgentsPage() {
           <div className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-muted">
             <Users size={12} /> Set up a team
           </div>
-          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 no-scrollbar">
+          <div className="nb-stagger -mx-1 flex gap-2 overflow-x-auto px-1 pb-1 no-scrollbar">
             {STARTER_PACKS.map((p) => (
               <button
                 key={p.id}
@@ -450,7 +460,7 @@ export default function AgentsPage() {
 
       {feedTab === 'mine' ? (
         threads.length ? (
-          <motion.div variants={container} initial="hidden" animate="show" className="flex flex-col gap-2">
+          <motion.div variants={container} initial="hidden" animate="show" className="nb-stagger flex flex-col gap-2">
             {threads.map((t) => (
               <motion.button
                 key={t.id}
@@ -510,15 +520,15 @@ export default function AgentsPage() {
 
       {/* 5. Agent roster */}
       <div className="mb-2 mt-7 flex items-center justify-between px-1">
-        <h2 className="text-base font-bold text-ink">Your agents</h2>
+        <h2 className="nebula-display text-lg font-bold text-ink">Your roster</h2>
         <button
           onClick={() => {
             haptic('light')
             setPickerOpen(true)
           }}
-          className="pressable flex items-center gap-1 rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-ink hover:bg-card"
+          className="pressable accent-gradient-bg flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold"
         >
-          <Plus size={13} /> New agent
+          <Plus size={14} strokeWidth={2.5} /> New agent
         </button>
       </div>
       {agents.length > 4 && (
@@ -532,7 +542,7 @@ export default function AgentsPage() {
           />
         </div>
       )}
-      <motion.div variants={container} initial="hidden" animate="show" className="flex flex-col gap-2">
+      <motion.div variants={container} initial="hidden" animate="show" className="nb-stagger flex flex-col gap-2">
         {agents
           .filter((a) =>
             `${a.name} ${a.role}`.toLowerCase().includes(rosterQuery.trim().toLowerCase()),
@@ -547,12 +557,12 @@ export default function AgentsPage() {
             <AgentBubble agent={a} size={42} />
             <span className="min-w-0 flex-1">
               <span className="flex items-center gap-2">
-                <span className="truncate font-semibold text-ink">{a.name}</span>
+                <span className="nebula-display truncate font-bold text-ink">{a.name}</span>
                 <StatusPill status={a.status} />
               </span>
               <span className="block truncate text-sm text-muted">{a.role}</span>
             </span>
-            <ChevronRight size={18} className="shrink-0 text-muted" />
+            <ChevronRight size={18} className="shrink-0 text-muted transition-transform group-hover:translate-x-0.5" />
           </motion.button>
         ))}
       </motion.div>
@@ -591,9 +601,11 @@ export default function AgentsPage() {
 
 function EmptyFeed({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
   return (
-    <div className="glass flex flex-col items-center gap-1.5 rounded-2xl px-4 py-8 text-center">
-      {icon}
-      <p className="text-sm font-semibold text-ink">{title}</p>
+    <div className="glass nb-in flex flex-col items-center gap-2 rounded-2xl px-4 py-9 text-center">
+      <span className="nb-float flex h-12 w-12 items-center justify-center rounded-2xl bg-accent/10">
+        {icon}
+      </span>
+      <p className="nebula-display text-sm font-bold text-ink">{title}</p>
       <p className="max-w-xs text-xs text-muted">{body}</p>
     </div>
   )
@@ -674,7 +686,7 @@ function NewAgentSheet({
             <div className="mx-auto mt-2 h-1.5 w-10 shrink-0 rounded-full bg-[rgb(var(--muted)/0.4)] sm:hidden" />
             {/* Header */}
             <div className="flex items-center justify-between px-5 pb-3 pt-3">
-              <h2 className="text-lg font-bold text-ink">New agent</h2>
+              <h2 className="nebula-display text-lg font-bold text-ink">New agent</h2>
               <button
                 onClick={onClose}
                 className="pressable flex h-9 w-9 items-center justify-center rounded-full text-muted hover:bg-card hover:text-ink"
@@ -728,7 +740,7 @@ function NewAgentSheet({
                 </div>
                 {/* Template grid */}
                 <div className="min-h-0 flex-1 overflow-y-auto px-5 py-3 pb-[max(env(safe-area-inset-bottom),1rem)]">
-                  <div className="ag-tpl-grid">
+                  <div className="ag-tpl-grid nb-stagger">
                     {results.map((t) => (
                       <button
                         key={t.id}
@@ -737,13 +749,16 @@ function NewAgentSheet({
                       >
                         <div className="flex items-center gap-2.5">
                           <span
-                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg"
-                            style={{ background: t.color + '22', boxShadow: `0 0 0 1px ${t.color}33` }}
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] text-lg"
+                            style={{
+                              background: `linear-gradient(135deg, ${t.color}3a, ${t.color}12)`,
+                              boxShadow: `0 0 0 1px ${t.color}38, inset 0 1px 0 ${t.color}22`,
+                            }}
                           >
                             {t.emoji}
                           </span>
                           <div className="min-w-0">
-                            <div className="truncate text-sm font-bold text-ink">{t.name}</div>
+                            <div className="nebula-display truncate text-sm font-bold text-ink">{t.name}</div>
                             <div className="truncate text-xs text-muted">{t.role}</div>
                           </div>
                         </div>

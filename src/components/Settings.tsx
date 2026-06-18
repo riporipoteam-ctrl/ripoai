@@ -305,32 +305,6 @@ export default function Settings() {
                 </div>
               </Field>
 
-              <Field label="Theme style">
-                <div className="flex gap-2">
-                  {[
-                    { v: 'nebula', label: 'Nebula', sw: ['#c52dd1', '#7c3aed'] },
-                    { v: 'chatgpt', label: 'Black & White', sw: ['#ffffff', '#0d0d0d'] },
-                    { v: 'claude', label: 'Orange', sw: ['#f4f2eb', '#d97757'] },
-                  ].map((o) => (
-                    <button
-                      key={o.v}
-                      onClick={() => updateSettings({ uiTheme: o.v as any })}
-                      className={`flex flex-1 items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-semibold transition ${
-                        (settings.uiTheme ?? 'nebula') === o.v
-                          ? 'border-accent bg-accent/10 text-ink'
-                          : 'border-white/10 text-muted hover:bg-white/5'
-                      }`}
-                    >
-                      <span className="flex">
-                        <span className="h-4 w-4 rounded-l-full border border-black/10" style={{ background: o.sw[0] }} />
-                        <span className="h-4 w-4 rounded-r-full" style={{ background: o.sw[1] }} />
-                      </span>
-                      {o.label}
-                    </button>
-                  ))}
-                </div>
-              </Field>
-
               <Field label="Appearance">
                 <div className="flex gap-2">
                   {[
