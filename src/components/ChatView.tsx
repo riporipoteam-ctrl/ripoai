@@ -359,22 +359,28 @@ export default function ChatView() {
             }`}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.96 }}
+              initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.3, ease: 'easeOut' }}
-              className="home-mark relative"
+              transition={{ type: 'spring', stiffness: 240, damping: 16 }}
+              className="home-mark nb-orb nb-orb-ring relative flex h-16 w-16 items-center justify-center rounded-[20px] text-white"
             >
-              <Logo size={48} variant="icon" />
+              <Sparkles size={30} className="nb-breathe" />
             </motion.div>
             <motion.h1
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.06, duration: 0.3 }}
-              className="mt-5 text-center text-[1.5rem] font-semibold leading-tight tracking-tight sm:text-[1.8rem]"
+              className="nebula-display mt-5 text-center text-[1.6rem] font-bold leading-tight tracking-tight sm:text-[2rem]"
             >
               {(() => {
                 const name = (settings.displayName || user?.displayName || '').split(' ')[0]
-                return name ? `${name}, ${t('What are we making?')}` : t('What can I help with?')
+                return name ? (
+                  <>
+                    {name}, <span className="nb-grad-text">{t('What are we making?')}</span>
+                  </>
+                ) : (
+                  <span className="nb-grad-text">{t('What can I help with?')}</span>
+                )
               })()}
             </motion.h1>
           </div>

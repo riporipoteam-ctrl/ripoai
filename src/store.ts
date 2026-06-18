@@ -39,34 +39,14 @@ export function applyAppearance(s: UserSettings) {
   } catch {
     /* ignore */
   }
-  // Visual palette: Nebula (magenta→violet, default) vs ChatGPT (mono) vs Claude.
-  const ui = s.uiTheme ?? 'nebula'
-  root.classList.toggle('ui-claude', ui === 'claude')
-  root.classList.toggle('ui-nebula', ui === 'nebula')
-  try {
-    localStorage.setItem('ripoai-ui', ui)
-  } catch {
-    /* ignore */
-  }
-  let accent: string
-  let accentInk: string
-  let accentSoft: string | undefined
-  if (ui === 'nebula') {
-    // Fuchsia → violet on a warm-paper canvas. accent-soft drives the gradient.
-    accent = dark ? '#d96eea' : '#c52dd1'
-    accentSoft = dark ? '#a78bfa' : '#7c3aed'
-    accentInk = '#ffffff'
-  } else if (ui === 'claude') {
-    accent = '#d97757'
-    accentInk = '#ffffff'
-  } else {
-    // Black & white: accent flips with light/dark so buttons/links stay mono.
-    accent = dark ? '#f2f2f2' : '#1a1a1a'
-    accentInk = dark ? '#1a1a1a' : '#ffffff'
-  }
+  // Single baked-in identity: a fuchsia→violet "Nebula" accent on warm paper.
+  // (No palette switcher anymore — this is the only UI.) The accent-soft tone
+  // drives the gradient end-stop and flips slightly brighter in dark mode.
+  const accent = dark ? '#d96eea' : '#c52dd1'
+  const accentSoft = dark ? '#a78bfa' : '#7c3aed'
   root.style.setProperty('--accent', hexToRgb(accent))
-  root.style.setProperty('--accent-soft', hexToRgb(accentSoft ?? accent))
-  root.style.setProperty('--accent-ink', hexToRgb(accentInk))
+  root.style.setProperty('--accent-soft', hexToRgb(accentSoft))
+  root.style.setProperty('--accent-ink', hexToRgb('#ffffff'))
   root.style.setProperty('--glass-blur', `${s.glassIntensity}px`)
   root.style.fontSize = `${Math.round(16 * (s.fontScale || 1))}px`
 }

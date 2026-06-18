@@ -104,9 +104,10 @@ export default function App() {
 
   return (
     <>
-      {/* No decorative aurora — the ChatGPT shell is a flat neutral surface on
-          every platform (the prebuilt native skin painted a purple gradient
-          here, so we simply don't render it). */}
+      {/* Ambient nebula-mesh backdrop — a calm, slowly-drifting magenta/violet
+          wash behind the whole app (styled in nebula.css; subtle + reduced-motion
+          safe). */}
+      <div className="aurora" aria-hidden />
       <div className="relative z-10 h-full">
         <Routes>
           <Route

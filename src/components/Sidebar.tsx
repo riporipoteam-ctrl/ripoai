@@ -139,11 +139,13 @@ export default function Sidebar() {
           >
             {/* Header */}
             <div className="flex items-center justify-between px-3 pb-2 pt-3">
-              <div className="flex items-center gap-2">
-                <div className="overflow-hidden rounded-lg">
-                  <Logo size={28} variant="icon" />
+              <div className="flex items-center gap-2.5">
+                <div className="accent-gradient-bg flex h-9 w-9 items-center justify-center overflow-hidden rounded-[14px] shadow-glow">
+                  <Logo size={22} variant="icon" />
                 </div>
-                <span className="text-[1.05rem] font-semibold tracking-tight">AskAI</span>
+                <span className="nebula-display text-[1.18rem] font-bold tracking-tight text-ink">
+                  Ask<span className="nb-grad-text">AI</span>
+                </span>
               </div>
               <button
                 onClick={() => setSidebar(false)}
@@ -161,7 +163,7 @@ export default function Sidebar() {
                   navigate('/chat')
                   if (isMobile) setSidebar(false)
                 }}
-                className="cg-newchat pressable"
+                className="accent-gradient-bg pressable flex w-full items-center justify-center gap-2 rounded-[18px] px-4 py-2.5 text-sm font-semibold text-white"
               >
                 <PenSquare size={16} /> {t('New chat')}
               </button>
@@ -177,7 +179,7 @@ export default function Sidebar() {
               </div>
 
               {/* Navigation cluster */}
-              <div className="space-y-0.5">
+              <div className="nb-stagger space-y-1">
                 {(() => {
                   const NavItem = ({
                     icon,
@@ -200,9 +202,18 @@ export default function Sidebar() {
                         else if (to) navigate(to)
                         if (isMobile) setSidebar(false)
                       }}
-                      className={`cg-row pressable ${active ? 'is-active' : ''}`}
+                      className={`pressable relative flex w-full items-center gap-2.5 rounded-2xl px-3 py-2.5 text-[15px] font-medium transition ${
+                        active
+                          ? 'bg-accent/12 text-ink'
+                          : 'text-muted hover:bg-[rgb(var(--ink)/0.05)] hover:text-ink'
+                      }`}
                     >
-                      <span className="cg-row-icon">{icon}</span>
+                      {active && (
+                        <span className="accent-gradient-bg absolute left-1 top-1/2 h-5 w-1 -translate-y-1/2 rounded-full" />
+                      )}
+                      <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl ${active ? 'bg-accent/15 text-accent' : 'text-muted'}`}>
+                        {icon}
+                      </span>
                       <span className="flex-1 text-left">{label}</span>
                       {trailing}
                     </button>
