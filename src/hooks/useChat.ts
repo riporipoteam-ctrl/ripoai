@@ -12,7 +12,7 @@ import { MAX_IMAGES_PER_MESSAGE } from '../lib/files'
 import { earnFromChat, tryImageGen } from '../lib/plus'
 import { wantsSlides, generateDeck } from '../lib/slides'
 import { wantsAppBuild, newApp, saveApp, buildAppFiles, titleFor, guessKind } from '../lib/agentApps'
-import { scheduleFromGoal, requestedSpecialists } from '../lib/orchestrator'
+import { scheduleFromGoal, requestedSpecialists, agentHello } from '../lib/orchestrator'
 import { untilLabel } from '../lib/jobs'
 import { getModel, resolveAutoModel, DEFAULT_MODEL, type ModelTier } from '../lib/models'
 import { buildSystemPrompt, buildAgentSystemPrompt, AGENT_SYSTEM, WEB3D_INSTRUCTIONS, wantsWebsite, wants3D, needsDeepThinking } from '../lib/prompt'
@@ -20,7 +20,7 @@ import { getAgent, agentCanBrowse, agentWantsBrowse, type Agent } from '../lib/a
 import { extractSocialImages, buildSocialPrompt } from '../lib/social'
 import { searchModel, shouldAutoSearch } from '../lib/search'
 import { liveSearchContext } from '../lib/liveSearch'
-import { looksLikeAgentRequest } from '../lib/agents'
+import { looksLikeAgentRequest, ASKAI_LEAD } from '../lib/agents'
 import { searchWebImages, wantsWebImageSearch, webImageQuery } from '../lib/webImages'
 import { runAgentBrowserTask, type AgentBrowserEvent, type AgentBrowserState } from '../lib/agentBrowser'
 import { extractMemories } from '../lib/memory'
@@ -291,6 +291,8 @@ export function useChat(chatId: string | undefined) {
       }
 
       // Create an agent from chat: "make an agent named Leon that researches…"
+      // AskAI confirms (with the hiring animation) and the NEW agent greets the
+      // user in its own bubble, right here in the current chat — Nebula style.
       if (
         !opts.image &&
         !opts.systemOverride &&
@@ -298,36 +300,89 @@ export function useChat(chatId: string | undefined) {
         looksLikeAgentRequest(lastUser?.content ?? '')
       ) {
         const desc = (lastUser?.content ?? '').trim()
-        const assistantId = uid4()
+        const leadMsgId = uid4()
         setMessages((m) => [
           ...m,
-          { id: assistantId, role: 'assistant', content: '🎨 Designing your agent…', model: opts.model, createdAt: Date.now() },
+          {
+            id: leadMsgId,
+            role: 'assistant',
+            content: '🛠️ On it — designing your new agent…',
+            model: opts.model,
+            agentId: ASKAI_LEAD.id,
+            agentName: ASKAI_LEAD.name,
+            agentEmoji: ASKAI_LEAD.emoji,
+            agentColor: ASKAI_LEAD.color,
+            createdAt: Date.now(),
+          } as StoredMessage,
         ])
         setStreaming(true)
-        let finalMsgs: StoredMessage[] = []
+        let finalMsgs: StoredMessage[] = history
         try {
           const { aiDesignAgent, upsertAgent } = await import('../lib/agents')
           const agent = await aiDesignAgent(desc)
           upsertAgent(user.uid, agent)
+          window.dispatchEvent(new Event('askai-agents-changed'))
           const skills = agent.skills?.length ? ` Great at ${agent.skills.slice(0, 3).join(', ')}.` : ''
-          setMessages((m) => {
-            finalMsgs = m.map((x) =>
-              x.id === assistantId
-                ? {
-                    ...x,
-                    content: `✅ Meet **${agent.name}** — your ${agent.role}.${skills} I painted a profile picture and added them to your team. Pick them in chat or **@${agent.name}** to dispatch them.`,
-                  }
-                : x,
+          // A short, in-character hello from the brand-new agent.
+          let hello = ''
+          try {
+            hello = await complete(
+              'llama-3.3-70b-versatile',
+              [
+                {
+                  role: 'system',
+                  content: `You are ${agent.name}, a ${agent.role}. ${agent.personality} Introduce yourself to the user in ONE short, warm, first-person sentence — say hi and what you'll help with. No markdown, no quotes.`,
+                },
+                { role: 'user', content: 'Say hi to the user.' },
+              ],
+              { temperature: 0.7, maxTokens: 80 },
             )
-            return finalMsgs
-          })
+          } catch {
+            /* fall back to a templated hello */
+          }
+          if (!hello.trim()) hello = agentHello(agent)
+
+          const leadMsg: StoredMessage = {
+            id: leadMsgId,
+            role: 'assistant',
+            content: `✅ Meet **${agent.name}** — your ${agent.role}.${skills} They've joined your team and are saying hi 👇`,
+            model: opts.model,
+            agentId: ASKAI_LEAD.id,
+            agentName: ASKAI_LEAD.name,
+            agentEmoji: ASKAI_LEAD.emoji,
+            agentColor: ASKAI_LEAD.color,
+            callingAgents: [{ name: agent.name, role: agent.role, emoji: agent.emoji, color: agent.color }],
+            createdAt: Date.now(),
+          } as StoredMessage
+          const helloMsg: StoredMessage = {
+            id: uid4(),
+            role: 'assistant',
+            content: hello.trim(),
+            model: opts.model,
+            agentId: agent.id,
+            agentName: agent.name,
+            agentEmoji: agent.emoji,
+            agentColor: agent.color,
+            createdAt: Date.now() + 1,
+          } as StoredMessage
+          finalMsgs = [...history, leadMsg, helloMsg]
+          setMessages(finalMsgs)
         } catch {
-          setMessages((m) => {
-            finalMsgs = m.map((x) =>
-              x.id === assistantId ? { ...x, content: "I couldn't create that agent — try rephrasing." } : x,
-            )
-            return finalMsgs
-          })
+          finalMsgs = [
+            ...history,
+            {
+              id: leadMsgId,
+              role: 'assistant',
+              content: "I couldn't create that agent — try rephrasing (e.g. \"make an agent that researches competitors\").",
+              model: opts.model,
+              agentId: ASKAI_LEAD.id,
+              agentName: ASKAI_LEAD.name,
+              agentEmoji: ASKAI_LEAD.emoji,
+              agentColor: ASKAI_LEAD.color,
+              createdAt: Date.now(),
+            } as StoredMessage,
+          ]
+          setMessages(finalMsgs)
         }
         setStreaming(false)
         if (titleRef.current === 'New chat') titleRef.current = 'New agent'
