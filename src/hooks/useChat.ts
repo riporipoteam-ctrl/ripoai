@@ -326,17 +326,20 @@ export function useChat(chatId: string | undefined) {
           // A short, in-character hello from the brand-new agent.
           let hello = ''
           try {
-            hello = await complete(
-              'llama-3.3-70b-versatile',
-              [
-                {
-                  role: 'system',
-                  content: `You are ${agent.name}, a ${agent.role}. ${agent.personality} Introduce yourself to the user in ONE short, warm, first-person sentence — say hi and what you'll help with. No markdown, no quotes.`,
-                },
-                { role: 'user', content: 'Say hi to the user.' },
-              ],
-              { temperature: 0.7, maxTokens: 80 },
-            )
+            hello = await Promise.race([
+              complete(
+                'llama-3.3-70b-versatile',
+                [
+                  {
+                    role: 'system',
+                    content: `You are ${agent.name}, a ${agent.role}. ${agent.personality} Introduce yourself to the user in ONE short, warm, first-person sentence — say hi and what you'll help with. No markdown, no quotes.`,
+                  },
+                  { role: 'user', content: 'Say hi to the user.' },
+                ],
+                { temperature: 0.7, maxTokens: 80 },
+              ),
+              new Promise<string>((_, rej) => setTimeout(() => rej(new Error('timeout')), 12000)),
+            ])
           } catch {
             /* fall back to a templated hello */
           }
