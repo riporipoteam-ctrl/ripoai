@@ -18,11 +18,13 @@ import {
 import { useStore } from '../store'
 import { isNative } from '../lib/native'
 import { watchConversations, watchFriends, type Conversation, type UserProfile } from '../lib/friends'
+import WorldCup from '../components/WorldCup'
 
 const CARDS = [
   { to: '/agents', label: 'Agents', desc: 'Your AI team & Chief of Staff', icon: Bot },
+  { to: '/messages', label: 'Messages', desc: 'Chat, voice & video call friends', icon: MessageSquare },
   { to: '/jobs', label: 'Jobs', desc: 'Scheduled, recurring tasks', icon: CalendarClock },
-  { to: '/friends', label: 'Friends', desc: 'Chat, voice & video call', icon: Users },
+  { to: '/friends', label: 'Friends', desc: 'Find & add people', icon: Users },
   { to: '/apps', label: 'Apps', desc: 'Websites & apps agents build', icon: AppWindow },
 ]
 
@@ -104,13 +106,18 @@ export default function HomeLanding() {
         ))}
       </div>
 
+      {/* World Cup 2026 — live scores + fixtures */}
+      <div className="mb-7">
+        <WorldCup />
+      </div>
+
       {/* Messages */}
       {user && (
         <div className="mb-6">
           <div className="mb-2.5 flex items-center justify-between">
             <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-muted">Messages</h2>
-            <button onClick={() => navigate('/friends')} className="text-xs font-bold text-accent hover:underline">
-              Friends
+            <button onClick={() => navigate('/messages')} className="text-xs font-bold text-accent hover:underline">
+              Open
             </button>
           </div>
           {convs.length === 0 && (

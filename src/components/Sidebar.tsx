@@ -257,6 +257,12 @@ export default function Sidebar() {
                       />
                       <NavItem
                         icon={<MessageSquare size={17} />}
+                        label={t('Messages')}
+                        to="/messages"
+                        active={path === '/messages' || path.startsWith('/dm/')}
+                      />
+                      <NavItem
+                        icon={<Users size={17} />}
                         label={t('Friends')}
                         to="/friends"
                         active={path === '/friends'}

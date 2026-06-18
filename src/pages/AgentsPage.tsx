@@ -15,7 +15,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Bell,
   ArrowUp,
   Sparkles,
   Plus,
@@ -292,22 +291,13 @@ export default function AgentsPage() {
   return (
     <div className="ag-page nb-page mx-auto h-full w-full max-w-2xl overflow-y-auto px-4 pt-5 sm:pt-6">
       {/* 1. Header / hero */}
-      <div className="mb-5 flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="nebula-display text-3xl font-bold leading-tight tracking-tight text-ink sm:text-4xl">
-            Your <span className="nb-grad-text">agents</span>
-          </h1>
-          <p className="mt-1 text-sm text-muted">
-            A team of AI specialists, ready to take on whatever you throw at them.
-          </p>
-        </div>
-        <button
-          className="glass pressable nb-pop flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-muted hover:text-accent"
-          title="Notifications"
-          aria-label="Notifications"
-        >
-          <Bell size={18} />
-        </button>
+      <div className="mb-5 min-w-0">
+        <h1 className="nebula-display text-3xl font-bold leading-tight tracking-tight text-ink sm:text-4xl">
+          Your <span className="nb-grad-text">agents</span>
+        </h1>
+        <p className="mt-1 text-sm text-muted">
+          A team of AI specialists, ready to take on whatever you throw at them.
+        </p>
       </div>
 
       {/* 2. Composer — "What should your agents do?" */}

@@ -78,8 +78,29 @@ export async function publishProfile(u: {
 
 function toProfile(data: any, uid: string): UserProfile | null {
   const p = data?.profile
-  if (!p) return null
-  return { uid, name: p.name || 'User', handle: p.handle || '', photoURL: p.photoURL || undefined }
+  if (p && (p.name || p.handle)) {
+    return { uid, name: p.name || 'User', handle: p.handle || '', photoURL: p.photoURL || undefined }
+  }
+  // Fallback: many accounts have a `settings` doc but never published a
+  // `profile` (e.g. signed up before profiles existed). Any signed-in user can
+  // read another user's doc (see firestore.rules), so synthesize a profile from
+  // their settings — this is what makes EVERY AskAI account discoverable.
+  const s = data?.settings
+  if (s && (s.displayName || s.avatar)) {
+    const name = (s.displayName || '').trim() || 'AskAI user'
+    return {
+      uid,
+      name,
+      handle: name.toLowerCase().replace(/[^a-z0-9._-]/g, '').slice(0, 30) || uid.slice(0, 8).toLowerCase(),
+      photoURL: s.avatar || undefined,
+    }
+  }
+  // Last resort: a real account doc with no name yet — still show it so nobody
+  // is invisible in search/suggestions.
+  if (data && (data.settings || data.updatedAt || data.profile)) {
+    return { uid, name: 'AskAI user', handle: uid.slice(0, 8).toLowerCase() }
+  }
+  return null
 }
 
 /** Fetch every published user profile (excluding self). This is the source of
