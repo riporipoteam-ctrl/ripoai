@@ -1,0 +1,205 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   NEBULA THEME — a full visual redesign inspired by nebula.gg.
+   Loaded LAST so it owns the final look. Warm "paper" surfaces, a magenta→
+   violet accent gradient, rounded-square agent avatars with a live green dot,
+   roomy cards, a floating pill composer and richer, springy motion.
+   Everything is driven by the existing CSS-variable tokens + shared component
+   classes, so the whole app reskins at once without touching feature code.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── Design tokens ──────────────────────────────────────────────────────── */
+.ui-nebula {
+  --accent: 197 45 209;        /* fuchsia  */
+  --accent-soft: 124 58 237;   /* violet   */
+  --accent-ink: 255 255 255;
+  --surface: 245 243 238;      /* warm paper */
+  --surface-raised: 255 255 255;
+  --card: 255 255 255;
+  --line: 230 226 218;
+  --ink: 26 23 33;
+  --muted: 122 116 112;
+  --glass-bg: 255 255 255;
+  --glass-border: 255 255 255;
+  --page-grad-1: 246 233 244;
+  --page-grad-2: 244 240 250;
+  --page-grad-3: 238 235 248;
+  --orb-1: 197 45 209;
+  --orb-2: 124 58 237;
+  --orb-3: 168 85 247;
+  --orb-alpha: 0.16;
+  --nebula-grad: linear-gradient(135deg, #c52dd1 0%, #9333ea 52%, #7c3aed 100%);
+  --nebula-glow: 0 10px 30px -10px rgb(147 51 234 / 0.45);
+  color-scheme: light;
+}
+.dark.ui-nebula {
+  --accent: 217 110 234;
+  --accent-soft: 167 139 250;
+  --accent-ink: 255 255 255;
+  --surface: 20 18 26;
+  --surface-raised: 30 28 38;
+  --card: 33 30 42;
+  --line: 52 48 64;
+  --ink: 237 233 243;
+  --muted: 156 150 166;
+  --glass-bg: 40 36 50;
+  --glass-border: 255 255 255;
+  --page-grad-1: 38 26 48;
+  --page-grad-2: 24 20 32;
+  --page-grad-3: 34 26 46;
+  --orb-alpha: 0.22;
+  --nebula-glow: 0 12px 34px -10px rgb(167 139 250 / 0.5);
+  color-scheme: dark;
+}
+
+/* ── Ambient nebula glow behind everything ─────────────────────────────── */
+.ui-nebula .aurora::before {
+  background:
+    radial-gradient(60% 50% at 18% -8%, rgb(var(--orb-1) / var(--orb-alpha)), transparent 60%),
+    radial-gradient(55% 45% at 100% 0%, rgb(var(--orb-2) / var(--orb-alpha)), transparent 60%),
+    radial-gradient(70% 60% at 50% 120%, rgb(var(--orb-3) / calc(var(--orb-alpha) * 0.8)), transparent 60%);
+  animation: nebula-drift 22s ease-in-out infinite alternate;
+}
+@keyframes nebula-drift {
+  0%   { transform: translate3d(0, 0, 0) scale(1); }
+  100% { transform: translate3d(0, -2%, 0) scale(1.06); }
+}
+
+/* ── Accent gradient everywhere ────────────────────────────────────────── */
+.ui-nebula .accent-gradient-bg {
+  background: var(--nebula-grad) !important;
+  box-shadow: var(--nebula-glow);
+  border: none;
+}
+.ui-nebula .accent-gradient-bg:hover { filter: brightness(1.05) saturate(1.05); }
+.ui-nebula .user-bubble {
+  background: var(--nebula-grad) !important;
+  box-shadow: var(--nebula-glow);
+}
+.ui-nebula .shimmer-text {
+  background: linear-gradient(90deg, rgb(var(--accent)), rgb(var(--accent-soft)), rgb(var(--accent)));
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 2.4s linear infinite;
+}
+
+/* ── Agent / assistant avatars: rounded-square with a live green dot ────── */
+.ui-nebula .assistant-avatar { position: relative; }
+.ui-nebula .assistant-avatar > button,
+.ui-nebula .assistant-avatar > div {
+  border-radius: 12px !important;
+}
+.ui-nebula .assistant-avatar > button > span,
+.ui-nebula .assistant-avatar > div > * {
+  border-radius: 12px !important;
+}
+.ui-nebula .assistant-avatar::after {
+  content: '';
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #22c55e;
+  border: 2px solid rgb(var(--surface));
+  box-shadow: 0 0 0 1px rgb(34 197 94 / 0.4), 0 0 8px rgb(34 197 94 / 0.6);
+  animation: nebula-online 2.4s ease-in-out infinite;
+}
+@keyframes nebula-online {
+  0%, 100% { box-shadow: 0 0 0 1px rgb(34 197 94 / 0.4), 0 0 6px rgb(34 197 94 / 0.5); }
+  50%      { box-shadow: 0 0 0 2px rgb(34 197 94 / 0.25), 0 0 12px rgb(34 197 94 / 0.8); }
+}
+
+/* ── Cards: softer, rounder, with a springy hover lift ─────────────────── */
+.ui-nebula .ag-card,
+.ui-nebula .glass,
+.ui-nebula .glass-strong {
+  border-radius: 18px;
+  border: 1px solid rgb(var(--line));
+  background: rgb(var(--card));
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease, border-color 0.22s ease;
+}
+.ui-nebula .ag-card.pressable:hover {
+  transform: translateY(-3px);
+  border-color: rgb(var(--accent) / 0.4);
+  box-shadow: 0 16px 32px -20px rgb(var(--accent) / 0.6);
+}
+.ui-nebula .glass-strong {
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  box-shadow: 0 24px 60px -28px rgb(var(--ink) / 0.5);
+}
+
+/* ── Floating pill composer ────────────────────────────────────────────── */
+.ui-nebula .composer-shell,
+.ui-nebula .floating-composer {
+  border-radius: 26px;
+  border: 1px solid rgb(var(--line));
+  background: rgb(var(--surface-raised));
+  box-shadow: 0 18px 44px -26px rgb(var(--ink) / 0.5), 0 0 0 1px rgb(var(--accent) / 0.04);
+  transition: border-color 0.22s ease, box-shadow 0.22s ease;
+}
+.ui-nebula .composer-shell:focus-within,
+.ui-nebula .floating-composer:focus-within {
+  border-color: rgb(var(--accent) / 0.5);
+  box-shadow: 0 18px 44px -24px rgb(var(--accent) / 0.5), 0 0 0 4px rgb(var(--accent) / 0.12);
+}
+
+/* ── Action pill under answers ─────────────────────────────────────────── */
+.ui-nebula .action-pill {
+  border-radius: 999px;
+  border-color: rgb(var(--line));
+  background: rgb(var(--surface-raised) / 0.7);
+}
+
+/* ── Pressable micro-interaction ───────────────────────────────────────── */
+.ui-nebula .pressable { transition: transform 0.12s ease, background 0.18s ease, color 0.18s ease; }
+.ui-nebula .pressable:active { transform: scale(0.96); }
+
+/* ── Headings get the display font + a touch of weight ─────────────────── */
+.ui-nebula .font-display { letter-spacing: -0.02em; }
+
+/* ── Markdown tables (research results look clean, like Nebula) ────────── */
+.ui-nebula .prose-ripo table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 0.9em 0;
+  border: 1px solid rgb(var(--line));
+  border-radius: 14px;
+  overflow: hidden;
+  font-size: 0.9rem;
+}
+.ui-nebula .prose-ripo thead { background: rgb(var(--accent) / 0.08); }
+.ui-nebula .prose-ripo th,
+.ui-nebula .prose-ripo td {
+  text-align: left;
+  padding: 0.55rem 0.8rem;
+  border-bottom: 1px solid rgb(var(--line));
+}
+.ui-nebula .prose-ripo th { font-weight: 700; color: rgb(var(--ink)); }
+.ui-nebula .prose-ripo tbody tr:last-child td { border-bottom: none; }
+.ui-nebula .prose-ripo tbody tr:nth-child(even) { background: rgb(var(--ink) / 0.025); }
+
+/* ── Scrollbar in the accent tint ──────────────────────────────────────── */
+.ui-nebula ::-webkit-scrollbar-thumb { background: rgb(var(--accent) / 0.28); background-clip: content-box; }
+.ui-nebula ::-webkit-scrollbar-thumb:hover { background: rgb(var(--accent) / 0.5); background-clip: content-box; }
+
+/* ── Message entrance gets a hair more lift in Nebula ──────────────────── */
+.ui-nebula .assistant-message-row,
+.ui-nebula .user-message-row { animation: nebula-msg-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes nebula-msg-in {
+  0%   { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Calm everything down for reduced-motion users ─────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .ui-nebula .aurora::before,
+  .ui-nebula .assistant-avatar::after,
+  .ui-nebula .shimmer-text,
+  .ui-nebula .assistant-message-row,
+  .ui-nebula .user-message-row { animation: none; }
+}

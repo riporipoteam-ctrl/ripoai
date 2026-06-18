@@ -118,8 +118,8 @@ export interface UserSettings {
   /** Custom profile picture (data URL). */
   avatar?: string
   theme: 'light' | 'dark' | 'system'
-  /** Visual palette: 'chatgpt' (neutral, default) or 'claude' (warm). */
-  uiTheme?: 'chatgpt' | 'claude'
+  /** Visual palette: 'nebula' (magenta→violet, default), 'chatgpt' (mono) or 'claude' (warm). */
+  uiTheme?: 'nebula' | 'chatgpt' | 'claude'
   accent: string
   glassIntensity: number
   fontScale: number
@@ -136,8 +136,8 @@ export interface UserSettings {
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
-  theme: 'system',
-  uiTheme: 'chatgpt',
+  theme: 'light',
+  uiTheme: 'nebula',
   accent: '#d97757',
   glassIntensity: 22,
   fontScale: 1,

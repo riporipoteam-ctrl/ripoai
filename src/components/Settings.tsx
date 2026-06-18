@@ -308,6 +308,7 @@ export default function Settings() {
               <Field label="Theme style">
                 <div className="flex gap-2">
                   {[
+                    { v: 'nebula', label: 'Nebula', sw: ['#c52dd1', '#7c3aed'] },
                     { v: 'chatgpt', label: 'Black & White', sw: ['#ffffff', '#0d0d0d'] },
                     { v: 'claude', label: 'Orange', sw: ['#f4f2eb', '#d97757'] },
                   ].map((o) => (
@@ -315,7 +316,7 @@ export default function Settings() {
                       key={o.v}
                       onClick={() => updateSettings({ uiTheme: o.v as any })}
                       className={`flex flex-1 items-center justify-center gap-2 rounded-2xl border py-3 text-sm font-semibold transition ${
-                        (settings.uiTheme ?? 'chatgpt') === o.v
+                        (settings.uiTheme ?? 'nebula') === o.v
                           ? 'border-accent bg-accent/10 text-ink'
                           : 'border-white/10 text-muted hover:bg-white/5'
                       }`}
