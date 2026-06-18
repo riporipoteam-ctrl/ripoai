@@ -72,12 +72,10 @@ export const STARTING_TEAM: TeamRole[] = [
   },
 ]
 
-/** Look up a default agent definition (DEFAULT_AGENTS + EXTRA_AGENTS) by id. */
-function defaultAgentById(id: string): Agent | undefined {
+/** Look up a built-in agent definition (DEFAULT_AGENTS + EXTRA_AGENTS) by id. */
+export function defaultAgentById(id: string): Agent | undefined {
   return [...DEFAULT_AGENTS, ...EXTRA_AGENTS].find((a) => a.id === id)
 }
-
-const seededKey = (uid: string) => `askai:orchestrator:starting-team:${uid}`
 
 /**
  * Ensure the Builder / Researcher / Writer starting team exists for this user.
@@ -88,26 +86,10 @@ const seededKey = (uid: string) => `askai:orchestrator:starting-team:${uid}`
  * has (or has deliberately deleted after the first run).
  */
 export function ensureStartingTeam(uid: string): void {
+  // No longer auto-seeds a team — accounts start with just the AskAI lead and
+  // the user builds their team via onboarding or by asking AskAI. We only make
+  // sure the lead exists (loadAgents already guarantees this).
   if (!uid) return
-  try {
-    if (localStorage.getItem(seededKey(uid))) return
-  } catch {
-    /* localStorage unavailable — treat as not seeded, still guard below */
-  }
-
-  const existing = loadAgents(uid)
-  const have = new Set(existing.map((a) => a.id))
-  for (const role of STARTING_TEAM) {
-    if (have.has(role.agentId)) continue
-    const def = defaultAgentById(role.agentId)
-    if (def) upsertAgent(uid, { ...def })
-  }
-
-  try {
-    localStorage.setItem(seededKey(uid), '1')
-  } catch {
-    /* ignore — worst case we re-run the idempotent seed */
-  }
 }
 
 export interface ChiefIntro {
@@ -322,11 +304,76 @@ export function requestedSpecialists(uid: string, text: string, leadId = 'bob'):
     if (!m.re.test(t)) continue
     add(getAgent(uid, m.prefer) ?? byRole(list, m.match))
   }
-  // "two agents" / "a couple of agents" with no specifics → top suggestions.
-  if (!picked.length && /\b(two|2|couple|few|some|multiple|several)\b.*\bagents?\b/i.test(t)) {
-    delegationSuggestions(uid, t, leadId).slice(0, 2).forEach(add)
+  // If the user explicitly asked for MORE THAN ONE agent ("two agents", "a
+  // couple of agents", "multiple agents"), make sure we bring in at least two —
+  // topping up from the most relevant teammates when keywords only matched one.
+  const wantsMultiple = /\b(two|three|2|3|couple|few|some|multiple|several|both|a team|agents)\b/i.test(t)
+  if (wantsMultiple) {
+    const target = /\bthree|3\b/.test(t) ? 3 : 2
+    for (const s of delegationSuggestions(uid, t, leadId)) {
+      if (picked.length >= target) break
+      add(s)
+    }
   }
   return picked
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * First-run onboarding — the user picks what they want agents for, then the
+ * Chief of Staff creates a tailored starting team (no pre-seeded agents).
+ * ────────────────────────────────────────────────────────────────────────── */
+
+export interface OnboardingUseCase {
+  id: string
+  label: string
+  emoji: string
+  blurb: string
+  /** Built-in specialist ids hired when this use-case is chosen. */
+  agentIds: string[]
+}
+
+export const ONBOARDING_USECASES: OnboardingUseCase[] = [
+  { id: 'build', label: 'Build products', emoji: '🛠️', blurb: 'Apps, websites, code & QA', agentIds: ['ada', 'iris', 'quinn'] },
+  { id: 'content', label: 'Create content', emoji: '✍️', blurb: 'Posts, articles, scripts, copy', agentIds: ['vera', 'leo'] },
+  { id: 'research', label: 'Research & analyze', emoji: '🔎', blurb: 'Find facts, compare, crunch data', agentIds: ['max', 'nova'] },
+  { id: 'growth', label: 'Grow a business', emoji: '📈', blurb: 'Marketing, SEO, strategy', agentIds: ['leo', 'sage', 'nova'] },
+  { id: 'assistant', label: 'Get organized', emoji: '🗓️', blurb: 'Plan, prioritize, research', agentIds: ['sage', 'max'] },
+]
+
+/** Create the tailored starting team for the chosen use-cases. Returns the
+ *  agents actually created (skips any the user already has). */
+export function createTeamForUseCases(uid: string, useCaseIds: string[]): Agent[] {
+  if (!uid) return []
+  const ids = new Set<string>()
+  for (const uc of ONBOARDING_USECASES) if (useCaseIds.includes(uc.id)) uc.agentIds.forEach((id) => ids.add(id))
+  // Sensible default if nothing was picked.
+  if (!ids.size) ['ada', 'max', 'vera'].forEach((id) => ids.add(id))
+  const have = new Set(loadAgents(uid).map((a) => a.id))
+  const created: Agent[] = []
+  for (const id of ids) {
+    if (have.has(id)) continue
+    const def = defaultAgentById(id)
+    if (!def) continue
+    upsertAgent(uid, { ...def })
+    logActivity(uid, def.id, def.name, 'created', `${def.name} joined as your ${def.role}`)
+    created.push({ ...def })
+  }
+  return created
+}
+
+/** A short, first-person hello an agent posts when it joins the team. */
+export function agentHello(a: Agent): string {
+  const byRole: Record<string, string> = {
+    Engineer: "I'll handle the building — clean, complete, runnable code and shipping real projects.",
+    Designer: "I'll make everything look premium — layout, type, color and tasteful motion.",
+    Researcher: "I'll dig up the facts, compare options and bring back sourced answers.",
+    Writer: "I'll write your posts, emails, scripts and docs — sharp and on-brand.",
+    Marketer: "I'll drive growth — positioning, launches, social and SEO with concrete tactics.",
+    Analyst: "I'll crunch the numbers and turn data into clear takeaways.",
+    'QA Engineer': "I'll hunt edge cases and make sure everything actually works.",
+    Strategist: "I'll turn fuzzy goals into a clear, prioritized plan with next steps.",
+  }
+  return `Hi, I'm ${a.name} — your ${a.role}. ${byRole[a.role] ?? 'Glad to be on the team. Put me to work anytime.'}`
 }
 
 /** Map a goal to a coarse action label (used when an agent is pre-targeted). */

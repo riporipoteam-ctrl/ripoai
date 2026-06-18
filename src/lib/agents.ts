@@ -233,14 +233,22 @@ const key = (uid: string) => `askai:agents:${uid}`
 
 // Bump the version suffix whenever EXTRA_AGENTS grows so the one-time merge runs
 // again and existing users pick up the newly added default specialists.
-const seededKey = (uid: string) => `askai:agents:seeded-extra-v2:${uid}`
+
+/** The head agent (AskAI / Chief of Staff) — the ONLY agent a brand-new account
+ *  starts with. Specialists are created by the user (via onboarding or by asking
+ *  AskAI), never auto-seeded, so accounts don't come pre-stuffed with agents. */
+export const ASKAI_LEAD: Agent = DEFAULT_AGENTS[0]
+
+/** Full catalog of built-in specialists the onboarding / Chief of Staff can hire. */
+export const BUILTIN_SPECIALISTS: Agent[] = [...DEFAULT_AGENTS.slice(1), ...EXTRA_AGENTS]
 
 export function loadAgents(uid: string): Agent[] {
   try {
     const raw = localStorage.getItem(key(uid))
-    if (!raw) return [...DEFAULT_AGENTS, ...EXTRA_AGENTS]
+    // Brand-new account → just the AskAI lead. No pre-seeded team.
+    if (!raw) return [{ ...ASKAI_LEAD }]
     const list = JSON.parse(raw) as Agent[]
-    if (!Array.isArray(list) || !list.length) return [...DEFAULT_AGENTS, ...EXTRA_AGENTS]
+    if (!Array.isArray(list) || !list.length) return [{ ...ASKAI_LEAD }]
     // One-time rename of the old "Bob" Team Lead to the "AskAI" Chief of Staff
     // so existing rosters reflect the head agent's new identity.
     let renamed = false
@@ -251,20 +259,15 @@ export function loadAgents(uid: string): Agent[] {
         renamed = true
       }
     }
-    if (renamed) localStorage.setItem(key(uid), JSON.stringify(list))
-    // One-time merge of the newer specialists for users with a saved roster.
-    // Done once so deleting them afterwards sticks.
-    if (!localStorage.getItem(seededKey(uid))) {
-      const merged = [...list, ...EXTRA_AGENTS.filter((e) => !list.some((a) => a.id === e.id))]
-      localStorage.setItem(seededKey(uid), '1')
-      if (merged.length !== list.length) {
-        localStorage.setItem(key(uid), JSON.stringify(merged))
-        return merged
-      }
+    // Always guarantee the AskAI lead is present (it must exist to delegate).
+    if (!list.some((a) => a.id === 'bob')) {
+      list.unshift({ ...ASKAI_LEAD })
+      renamed = true
     }
+    if (renamed) localStorage.setItem(key(uid), JSON.stringify(list))
     return list
   } catch {
-    return [...DEFAULT_AGENTS, ...EXTRA_AGENTS]
+    return [{ ...ASKAI_LEAD }]
   }
 }
 

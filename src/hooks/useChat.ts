@@ -1386,9 +1386,27 @@ export function useChat(chatId: string | undefined) {
             }
           }
 
+          // Browser came back empty / unavailable / errored → fall back to the
+          // reliable multi-engine search grounding so the specialist still gives a
+          // real, sourced answer instead of a failed browse.
+          let specSearch = ''
+          const browseFailed =
+            specBrowser && (specBrowser.status === 'error' || specBrowser.status === 'unavailable' || (!specBrowser.summary && !specBrowser.sources?.length))
+          if ((browseFailed || (!specBrowser && agentWantsBrowse(lastText))) && !ac.signal.aborted) {
+            try {
+              const ls = await liveSearchContext(lastText)
+              if (ls?.context) specSearch = ls.context
+            } catch {
+              /* ignore */
+            }
+          }
+
           // Build the specialist's persona prompt + any of its own browse findings.
           let specSys = buildAgentSystemPrompt(spec, model, settings, memories)
           specSys += `\n\nThe Chief of Staff (${personaAgent?.name ?? 'AskAI'}) just assigned you this task. Do YOUR part fully and concretely in first person, in your area of expertise — don't re-introduce yourself, get straight to the work. Use Markdown when helpful.`
+          if (specSearch) {
+            specSys += `\n\nYOU just searched the live web — use these results and cite the source URLs inline. Never say you can't browse.\n${specSearch}`
+          }
           if (specBrowser?.summary || specBrowser?.sources?.length) {
             const notes = [
               specBrowser?.summary ? `Findings: ${specBrowser.summary}` : '',
