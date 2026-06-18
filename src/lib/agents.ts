@@ -315,46 +315,66 @@ export function looksLikeAgentRequest(text: string): boolean {
   return /\b(create|make|hire|build|add|spin ?up|give me)\b/.test(l) && /\bagent\b/.test(l)
 }
 
-/** AskAI (head agent) designs a new agent from a plain-English request and
- *  generates a realistic profile picture for it. */
+/** Pick a fitting emoji for a new agent from its role/skills. */
+function emojiForRole(text: string): string {
+  const t = text.toLowerCase()
+  const map: [RegExp, string][] = [
+    [/search|research|find|web|browse|scout/, '🔎'],
+    [/engineer|develop|code|build|program/, '💻'],
+    [/design|ui|ux|brand|visual|art/, '🎨'],
+    [/writ|copy|content|blog|edit/, '✍️'],
+    [/market|growth|ads|seo|social/, '📣'],
+    [/data|analy|metric|finance|number/, '📊'],
+    [/legal|law|compliance/, '⚖️'],
+    [/support|help|customer/, '💬'],
+    [/strateg|plan|product|manage/, '♟️'],
+    [/health|fitness|coach|wellness/, '💪'],
+    [/travel|trip|book/, '✈️'],
+    [/food|recipe|chef|cook/, '🍳'],
+  ]
+  for (const [re, e] of map) if (re.test(t)) return e
+  return randomEmoji()
+}
+
+/** AskAI (head agent) designs a new agent from a plain-English request.
+ *  Fast + reliable: it does ONE short, timeout-guarded model call and never
+ *  blocks on image generation (agents render as an emoji mark), so a created
+ *  agent is always returned and saved — even offline / with no image backend. */
 export async function aiDesignAgent(description: string): Promise<Agent> {
   const { complete } = await import('./groq')
-  const { generateImage } = await import('./imagegen')
   const sys = `You design an AI team agent from the user's request. Reply with ONLY compact JSON, no prose:
-{"name":"<short first name; use the one the user gave, else invent a fitting one — no spaces>","role":"<2-4 word role>","personality":"<2-3 sentences of personality + how it works>","skills":["skill1","skill2","skill3"],"avatar":"<a vivid 1-line image prompt for a friendly, realistic avatar portrait, e.g. 'a friendly golden retriever wearing glasses, studio portrait' or 'a warm smiling young engineer, soft studio light'>"}`
+{"name":"<short first name; use the one the user gave, else invent a fitting one — no spaces>","role":"<2-4 word role>","personality":"<2-3 sentences of personality + how it works>","skills":["skill1","skill2","skill3"]}`
   let obj: any = {}
   try {
-    const out = await complete(
-      'llama-3.3-70b-versatile',
-      [
-        { role: 'system', content: sys },
-        { role: 'user', content: description },
-      ],
-      { temperature: 0.5, maxTokens: 400 },
-    )
+    const out = await Promise.race([
+      complete(
+        'llama-3.3-70b-versatile',
+        [
+          { role: 'system', content: sys },
+          { role: 'user', content: description },
+        ],
+        { temperature: 0.5, maxTokens: 400 },
+      ),
+      new Promise<string>((_, rej) => setTimeout(() => rej(new Error('timeout')), 15000)),
+    ])
     const a = out.indexOf('{')
     const b = out.lastIndexOf('}')
     if (a >= 0 && b >= 0) obj = JSON.parse(out.slice(a, b + 1))
   } catch {
-    /* fall back to defaults below */
+    /* fall back to a sensible default derived from the request */
   }
+  // If the model didn't name it, try to lift a name the user gave ("name it X").
+  const fallbackName = description.match(/\bnamed?\s+(?:it\s+)?([A-Za-z][A-Za-z0-9]{1,20})/i)?.[1]
+  const role = String(obj.role || 'Specialist')
   const agent: Agent = {
     id: crypto.randomUUID(),
-    name: String(obj.name || 'Nova').replace(/\s+/g, ''),
-    emoji: '🤖',
-    role: String(obj.role || 'Specialist'),
-    personality: String(obj.personality || 'A capable, friendly AI specialist.'),
+    name: String(obj.name || fallbackName || 'Nova').replace(/\s+/g, '').slice(0, 24),
+    emoji: emojiForRole(`${role} ${(obj.skills || []).join(' ')} ${description}`),
+    role,
+    personality: String(obj.personality || 'A capable, friendly AI specialist who gets straight to useful work.'),
     color: randomColor(),
-    skills: Array.isArray(obj.skills) ? obj.skills.map(String) : [],
+    skills: Array.isArray(obj.skills) ? obj.skills.map(String).slice(0, 6) : [],
     browsing: true,
-  }
-  try {
-    agent.avatar = await generateImage(
-      `${obj.avatar || 'a friendly robot avatar, studio portrait, soft lighting'}. High-quality avatar portrait, centered, clean background.`,
-      { w: 512, h: 512 },
-    )
-  } catch {
-    /* keep emoji fallback */
   }
   return agent
 }
