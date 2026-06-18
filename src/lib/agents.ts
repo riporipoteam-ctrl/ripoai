@@ -258,6 +258,13 @@ export function loadAgents(uid: string): Agent[] {
         a.role = 'Chief of Staff'
         renamed = true
       }
+      // Reclaim space: old builds stored huge base64 avatar portraits on every
+      // agent, which bloated localStorage past quota and silently broke saving
+      // of new agents + chats. Agents render as an emoji mark now, so drop them.
+      if ((a as Agent & { avatar?: string }).avatar) {
+        delete (a as Agent & { avatar?: string }).avatar
+        renamed = true
+      }
     }
     // Always guarantee the AskAI lead is present (it must exist to delegate).
     if (!list.some((a) => a.id === 'bob')) {
@@ -379,63 +386,20 @@ export async function aiDesignAgent(description: string): Promise<Agent> {
   return agent
 }
 
-/** Build a friendly, realistic portrait prompt from an agent's role/personality. */
-function avatarPromptFor(agent: Agent): string {
-  const persona = (agent.personality || '').replace(/\s+/g, ' ').slice(0, 220)
-  return `A friendly, realistic professional portrait avatar of ${agent.name}, a ${
-    agent.role || 'specialist'
-  }. ${persona} Warm approachable expression, soft studio lighting, clean simple background, centered head-and-shoulders, high-quality avatar portrait.`
-}
-
-// Guards so the same agent's avatar isn't generated twice concurrently (and so a
-// failed generation doesn't retry in a tight render loop within the same session).
-const avatarInFlight = new Map<string, Promise<Agent>>()
-const avatarTried = new Set<string>()
-
 /** Lazily generate a realistic AI avatar for an agent that only has an emoji.
  *  Idempotent: generates once, caches the result on the agent via upsertAgent,
  *  and returns the (possibly updated) agent. While generating, callers keep the
  *  emoji as a fallback. */
-export async function ensureAgentAvatar(uid: string, agent: Agent): Promise<Agent> {
-  if (agent.avatar) return agent
-  const guardKey = `${uid}:${agent.id}`
-  const existing = avatarInFlight.get(guardKey)
-  if (existing) return existing
-  if (avatarTried.has(guardKey)) return agent
-  const job = (async () => {
-    avatarTried.add(guardKey)
-    try {
-      const { generateImage } = await import('./imagegen')
-      const url = await generateImage(avatarPromptFor(agent), { w: 512, h: 512 })
-      // Re-read the latest copy so we don't clobber concurrent edits.
-      const latest = getAgent(uid, agent.id) ?? agent
-      if (latest.avatar) return latest
-      const updated: Agent = { ...latest, avatar: url }
-      upsertAgent(uid, updated)
-      return updated
-    } catch {
-      return agent
-    } finally {
-      avatarInFlight.delete(guardKey)
-    }
-  })()
-  avatarInFlight.set(guardKey, job)
-  return job
+export async function ensureAgentAvatar(_uid: string, agent: Agent): Promise<Agent> {
+  // No-op: agents render as an emoji mark (Nebula-style). Generating base64
+  // portraits previously bloated localStorage past quota and silently broke
+  // saving of agents AND chats — so avatars are intentionally not generated.
+  return agent
 }
 
-/** Proactively warm up avatars for every agent that still only has an emoji, so
- *  pictures are ready by the time Settings/Team render. Runs sequentially and
- *  swallows errors; cheap because ensureAgentAvatar no-ops once an avatar exists
- *  or generation is in-flight/already tried this session. */
-export async function pregenerateAgentAvatars(uid: string): Promise<void> {
-  for (const a of loadAgents(uid)) {
-    if (a.avatar) continue
-    try {
-      await ensureAgentAvatar(uid, a)
-    } catch {
-      /* ignore — keep the emoji fallback */
-    }
-  }
+/** No-op (kept for callers). Avatar pre-generation is disabled — see above. */
+export async function pregenerateAgentAvatars(_uid: string): Promise<void> {
+  /* intentionally does nothing */
 }
 
 export function getAgent(uid: string, id: string): Agent | null {

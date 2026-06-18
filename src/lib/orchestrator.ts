@@ -289,7 +289,7 @@ export function wantsDelegation(text: string): boolean {
  * Returns [] when no delegation was requested. Never includes the lead itself.
  */
 export function requestedSpecialists(uid: string, text: string, leadId = 'bob'): Agent[] {
-  if (!uid || !wantsDelegation(text)) return []
+  if (!uid) return []
   const list = loadAgents(uid)
   if (!list.length) return []
   const t = text || ''
@@ -297,9 +297,23 @@ export function requestedSpecialists(uid: string, text: string, leadId = 'bob'):
   const add = (a?: Agent | null) => {
     if (a && a.id !== leadId && !picked.some((p) => p.id === a.id)) picked.push(a)
   }
-  // First honor any explicit @mentions / addressed agents.
+
+  // 1. Any roster agent referenced BY NAME anywhere in the message — this is the
+  //    most common way to delegate ("get Leon to search", "have Max research
+  //    this", "tell Vera to write it"). Whole-word match, case-insensitive.
+  for (const a of list) {
+    if (a.id === leadId || a.name.trim().length < 2) continue
+    const esc = a.name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    if (new RegExp(`\\b${esc}\\b`, 'i').test(t)) add(a)
+  }
+  // 2. Explicit @mentions.
   mentionedAgents(uid, t).forEach(add)
-  // Then resolve role keywords to roster agents.
+  // If the user named specific agent(s), that IS the delegation — honor it.
+  if (picked.length) return picked
+
+  // 3. Otherwise only delegate by role when the user explicitly asked the lead to
+  //    bring in / assign a kind of agent ("get a research agent").
+  if (!wantsDelegation(t)) return []
   for (const m of ROLE_MATCHERS) {
     if (!m.re.test(t)) continue
     add(getAgent(uid, m.prefer) ?? byRole(list, m.match))
