@@ -253,11 +253,87 @@ struct TeamScreen: View {
         }
     }
 
+    /// Detect an explicit "assign / bring in a <role> agent" request and resolve
+    /// it to the matching specialists, so the Team Lead delegates instead of just
+    /// answering himself (mirrors the web orchestrator).
+    private func requestedSpecialists(_ task: String) -> [TeamAgent] {
+        let t = task.lowercased()
+        func has(_ pattern: String) -> Bool { t.range(of: pattern, options: .regularExpression) != nil }
+        let wantsDelegation = has("assign|bring in|bring me|get (me )?an?|add an?|use an?|have an?|delegate|hand (this|it) (to|off)|two agents|both agents|the team|an? [a-z]+ agent|an agent")
+        guard wantsDelegation else { return [] }
+        var picks: [TeamAgent] = []
+        func add(_ id: String) {
+            if let a = TeamAgent.all.first(where: { $0.id == id }), !picks.contains(where: { $0.id == a.id }) { picks.append(a) }
+        }
+        if has("research|web|browse|search|find|look ?up|investigat|fact|news|price|cheap|hotel|flight") { add("max") }
+        if has("writ|copy|content|blog|article|email|draft|newsletter|caption|script|story") { add("vera") }
+        if has("build|builder|engineer|cod(e|ing)|develop|program|app|website") { add("ada") }
+        if has("design|ui|ux|logo|brand|visual|mockup|colou?r scheme") { add("iris") }
+        if has("market|growth|ads|campaign|seo|launch|audience") { add("leo") }
+        if has("data|analy|metric|forecast|chart|spreadsheet|numbers") { add("nova") }
+        return Array(picks.prefix(3))
+    }
+
+    private var langNote: String {
+        if let lang = Languages.instructionName(store.language) { return " Always respond in \(lang)." }
+        return ""
+    }
+
+    /// The Team Lead (Bob) responds FIRST, says who he's putting on it, then each
+    /// assigned specialist delivers their part in their own labeled bubble.
+    private func runDelegated(_ task: String, _ specialists: [TeamAgent]) async {
+        let lead = TeamAgent.all[0] // Bob, Team Lead
+        let names = specialists.map { "\($0.name) (\($0.role))" }.joined(separator: ", ")
+
+        // 1. Lead acknowledges + delegates in one short line.
+        store.teamLog.append(TeamLogEntry(agentId: lead.id, text: "", fromUser: false))
+        let li = store.teamLog.count - 1
+        let lsys = Message(role: .system, text:
+            "You are \(lead.name), the Team Lead / Chief of Staff on the AskAI team. In ONE short first-person sentence, acknowledge the user's task and say you're bringing in \(names) to handle it. No filler, no markdown.\(langNote)")
+        try? await GroqClient.shared.stream(model: "llama-3.3-70b-versatile",
+                                            messages: [lsys, Message(role: .user, text: task)]) { tok in
+            if li < store.teamLog.count { store.teamLog[li].text += tok }
+        }
+
+        // 2. Each assigned specialist delivers their part.
+        var transcript = "TASK: \(task)\n"
+        for a in specialists {
+            store.teamLog.append(TeamLogEntry(agentId: a.id, text: "", fromUser: false))
+            let idx = store.teamLog.count - 1
+            let sys = Message(role: .system, text:
+                "You are \(a.name), the \(a.role) on the AskAI team. \(a.persona) The Team Lead just assigned you this task. Do YOUR part of it fully and concisely in first person, building on what teammates already said (don't repeat them). Use Markdown when helpful.\(langNote)")
+            let usr = Message(role: .user, text: "\(transcript)\nNow \(a.name), deliver your part.")
+            var out = ""
+            do {
+                try await GroqClient.shared.stream(model: "llama-3.3-70b-versatile", messages: [sys, usr]) { tok in
+                    out += tok
+                    if idx < store.teamLog.count { store.teamLog[idx].text = out }
+                }
+            } catch {
+                if idx < store.teamLog.count { store.teamLog[idx].text = "(\(a.name) couldn't respond right now.)" }
+            }
+            transcript += "\n\(a.name): \(out)\n"
+        }
+        store.saveTeamLog()
+        if store.notifyOnComplete { NotificationManager.shared.taskDone("AskAI", "Your team finished the task.") }
+    }
+
     /// Route to the best-fit agent, then stream their in-character answer.
     private func run(_ task: String, images: [String] = []) async {
         working = true
         store.teamLog.append(TeamLogEntry(agentId: nil, text: task, fromUser: true))
         store.saveTeamLog()
+
+        // If the user explicitly asked to assign / bring in agents, the Team Lead
+        // orchestrates: he replies first, then the specialists deliver.
+        if images.isEmpty {
+            let specialists = requestedSpecialists(task)
+            if !specialists.isEmpty {
+                await runDelegated(task, specialists)
+                working = false
+                return
+            }
+        }
 
         // Pick the agent with a quick routing completion.
         var picked = TeamAgent.all[0]

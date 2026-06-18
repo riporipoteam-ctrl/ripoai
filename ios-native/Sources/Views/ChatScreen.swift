@@ -133,6 +133,20 @@ struct TaskPill: View {
                 .foregroundStyle(.primary)
                 .lineLimit(1)
             Spacer(minLength: 6)
+            // When OpenClaw is browsing, the pill becomes a "view activity"
+            // affordance — tap to open the live browser panel on demand.
+            if store.agent != nil {
+                Button {
+                    store.showAgentPanel = true
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                } label: {
+                    Text(store.t("view activity"))
+                        .font(.system(size: 11.5, weight: .bold))
+                        .foregroundStyle(Color.accentColor)
+                        .padding(.horizontal, 9).padding(.vertical, 5)
+                        .background(Color.accentColor.opacity(0.12), in: Capsule())
+                }.buttonStyle(.plain)
+            }
             ProgressView().scaleEffect(0.72)
             Button { store.stop() } label: {
                 Image(systemName: "stop.fill").font(.system(size: 11, weight: .bold))

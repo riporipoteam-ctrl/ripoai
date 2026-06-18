@@ -373,7 +373,10 @@ final class AppStore: ObservableObject {
     private func runAgentTask(_ task: String, id: UUID) {
         let a = OpenClawAgent()
         agent = a
-        showAgentPanel = true
+        // Don't auto-present the full browser sheet — like Nebula's "view
+        // activity", the live viewport only opens when the user taps the task
+        // pill. Keeps the chat clean while OpenClaw works in the background.
+        showAgentPanel = false
         isStreaming = true
         phase = .searching
         let liveTitle = sessions.first(where: { $0.id == id })?.title ?? "AskAI"

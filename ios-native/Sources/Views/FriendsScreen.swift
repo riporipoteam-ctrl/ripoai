@@ -60,16 +60,18 @@ enum FriendsService {
         _ = try? await URLSession.shared.data(for: req)
     }
 
-    static func collection(_ path: String, _ user: AuthUser) async -> [Friend] {
-        let obj = await authedGET(URL(string: "\(FB.docBase)/\(path)?pageSize=60")!, user)
+    static func collection(_ path: String, _ user: AuthUser, pageSize: Int = 60) async -> [Friend] {
+        let obj = await authedGET(URL(string: "\(FB.docBase)/\(path)?pageSize=\(pageSize)")!, user)
         let docs = obj["documents"] as? [[String: Any]] ?? []
         return docs.compactMap { profile(from: $0) }
     }
 
     static func friends(_ user: AuthUser) async -> [Friend] { await collection("users/\(user.uid)/friends", user) }
     static func requests(_ user: AuthUser) async -> [Friend] { await collection("users/\(user.uid)/requests", user) }
+    // Pull a large page of accounts so search + suggestions can show EVERYONE
+    // who has an AskAI profile (not just the first 60).
     static func everyone(_ user: AuthUser) async -> [Friend] {
-        (await collection("users", user)).filter { $0.id != user.uid && !$0.handle.isEmpty }
+        (await collection("users", user, pageSize: 300)).filter { $0.id != user.uid && !$0.handle.isEmpty }
     }
 
     private static func putFriendDoc(_ path: String, _ f: Friend, _ user: AuthUser) async {
