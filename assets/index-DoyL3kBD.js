@@ -1,0 +1,2 @@
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/web-7E0wijnF.js","assets/index-C74vH_78.js","assets/motion-TAHrZRye.js","assets/firebase-D2epOZ3z.js","assets/markdown-B5uOaCix.js","assets/index-CW99iMEN.css"])))=>i.map(i=>d[i]);
+import{b2 as o,a6 as i}from"./index-C74vH_78.js";import"./motion-TAHrZRye.js";import"./firebase-D2epOZ3z.js";import"./markdown-B5uOaCix.js";const c=o("SpeechRecognition",{web:()=>i(()=>import("./web-7E0wijnF.js"),__vite__mapDeps([0,1,2,3,4,5])).then(e=>new e.SpeechRecognitionWeb)});export{c as SpeechRecognition};
