@@ -73,22 +73,6 @@ import {
 import { haptic } from '../lib/native'
 import '../styles/agents.css'
 
-/** Stable id for the single shared "Agents room" chat (one general thread for
- *  all agents, per user). Minted once and reused so the composer always reopens
- *  the same AskAI-led conversation instead of spawning a new chat each time. */
-function agentsRoomId(uid: string): string {
-  const key = `askai:agents-room:${uid}`
-  try {
-    const existing = localStorage.getItem(key)
-    if (existing) return existing
-    const id = crypto.randomUUID()
-    localStorage.setItem(key, id)
-    return id
-  } catch {
-    return `agents-room-${uid}`
-  }
-}
-
 /** Relative timestamp ("just now", "3h ago", "2d ago"). */
 function relativeTime(ts: number): string {
   const diff = Date.now() - ts
@@ -102,26 +86,18 @@ function relativeTime(ts: number): string {
   return new Date(ts).toLocaleDateString()
 }
 
-/** Avatar bubble shared by roster + thread cards (image with emoji fallback). */
+/** Avatar bubble shared by roster + thread cards — a Nebula-style emoji mark on
+ *  a soft gradient of the agent's colour (no human-portrait photos). */
 function AgentBubble({ agent, size = 40 }: { agent: Pick<Agent, 'avatar' | 'emoji' | 'color' | 'name'>; size?: number }) {
   const px = `${size}px`
-  const [failed, setFailed] = useState(false)
-  return agent.avatar && !failed ? (
-    <img
-      src={agent.avatar}
-      alt={agent.name}
-      onError={() => setFailed(true)}
-      className="shrink-0 rounded-xl object-cover"
-      style={{ width: px, height: px, boxShadow: `0 0 0 1px ${agent.color}55` }}
-    />
-  ) : (
+  return (
     <span
       className="flex shrink-0 items-center justify-center rounded-xl"
       style={{
         width: px,
         height: px,
         fontSize: size * 0.45,
-        background: agent.color + '22',
+        background: `linear-gradient(135deg, ${agent.color}3a, ${agent.color}12)`,
         boxShadow: `0 0 0 1px ${agent.color}33`,
       }}
     >
@@ -275,13 +251,13 @@ export default function AgentsPage() {
 
     setDraft('')
     setSuggested([])
-    // Stash the goal so the room AUTO-SENDS it once AskAI is applied as the lead
-    // (ChatView consumes this only after the agent handoff lands, so the reply is
-    // agent-led and delegates — instead of landing as a plain chat).
+    // Stash the goal so the new chat AUTO-SENDS it once AskAI is applied as the
+    // lead (ChatView consumes this only after the agent handoff lands, so the
+    // reply is agent-led and delegates). A fresh chat each time — no piling into
+    // one old thread.
     setPendingAgentPrompt(text)
-    const roomId = agentsRoomId(uid)
     setTimeout(() => {
-      navigate(`/c/${roomId}`)
+      navigate('/chat')
       setRouting(null)
     }, 420)
   }
