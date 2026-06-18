@@ -39,14 +39,15 @@ export function applyAppearance(s: UserSettings) {
   } catch {
     /* ignore */
   }
-  // Single baked-in identity: a fuchsia→violet "Nebula" accent on warm paper.
-  // (No palette switcher anymore — this is the only UI.) The accent-soft tone
-  // drives the gradient end-stop and flips slightly brighter in dark mode.
-  const accent = dark ? '#d96eea' : '#c52dd1'
-  const accentSoft = dark ? '#a78bfa' : '#7c3aed'
+  // Single baked-in identity: a clean monochrome accent (black on light, white
+  // on dark). No palette switcher — this is the only UI. accent-soft is a hair
+  // lighter so gradient buttons get subtle depth.
+  const accent = dark ? '#f2f2f2' : '#141414'
+  const accentSoft = dark ? '#cfcfcf' : '#3a3a3a'
+  const accentInk = dark ? '#141414' : '#ffffff'
   root.style.setProperty('--accent', hexToRgb(accent))
   root.style.setProperty('--accent-soft', hexToRgb(accentSoft))
-  root.style.setProperty('--accent-ink', hexToRgb('#ffffff'))
+  root.style.setProperty('--accent-ink', hexToRgb(accentInk))
   root.style.setProperty('--glass-blur', `${s.glassIntensity}px`)
   root.style.fontSize = `${Math.round(16 * (s.fontScale || 1))}px`
 }

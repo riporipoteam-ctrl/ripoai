@@ -49,7 +49,6 @@ import { Bot, Plus as PlusIcon, MessageSquare, Globe2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import '../styles/settings.css'
 
-const ACCENTS = ['#10a37f', '#4ea8ff', '#36e0c0', '#7c5cff', '#ff6b6b', '#ffa94d', '#f06595']
 const TABS = [
   { id: 'general', label: 'General', icon: Palette },
   { id: 'personal', label: 'Personalization', icon: UserIcon },
@@ -323,21 +322,6 @@ export default function Settings() {
                     >
                       <o.icon size={18} /> {o.label}
                     </button>
-                  ))}
-                </div>
-              </Field>
-
-              <Field label="Accent color">
-                <div className="flex flex-wrap gap-2">
-                  {ACCENTS.map((c) => (
-                    <button
-                      key={c}
-                      onClick={() => updateSettings({ accent: c })}
-                      className={`h-9 w-9 rounded-full transition ${
-                        settings.accent === c ? 'ring-2 ring-offset-2 ring-offset-transparent' : ''
-                      }`}
-                      style={{ background: c, boxShadow: settings.accent === c ? `0 0 0 2px ${c}` : 'none' }}
-                    />
                   ))}
                 </div>
               </Field>

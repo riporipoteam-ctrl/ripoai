@@ -8,27 +8,28 @@
 
 /* ── 1. Design tokens (baked into the base — no theme class needed) ─────── */
 :root {
-  --accent: 197 45 209;          /* fuchsia */
-  --accent-soft: 124 58 237;     /* violet  */
+  --accent: 20 20 20;            /* black */
+  --accent-soft: 58 58 58;       /* charcoal */
   --accent-ink: 255 255 255;
   --surface: 245 243 238;        /* warm paper */
   --surface-raised: 255 255 255;
   --card: 255 255 255;
   --line: 229 224 216;
-  --ink: 26 23 33;
+  --ink: 23 22 21;
   --muted: 120 114 110;
   --glass-bg: 255 255 255;
   --glass-border: 255 255 255;
-  --page-grad-1: 247 232 246;
-  --page-grad-2: 244 240 251;
-  --page-grad-3: 238 235 249;
-  --orb-1: 197 45 209;
-  --orb-2: 124 58 237;
-  --orb-3: 168 85 247;
-  --orb-alpha: 0.16;
-  --nebula-grad: linear-gradient(135deg, #c52dd1 0%, #9333ea 52%, #7c3aed 100%);
-  --nebula-grad-soft: linear-gradient(135deg, rgb(var(--accent) / 0.16), rgb(var(--accent-soft) / 0.16));
-  --nebula-glow: 0 12px 30px -12px rgb(147 51 234 / 0.5);
+  --page-grad-1: 238 236 230;
+  --page-grad-2: 244 242 237;
+  --page-grad-3: 240 238 232;
+  --orb-1: 90 88 96;
+  --orb-2: 120 116 110;
+  --orb-3: 70 68 74;
+  --orb-alpha: 0.06;
+  /* Gradient + glow follow the (monochrome) accent, so they flip with theme. */
+  --nebula-grad: linear-gradient(135deg, rgb(var(--accent)) 0%, rgb(var(--accent-soft)) 100%);
+  --nebula-grad-soft: linear-gradient(135deg, rgb(var(--accent) / 0.14), rgb(var(--accent-soft) / 0.14));
+  --nebula-glow: 0 12px 28px -12px rgb(var(--ink) / 0.45);
   --r-sm: 12px;
   --r-md: 16px;
   --r-lg: 20px;
@@ -36,22 +37,22 @@
   color-scheme: light;
 }
 .dark {
-  --accent: 217 110 234;
-  --accent-soft: 167 139 250;
-  --accent-ink: 255 255 255;
-  --surface: 19 17 25;
-  --surface-raised: 29 27 37;
-  --card: 33 30 42;
-  --line: 51 47 63;
-  --ink: 237 233 243;
-  --muted: 156 150 166;
-  --glass-bg: 40 36 50;
+  --accent: 242 242 242;
+  --accent-soft: 207 207 207;
+  --accent-ink: 20 20 20;
+  --surface: 18 18 19;
+  --surface-raised: 28 28 30;
+  --card: 32 32 34;
+  --line: 49 49 52;
+  --ink: 237 236 238;
+  --muted: 154 152 156;
+  --glass-bg: 38 38 40;
   --glass-border: 255 255 255;
-  --page-grad-1: 38 26 48;
-  --page-grad-2: 22 19 30;
-  --page-grad-3: 33 25 45;
-  --orb-alpha: 0.24;
-  --nebula-glow: 0 14px 34px -12px rgb(167 139 250 / 0.55);
+  --page-grad-1: 30 30 32;
+  --page-grad-2: 20 20 22;
+  --page-grad-3: 26 26 28;
+  --orb-alpha: 0.08;
+  --nebula-glow: 0 14px 32px -12px rgb(0 0 0 / 0.6);
   color-scheme: dark;
 }
 
@@ -87,13 +88,13 @@ h1, h2, h3, .font-display, .nebula-display {
 /* ── 4. Accent gradient identity (buttons, bubbles, highlights) ─────────── */
 .accent-gradient-bg {
   background: var(--nebula-grad) !important;
-  color: #fff !important;
+  color: rgb(var(--accent-ink)) !important;
   border: none !important;
   box-shadow: var(--nebula-glow);
   background-size: 160% 160% !important;
   transition: transform 0.16s cubic-bezier(0.16,1,0.3,1), box-shadow 0.22s ease, filter 0.22s ease, background-position 0.5s ease !important;
 }
-.accent-gradient-bg:hover { background-position: 100% 50% !important; filter: brightness(1.06) saturate(1.05); transform: translateY(-1px); }
+.accent-gradient-bg:hover { background-position: 100% 50% !important; filter: brightness(1.08); transform: translateY(-1px); }
 .accent-gradient-bg:active { transform: translateY(0) scale(0.98); }
 .user-bubble { background: var(--nebula-grad) !important; box-shadow: var(--nebula-glow); }
 .text-accent { color: rgb(var(--accent)) !important; }

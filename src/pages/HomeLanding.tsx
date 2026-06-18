@@ -20,10 +20,10 @@ import { isNative } from '../lib/native'
 import { watchConversations, watchFriends, type Conversation, type UserProfile } from '../lib/friends'
 
 const CARDS = [
-  { to: '/agents', label: 'Agents', desc: 'Your AI team & Chief of Staff', icon: Bot, grad: 'linear-gradient(135deg,#c52dd1,#7c3aed)' },
-  { to: '/jobs', label: 'Jobs', desc: 'Scheduled, recurring tasks', icon: CalendarClock, grad: 'linear-gradient(135deg,#f59e0b,#ef4444)' },
-  { to: '/friends', label: 'Friends', desc: 'Chat, voice & video call', icon: Users, grad: 'linear-gradient(135deg,#3b82f6,#6366f1)' },
-  { to: '/apps', label: 'Apps', desc: 'Websites & apps agents build', icon: AppWindow, grad: 'linear-gradient(135deg,#ec4899,#a855f7)' },
+  { to: '/agents', label: 'Agents', desc: 'Your AI team & Chief of Staff', icon: Bot },
+  { to: '/jobs', label: 'Jobs', desc: 'Scheduled, recurring tasks', icon: CalendarClock },
+  { to: '/friends', label: 'Friends', desc: 'Chat, voice & video call', icon: Users },
+  { to: '/apps', label: 'Apps', desc: 'Websites & apps agents build', icon: AppWindow },
 ]
 
 export default function HomeLanding() {
@@ -95,10 +95,7 @@ export default function HomeLanding() {
             onClick={() => navigate(c.to)}
             className="ag-card pressable group flex flex-col items-start gap-2.5 rounded-[20px] border border-line bg-card p-4 text-left"
           >
-            <span
-              className="flex h-11 w-11 items-center justify-center rounded-[14px] text-white shadow-glow transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3"
-              style={{ background: c.grad }}
-            >
+            <span className="accent-gradient-bg flex h-11 w-11 items-center justify-center rounded-[14px] transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3">
               <c.icon size={21} />
             </span>
             <span className="nebula-display font-bold text-ink">{c.label}</span>
