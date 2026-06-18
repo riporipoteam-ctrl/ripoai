@@ -34,7 +34,7 @@ import type { Attachment } from '../lib/db'
 import { banActive, todaysMessageCount, bumpMessageCount } from '../lib/admin'
 import { wantsImageGeneration } from '../lib/imagegen'
 import { wantsWebImageSearch } from '../lib/webImages'
-import { mentionedAgents, takePendingAgentChat, type Agent } from '../lib/agents'
+import { mentionedAgents, takePendingAgentChat, peekPendingAgentPrompt, takePendingAgentPrompt, type Agent } from '../lib/agents'
 import { dispatchTeam } from '../pages/TeamPage'
 
 const ALL_SUGGESTIONS = [
@@ -99,15 +99,14 @@ export default function ChatView() {
   // here so this chat is tagged + driven by their persona. Once the chat has a
   // saved agent tag (chatAgent), that becomes the source of truth.
   const [pendingAgent, setPendingAgent] = useState<Agent | null>(null)
+  // On every navigation, adopt a fresh agent handoff (if any) and drop any stale
+  // one. takePendingAgentChat() CONSUMES the handoff, so opening a plain chat
+  // returns null (clearing the banner) while a real handoff returns the agent.
+  // Keying on location.key — not chatId — lets the Agents page hand off straight
+  // into a specific chat id (the shared room) without a chatId-effect wiping it.
   useEffect(() => {
-    const a = takePendingAgentChat()
-    if (a) setPendingAgent(a)
+    setPendingAgent(takePendingAgentChat())
   }, [location.key])
-  // Once a real saved chat is open, drop the pending hand-off so opening an
-  // existing non-agent chat never shows a stale agent banner.
-  useEffect(() => {
-    if (chatId) setPendingAgent(null)
-  }, [chatId])
   const activeAgent = chatAgent ?? pendingAgent
   const [profileOpen, setProfileOpen] = useState(false)
   // Per-turn "browse the live web with OpenClaw" toggle, shown in agent chats.
@@ -169,6 +168,25 @@ export default function ChatView() {
     })
     setForceBrowse(false)
   }
+
+  // Auto-send a goal handed off from the Agents page. We wait until the agent
+  // handoff has been applied (activeAgent set) so the reply is agent-led and
+  // delegates — then send exactly once. Using handleSend here (not a stale event
+  // listener) guarantees the CURRENT activeAgent + options are used.
+  const autoSentRef = useRef(false)
+  useEffect(() => {
+    autoSentRef.current = false
+  }, [chatId, location.key])
+  useEffect(() => {
+    if (autoSentRef.current || banned || streaming) return
+    if (!peekPendingAgentPrompt()) return
+    if (!activeAgent) return // wait for the handoff so the reply is agent-led
+    const prompt = takePendingAgentPrompt()
+    if (!prompt) return
+    autoSentRef.current = true
+    handleSend(prompt, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeAgent, chatId, streaming, banned])
 
   const empty = messages.length === 0
   const suggestions = useMemo(
