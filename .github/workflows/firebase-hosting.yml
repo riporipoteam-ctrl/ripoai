@@ -1,0 +1,61 @@
+name: Deploy to Firebase Hosting
+
+# Deploys AskAI to Firebase Hosting (https://ripoai-dff5d.web.app).
+#
+# Why this exists: Google sign-in works in an installed/home-screen PWA only
+# when the OAuth handler is SAME-ORIGIN as the app. On GitHub Pages / Netlify
+# the handler lives on a different domain, so the browser partitions its
+# storage and the sign-in never completes. Served from *.web.app the handler
+# is same-origin and Google sign-in just works — including in the PWA.
+#
+# One-time setup (required):
+#   1. Firebase console → Hosting → Get started (enable Hosting for the project).
+#   2. Create a service account key with the "Firebase Hosting Admin" role and
+#      add it as the repo secret FIREBASE_SERVICE_ACCOUNT (paste the full JSON).
+#      Easiest: run `firebase init hosting:github` locally, or copy a key from
+#      Google Cloud console → IAM → Service Accounts.
+#   3. Make sure VITE_GROQ_API_KEY / VITE_OPENROUTER_API_KEY secrets exist.
+# Then install the app from https://ripoai-dff5d.web.app (Share → Add to Home
+# Screen) and Google sign-in will work.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'claude/askai-redesign-features-c73ka5'
+      - 'claude/ripoai-web-app-U0rvk'
+      - 'claude/askai-agents-prebuilt-skills-wqk4ea'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build (root base, with API keys)
+        env:
+          VITE_BASE: '/'
+          VITE_GROQ_API_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
+          VITE_OPENROUTER_API_KEY: ${{ secrets.VITE_OPENROUTER_API_KEY }}
+          VITE_NVIDIA_BASE: ${{ secrets.VITE_NVIDIA_BASE }}
+          VITE_NVIDIA_API_KEY: ${{ secrets.VITE_NVIDIA_API_KEY }}
+        run: npm run build
+
+      - name: Deploy to Firebase Hosting (live)
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: ripoai-dff5d
+          channelId: live

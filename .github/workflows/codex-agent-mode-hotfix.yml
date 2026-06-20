@@ -1,0 +1,40 @@
+name: Codex agent source hotfix
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - claude/ripoai-web-app-U0rvk
+    paths:
+      - .github/workflows/codex-agent-mode-hotfix.yml
+      - scripts/force-agent-browser.mjs
+      - package.json
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/ripoai-web-app-U0rvk
+
+      - name: Materialize Agent browser source
+        run: |
+          node scripts/force-agent-browser.mjs
+          node -e "const fs=require('fs'); const p='src/hooks/useChat.ts'; let s=fs.readFileSync(p,'utf8'); s=s.replace('const wantsSearch =\n        !opts.agent &&', 'const wantsSearch =\n        !opts.systemOverride &&\n        !opts.agent &&'); fs.writeFileSync(p,s);"
+          node -e "const fs=require('fs'); const p='src/main.tsx'; let s=fs.readFileSync(p,'utf8'); s=s.replace(/APP_VERSION = 'v[^']+'/g, \"APP_VERSION = 'v7.15.4'\"); fs.writeFileSync(p,s);"
+
+      - name: Commit patched source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/hooks/useChat.ts src/components/ChatView.tsx src/lib/agentBrowser.ts src/main.tsx scripts/force-agent-browser.mjs package.json
+          if git diff --cached --quiet; then
+            echo "Agent source already materialized."
+          else
+            git commit -m "Materialize agent browser source"
+            git push
+          fi

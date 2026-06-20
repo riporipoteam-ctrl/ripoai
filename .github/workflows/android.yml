@@ -1,0 +1,121 @@
+name: Build Android APK
+
+# Builds an installable Android APK from the web app using Capacitor, on
+# GitHub's servers (which have the Android SDK). Run it from the Actions tab
+# (Run workflow) or by pushing a tag like v1-android.
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['*-android']
+    branches:
+      - 'claude/askai-redesign-features-c73ka5'
+      - 'claude/ripoai-web-app-U0rvk'
+      - 'claude/askai-agents-prebuilt-skills-wqk4ea'
+    paths:
+      - '.github/workflows/android.yml'
+      - 'capacitor.config.ts'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'public/**'
+      - 'scripts/**'
+      - 'src/**'
+      - 'tailwind.config.js'
+      - 'vite.config.ts'
+
+permissions:
+  contents: write
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web app (root base, with model providers)
+        env:
+          VITE_BASE: '/'
+          VITE_GROQ_API_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
+          VITE_OPENROUTER_API_KEY: ${{ secrets.VITE_OPENROUTER_API_KEY }}
+          VITE_NVIDIA_BASE: ${{ secrets.VITE_NVIDIA_BASE }}
+          VITE_NVIDIA_API_KEY: ${{ secrets.VITE_NVIDIA_API_KEY }}
+          VITE_RIPOAI_PROXY_URL: ${{ vars.VITE_RIPOAI_PROXY_URL || secrets.VITE_RIPOAI_PROXY_URL }}
+        run: npm run build
+
+      - name: Add & sync Android platform
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Apply AskAI launcher icon & splash
+        run: |
+          npm install @capacitor/assets --no-save
+          npx @capacitor/assets generate \
+            --assetPath capacitor-assets \
+            --android \
+            --iconBackgroundColor '#ffffff' \
+            --iconBackgroundColorDark '#1e1d1b' \
+            --splashBackgroundColor '#ffffff' \
+            --splashBackgroundColorDark '#1e1d1b'
+          npx cap sync android
+
+      - name: Compute version
+        id: ver
+        run: |
+          # Monotonic versionCode so installed apps can detect newer APKs.
+          echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          echo "name=1.0.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+
+      - name: Patch in APK self-updater (version, permission, plugin)
+        env:
+          APK_VERSION_CODE: ${{ steps.ver.outputs.code }}
+          APK_VERSION_NAME: ${{ steps.ver.outputs.name }}
+        run: node scripts/patch-android-updater.mjs
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Build debug APK
+        run: |
+          cd android
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk AskAI.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AskAI-apk
+          path: AskAI.apk
+
+      - name: Publish to a Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android-latest
+          name: AskAI Android (latest)
+          files: AskAI.apk
+          body: |
+            Latest AskAI Android APK (debug build).
+
+            versionCode: ${{ steps.ver.outputs.code }}
+            versionName: ${{ steps.ver.outputs.name }}
+
+            Install: download AskAI.apk on your phone, allow "install from unknown sources", and open it.
+            Already have AskAI installed? The app updates itself — you'll get an
+            "Update available" prompt in-app and it installs in a tap.

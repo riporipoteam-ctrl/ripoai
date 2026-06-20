@@ -1,0 +1,675 @@
+import { useRef, useState, useEffect, type DragEvent } from 'react'
+import { createPortal } from 'react-dom'
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Plus,
+  ArrowUp,
+  Square,
+  Globe,
+  Bot,
+  ImageIcon,
+  Paperclip,
+  X,
+  FileText,
+  Loader2,
+  Mic,
+  Phone,
+  Sparkles,
+  Check,
+  Camera,
+  Wand2,
+  Users,
+} from 'lucide-react'
+import ModelSelector from './ModelSelector'
+import { useVoiceInput, hapticPattern } from '../hooks/useSpeech'
+import { fileToAttachment, MAX_IMAGES_PER_MESSAGE } from '../lib/files'
+import { IMAGE_STYLES } from '../lib/imagegen'
+import type { Attachment } from '../lib/db'
+import type { ModelTier } from '../lib/models'
+import { haptic } from '../lib/native'
+import { matchSkills } from '../lib/skills'
+import { loadAgents } from '../lib/agents'
+import { useStore } from '../store'
+import { useT } from '../lib/i18n'
+
+interface Props {
+  model: ModelTier
+  onModelChange: (m: ModelTier) => void
+  webSearch: boolean
+  agent: boolean
+  imageMode?: boolean
+  imageStyle?: string
+  onToggleWeb: () => void
+  onToggleAgent: () => void
+  onToggleImage?: () => void
+  onImageStyle?: (id: string) => void
+  onSend: (text: string, attachments: Attachment[]) => void
+  onStop: () => void
+  streaming: boolean
+  placeholder?: string
+  showModelSelector?: boolean
+  onVoiceCall?: () => void
+  onTeam?: (text: string) => void
+  /** When set, shows a "Browse web (OpenClaw)" toggle (1-on-1 agent chats). */
+  browseEnabled?: boolean
+  browseActive?: boolean
+  onToggleBrowse?: () => void
+}
+
+const PLACEHOLDER_HINTS = [
+  'Message AskAI...',
+  'Ask anything…',
+  'Show me images of…',
+  'Build me a website for…',
+  'Search the web for…',
+  'Generate an image of…',
+  '@mention an agent to dispatch the team…',
+]
+
+export default function Composer({
+  model,
+  onModelChange,
+  webSearch,
+  agent,
+  imageMode,
+  imageStyle,
+  onToggleWeb,
+  onToggleAgent,
+  onToggleImage,
+  onImageStyle,
+  onSend,
+  onStop,
+  streaming,
+  placeholder = 'Message AskAI...',
+  showModelSelector = true,
+  onVoiceCall,
+  onTeam,
+  browseEnabled,
+  browseActive,
+  onToggleBrowse,
+}: Props) {
+  const { user } = useStore()
+  const t = useT()
+  const [text, setText] = useState('')
+  const [attachments, setAttachments] = useState<Attachment[]>([])
+
+  // Rotate gentle hints through the default placeholder while the box is empty.
+  const [hintIdx, setHintIdx] = useState(0)
+  useEffect(() => {
+    if (placeholder !== 'Message AskAI...' || text) return
+    const t = setInterval(() => setHintIdx((i) => (i + 1) % PLACEHOLDER_HINTS.length), 4000)
+    return () => clearInterval(t)
+  }, [placeholder, text])
+  const effPlaceholder = placeholder === 'Message AskAI...' ? PLACEHOLDER_HINTS[hintIdx] : placeholder
+
+  // Slash-command skill picker: typing "/" (before a space) lists matching skills.
+  const slashQuery = text.startsWith('/') && !text.includes(' ') ? text.slice(1) : null
+  const slashSkills = slashQuery !== null && user ? matchSkills(user.uid, slashQuery).slice(0, 6) : []
+  function pickSkill(slug: string) {
+    setText(`/${slug} `)
+    haptic('select')
+    requestAnimationFrame(() => taRef.current?.focus())
+  }
+
+  // @mention agent picker: typing "@" (then letters) lists matching agents to
+  // insert without typing the full name.
+  const mentionMatch = text.match(/(^|\s)@([a-z0-9_-]*)$/i)
+  const mentionQuery = mentionMatch ? mentionMatch[2] : null
+  const agentMatches =
+    mentionQuery !== null && user
+      ? loadAgents(user.uid)
+          .filter((a) => a.name.toLowerCase().startsWith(mentionQuery.toLowerCase()))
+          .slice(0, 6)
+      : []
+  function pickAgent(name: string) {
+    setText((prev) => prev.replace(/@([a-z0-9_-]*)$/i, `@${name} `))
+    haptic('select')
+    requestAnimationFrame(() => taRef.current?.focus())
+  }
+  const [plusOpen, setPlusOpen] = useState(false)
+  const [dragging, setDragging] = useState(false)
+
+  useEffect(() => {
+    if (!plusOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [plusOpen])
+
+  // "Ask AskAI" from the text-selection toolbar → quote it into the composer.
+  useEffect(() => {
+    function onAsk(e: Event) {
+      const t = (e as CustomEvent).detail as string
+      if (!t) return
+      const quote = t.length > 600 ? t.slice(0, 600) + '…' : t
+      setText((prev) => `Regarding: "${quote}"\n\n${prev}`)
+      requestAnimationFrame(() => {
+        const ta = taRef.current
+        if (ta) {
+          ta.focus()
+          ta.style.height = 'auto'
+          ta.style.height = Math.min(ta.scrollHeight, 220) + 'px'
+          const end = ta.value.length
+          ta.setSelectionRange(end, end)
+        }
+      })
+    }
+    window.addEventListener('ripoai-ask', onAsk as EventListener)
+    // Native tab-bar "+" button asks the composer to focus.
+    function onFocusComposer() {
+      requestAnimationFrame(() => taRef.current?.focus())
+    }
+    window.addEventListener('askai-focus-composer', onFocusComposer)
+    // Quick-start chip → drop a starter prompt into the composer for the user
+    // to finish typing (agent chat empty-state suggestions).
+    function onPrefill(e: Event) {
+      const t = (e as CustomEvent).detail as string
+      if (typeof t !== 'string') return
+      setText(t)
+      requestAnimationFrame(() => {
+        const ta = taRef.current
+        if (ta) {
+          ta.focus()
+          autosize()
+          const end = ta.value.length
+          ta.setSelectionRange(end, end)
+        }
+      })
+    }
+    window.addEventListener('askai-prefill', onPrefill as EventListener)
+    return () => {
+      window.removeEventListener('ripoai-ask', onAsk as EventListener)
+      window.removeEventListener('askai-focus-composer', onFocusComposer)
+      window.removeEventListener('askai-prefill', onPrefill as EventListener)
+    }
+  }, [])
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const taRef = useRef<HTMLTextAreaElement>(null)
+  const imgInput = useRef<HTMLInputElement>(null)
+  const camInput = useRef<HTMLInputElement>(null)
+  const fileInput = useRef<HTMLInputElement>(null)
+  const voice = useVoiceInput((t) => {
+    setText(t)
+    requestAnimationFrame(autosize)
+  })
+
+  function autosize() {
+    const ta = taRef.current
+    if (!ta) return
+    ta.style.height = 'auto'
+    ta.style.height = Math.min(ta.scrollHeight, 220) + 'px'
+  }
+
+  async function handleFiles(files: FileList | null) {
+    if (!files?.length) return
+    setErr('')
+    setBusy(true)
+    try {
+      const incoming = Array.from(files)
+      const next: Attachment[] = []
+      let imagesSoFar = attachments.filter((a) => a.kind === 'image').length
+      let droppedImages = 0
+      for (const f of incoming) {
+        const att = await fileToAttachment(f)
+        // Cap images per message so the vision model never gets overloaded.
+        if (att.kind === 'image') {
+          if (imagesSoFar >= MAX_IMAGES_PER_MESSAGE) {
+            droppedImages++
+            continue
+          }
+          imagesSoFar++
+        }
+        next.push(att)
+      }
+      setAttachments((a) => [...a, ...next])
+      if (droppedImages > 0)
+        setErr(`You can attach up to ${MAX_IMAGES_PER_MESSAGE} images per message — extra ${droppedImages === 1 ? 'image was' : 'images were'} skipped.`)
+    } catch (e: any) {
+      setErr(e?.message ?? 'Could not read that file.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  // Paste an image straight from the clipboard (screenshots, copied pics).
+  async function handlePaste(e: React.ClipboardEvent) {
+    const imgs = Array.from(e.clipboardData?.items ?? []).filter((i) => i.type.startsWith('image/'))
+    if (!imgs.length) return
+    e.preventDefault()
+    const files = imgs.map((i) => i.getAsFile()).filter(Boolean) as File[]
+    const dt = new DataTransfer()
+    files.forEach((f) => dt.items.add(f))
+    haptic('light')
+    await handleFiles(dt.files)
+  }
+
+  function handleDragOver(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault()
+    setDragging(true)
+  }
+
+  function handleDragLeave(event: DragEvent<HTMLDivElement>) {
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragging(false)
+  }
+
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault()
+    setDragging(false)
+    void handleFiles(event.dataTransfer.files)
+  }
+
+  function submit() {
+    if (streaming || busy) return
+    if (!text.trim() && attachments.length === 0) return
+    haptic('medium')
+    onSend(text, attachments)
+    setText('')
+    setAttachments([])
+    if (taRef.current) taRef.current.style.height = 'auto'
+  }
+
+  return (
+    <div className="relative mx-auto w-full max-w-3xl">
+      {err && <p className="mb-2 px-2 text-xs text-red-400">{err}</p>}
+      {!!attachments.length && (
+        <motion.div layout className="mb-2 flex flex-wrap gap-2 px-1">
+          {attachments.map((a, i) => (
+            <motion.div
+              key={i}
+              layout
+              initial={{ opacity: 0, y: 6, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 6, scale: 0.96 }}
+              className="glass relative flex items-center gap-2 rounded-2xl p-1.5 pr-7"
+            >
+              {a.kind === 'image' && a.url ? (
+                <img src={a.url} alt={a.name} className="h-12 w-12 rounded-xl object-cover" />
+              ) : (
+                <div className="flex items-center gap-2 px-2 py-1.5 text-xs">
+                  <FileText size={16} className="text-accent" />
+                  <span className="max-w-[140px] truncate">{a.name}</span>
+                </div>
+              )}
+              <button
+                onClick={() => setAttachments((arr) => arr.filter((_, j) => j !== i))}
+                className="absolute right-1.5 top-1.5 rounded-full bg-black/50 p-0.5 text-white hover:bg-black/70"
+              >
+                <X size={12} />
+              </button>
+            </motion.div>
+          ))}
+        </motion.div>
+      )}
+
+      {imageMode && onImageStyle && (
+        <motion.div
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 6 }}
+          className="image-style-strip no-scrollbar mb-2 flex gap-1.5 overflow-x-auto px-1"
+        >
+          {IMAGE_STYLES.map((s) => (
+            <motion.button
+              key={s.id}
+              whileTap={{ scale: 0.96 }}
+              onClick={() => onImageStyle(s.id)}
+              className={`image-style-chip pressable shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                (imageStyle ?? 'auto') === s.id
+                  ? 'accent-gradient-bg text-white'
+                  : 'border border-white/15 text-muted hover:text-ink'
+              }`}
+            >
+              {s.label}
+            </motion.button>
+          ))}
+        </motion.div>
+      )}
+
+      {/* @mention agent picker */}
+      <AnimatePresence>
+        {agentMatches.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            className="glass-strong mb-2 max-h-64 overflow-y-auto rounded-2xl p-1.5 shadow-xl"
+          >
+            <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-muted/70">Agents</div>
+            {agentMatches.map((a) => (
+              <button
+                key={a.id}
+                onClick={() => pickAgent(a.name)}
+                className="pressable flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left hover:bg-[rgb(var(--ink)/0.06)]"
+              >
+                <span
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-base"
+                  style={{ background: a.color + '2a', boxShadow: `0 0 0 1px ${a.color}55` }}
+                >
+                  {a.emoji}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold">
+                    {a.name} <span className="font-normal text-muted">{a.role}</span>
+                  </span>
+                  {a.personality && <span className="block truncate text-xs text-muted">{a.personality}</span>}
+                </span>
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Slash skill picker */}
+      <AnimatePresence>
+        {slashSkills.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 8 }}
+            className="glass-strong mb-2 max-h-64 overflow-y-auto rounded-2xl p-1.5 shadow-xl"
+          >
+            <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-muted/70">Skills</div>
+            {slashSkills.map((s) => (
+              <button
+                key={s.id}
+                onClick={() => pickSkill(s.slug)}
+                className="pressable flex w-full items-center gap-3 rounded-xl px-2.5 py-2 text-left hover:bg-[rgb(var(--ink)/0.06)]"
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/15 text-accent">
+                  <Wand2 size={16} />
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-semibold">
+                    {s.name} <span className="font-normal text-muted">/{s.slug}</span>
+                  </span>
+                  {s.description && <span className="block truncate text-xs text-muted">{s.description}</span>}
+                </span>
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <motion.div
+        layout
+        className={`composer-shell floating-composer relative z-20 rounded-[28px] p-2 ${dragging ? 'composer-drop-hot' : ''}`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        <textarea
+          ref={taRef}
+          value={text}
+          onChange={(e) => {
+            setText(e.target.value)
+            autosize()
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault()
+              submit()
+            }
+          }}
+          onPaste={handlePaste}
+          rows={1}
+          placeholder={imageMode ? t('Describe an image to generate...') : effPlaceholder}
+          className="no-scrollbar max-h-[220px] w-full resize-none bg-transparent px-3 py-2 text-[0.975rem] outline-none placeholder:text-muted"
+        />
+
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-2 px-1">
+          {/* Plus menu */}
+          <div className="relative shrink-0">
+            <button
+              onClick={() => setPlusOpen((o) => !o)}
+              className={`pressable flex h-9 w-9 items-center justify-center rounded-full transition ${plusOpen ? 'bg-accent text-white' : 'hover:bg-[rgb(var(--ink)/0.06)]'}`}
+              title="Add"
+            >
+              {busy ? <Loader2 size={18} className="animate-spin" /> : <Plus size={20} className={plusOpen ? 'rotate-45 transition-transform' : 'transition-transform'} />}
+            </button>
+            {createPortal(
+              <AnimatePresence>
+                {plusOpen && (
+                  <motion.div
+                    className="fixed inset-0 z-[120] flex items-end justify-center sm:items-center"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                  >
+                    <div
+                      className="absolute inset-0 bg-black/45 backdrop-blur-sm"
+                      onClick={() => setPlusOpen(false)}
+                    />
+                    <motion.div
+                      initial={{ y: '100%' }}
+                      animate={{ y: 0 }}
+                      exit={{ y: '100%' }}
+                      transition={{ type: 'spring', stiffness: 360, damping: 34 }}
+                      className="glass-strong relative w-full max-w-lg rounded-t-[28px] p-3 pb-[max(env(safe-area-inset-bottom),1rem)] shadow-2xl sm:mb-0 sm:rounded-[28px]"
+                    >
+                      <div className="mx-auto mb-2 h-1.5 w-10 rounded-full bg-[rgb(var(--muted)/0.4)] sm:hidden" />
+                      <button
+                        onClick={() => {
+                          camInput.current?.click()
+                          setPlusOpen(false)
+                        }}
+                        className="pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium hover:bg-[rgb(var(--ink)/0.06)]"
+                      >
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                          <Camera size={18} />
+                        </span>
+                        Take photo
+                      </button>
+                      <button
+                        onClick={() => {
+                          imgInput.current?.click()
+                          setPlusOpen(false)
+                        }}
+                        className="pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium hover:bg-[rgb(var(--ink)/0.06)]"
+                      >
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                          <ImageIcon size={18} />
+                        </span>
+                        Upload image
+                      </button>
+                      <button
+                        onClick={() => {
+                          fileInput.current?.click()
+                          setPlusOpen(false)
+                        }}
+                        className="pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium hover:bg-[rgb(var(--ink)/0.06)]"
+                      >
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                          <Paperclip size={18} />
+                        </span>
+                        Upload file
+                      </button>
+
+                      <div className="my-1.5 h-px bg-[rgb(var(--line))]" />
+                      <div className="px-3 pb-1 text-[11px] font-bold uppercase tracking-widest text-muted/70">
+                        Modes
+                      </div>
+                      <button
+                        onClick={() => { haptic('select'); onToggleWeb(); setPlusOpen(false) }}
+                        className={`pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium ${webSearch ? 'bg-accent/15' : 'hover:bg-[rgb(var(--ink)/0.06)]'}`}
+                      >
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                          <Globe size={18} />
+                        </span>
+                        Web search
+                        {webSearch && <Check size={18} className="ml-auto text-accent" />}
+                      </button>
+                      <button
+                        onClick={() => { haptic('select'); onToggleAgent(); setPlusOpen(false) }}
+                        className={`pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium ${agent ? 'bg-accent/15' : 'hover:bg-[rgb(var(--ink)/0.06)]'}`}
+                      >
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                          <Bot size={18} />
+                        </span>
+                        Agent
+                        {agent && <Check size={18} className="ml-auto text-accent" />}
+                      </button>
+                      {onToggleImage && (
+                        <button
+                          onClick={() => { haptic('select'); onToggleImage?.(); setPlusOpen(false) }}
+                          className={`pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium ${imageMode ? 'bg-accent/15' : 'hover:bg-[rgb(var(--ink)/0.06)]'}`}
+                        >
+                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                            <Sparkles size={18} />
+                          </span>
+                          Generate image
+                          {imageMode && <Check size={18} className="ml-auto text-accent" />}
+                        </button>
+                      )}
+                      {onTeam && (
+                        <button
+                          onClick={() => { haptic('select'); onTeam(text); setPlusOpen(false) }}
+                          className="pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium hover:bg-[rgb(var(--ink)/0.06)]"
+                        >
+                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                            <Users size={18} />
+                          </span>
+                          Agent team
+                        </button>
+                      )}
+
+                      <div className="my-1.5 h-px bg-[rgb(var(--line))]" />
+                      {onVoiceCall && (
+                        <button
+                          onClick={() => {
+                            onVoiceCall()
+                            setPlusOpen(false)
+                          }}
+                          className="pressable flex w-full items-center gap-3 rounded-2xl px-3 py-3.5 text-[15px] font-medium hover:bg-[rgb(var(--ink)/0.06)]"
+                        >
+                          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                            <Phone size={18} />
+                          </span>
+                          Voice call
+                        </button>
+                      )}
+                    </motion.div>
+                  </motion.div>
+                )}
+              </AnimatePresence>,
+              document.body,
+            )}
+          </div>
+
+          {/* Active mode pill (modes now live in the + menu) */}
+          {webSearch && (
+            <button
+              onClick={() => { haptic('select'); onToggleWeb() }}
+              className="mode-chip pressable flex items-center gap-1.5 rounded-full accent-gradient-bg px-3 py-1.5 text-xs font-semibold text-white"
+            >
+              <Globe size={14} /> Search <X size={13} className="opacity-80" />
+            </button>
+          )}
+          {agent && (
+            <button
+              onClick={() => { haptic('select'); onToggleAgent() }}
+              className="mode-chip pressable flex items-center gap-1.5 rounded-full accent-gradient-bg px-3 py-1.5 text-xs font-semibold text-white"
+            >
+              <Bot size={14} /> Agent <X size={13} className="opacity-80" />
+            </button>
+          )}
+          {imageMode && onToggleImage && (
+            <button
+              onClick={() => { haptic('select'); onToggleImage?.() }}
+              className="mode-chip pressable flex items-center gap-1.5 rounded-full accent-gradient-bg px-3 py-1.5 text-xs font-semibold text-white"
+            >
+              <Sparkles size={14} /> Image <X size={13} className="opacity-80" />
+            </button>
+          )}
+          {browseEnabled && onToggleBrowse && (
+            <button
+              onClick={() => { haptic('select'); onToggleBrowse() }}
+              className={`mode-chip pressable flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                browseActive
+                  ? 'bg-orange-500 text-white'
+                  : 'border border-white/15 text-muted hover:text-ink'
+              }`}
+              title="Browse the live web with OpenClaw for this message"
+            >
+              <Globe size={14} /> Browse
+              {browseActive && <Check size={13} className="opacity-90" />}
+            </button>
+          )}
+
+          <div className="ml-auto flex items-center gap-1.5">
+            {showModelSelector && (
+              <ModelSelector value={model} onChange={onModelChange} />
+            )}
+            {voice.supported && !streaming && (
+              <button
+                onClick={() => {
+                  hapticPattern([10])
+                  voice.listening ? voice.stop() : voice.start()
+                }}
+                className={`pressable flex h-9 w-9 items-center justify-center rounded-full transition ${
+                  voice.listening ? 'bg-red-500 text-white' : 'text-muted hover:bg-[rgb(var(--ink)/0.06)] hover:text-ink'
+                }`}
+                title="Voice input"
+              >
+                <Mic size={18} className={voice.listening ? 'animate-pulse' : ''} />
+              </button>
+            )}
+            {streaming ? (
+              <button
+                onClick={onStop}
+                className="pressable flex h-9 w-9 items-center justify-center rounded-full bg-ink text-surface"
+                title="Stop"
+              >
+                <Square size={15} fill="currentColor" />
+              </button>
+            ) : (
+              <button
+                onClick={submit}
+                disabled={!text.trim() && attachments.length === 0}
+                className="pressable accent-gradient-bg flex h-9 w-9 items-center justify-center rounded-full disabled:opacity-25"
+                title="Send"
+              >
+                <ArrowUp size={20} strokeWidth={2.5} />
+              </button>
+            )}
+          </div>
+        </div>
+      </motion.div>
+      <input
+        ref={imgInput}
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        onChange={(e) => {
+          handleFiles(e.target.files)
+          e.target.value = ''
+        }}
+      />
+      <input
+        ref={camInput}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        hidden
+        onChange={(e) => {
+          handleFiles(e.target.files)
+          e.target.value = ''
+        }}
+      />
+      <input
+        ref={fileInput}
+        type="file"
+        accept=".txt,.md,.json,.csv,.js,.ts,.tsx,.jsx,.py,.html,.css,.pdf,text/*"
+        multiple
+        hidden
+        onChange={(e) => {
+          handleFiles(e.target.files)
+          e.target.value = ''
+        }}
+      />
+    </div>
+  )
+}

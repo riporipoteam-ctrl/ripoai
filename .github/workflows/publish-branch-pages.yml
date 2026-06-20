@@ -1,0 +1,61 @@
+name: Publish built website to branch root
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ['claude/askai-redesign-features-c73ka5', 'claude/ripoai-web-app-U0rvk']
+    paths:
+      - '.github/workflows/publish-branch-pages.yml'
+      - 'index.source.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'public/**'
+      - 'src/**'
+      - 'tailwind.config.js'
+      - 'tsconfig*.json'
+      - 'vite.config.ts'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: branch-root-pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: claude/ripoai-web-app-U0rvk
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build production website
+        env:
+          VITE_BASE: '/ripoai/'
+          VITE_RIPOAI_PROXY_URL: ${{ vars.VITE_RIPOAI_PROXY_URL || secrets.VITE_RIPOAI_PROXY_URL || 'https://ripoai.netlify.app/.netlify/functions/ripoai-chat' }}
+          VITE_AGENT_BROWSER_URL: ${{ vars.VITE_AGENT_BROWSER_URL || secrets.VITE_AGENT_BROWSER_URL }}
+        run: npm run build
+
+      - name: Copy build to branch root
+        run: cp -R dist/. .
+
+      - name: Commit built website
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html sw.js manifest.webmanifest favicon.svg apple-touch-icon.png icon-192.png icon-512.png _redirects assets
+          if git diff --cached --quiet; then
+            echo "No built website changes to publish."
+          else
+            git commit -m "Publish built website to branch root"
+            git push
+          fi

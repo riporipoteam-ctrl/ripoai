@@ -1,0 +1,1 @@
+import{q as n}from"./index-BJcl0wsL.js";import"./motion-TAHrZRye.js";import"./firebase-BclMneCe.js";import"./markdown-B5uOaCix.js";class p extends n{async show(e){}async hide(e){}}export{p as SplashScreenWeb};

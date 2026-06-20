@@ -1,0 +1,183 @@
+name: Build iOS app
+
+# Builds the AskAI iOS app from the web app using Capacitor, on GitHub's
+# macOS runners (which have Xcode). Run it from the Actions tab (Run workflow)
+# or by pushing a tag like v1-ios.
+#
+# Honest caveat about signing:
+#   Apple does NOT allow installing unsigned apps on a physical iPhone/iPad.
+#   To run on a real device you need an Apple Developer account ($99/yr) and
+#   code signing. This workflow therefore produces an UNSIGNED build for the
+#   iOS Simulator (a .app you can run in Xcode's Simulator on a Mac) plus the
+#   ready-to-open Xcode project as an artifact - open it in Xcode, set your
+#   signing team, and Run to install on your own device.
+#
+#   The zero-cost, no-Mac path to "AskAI on your iPhone" is the PWA:
+#   open the deployed site in Safari -> Share -> "Add to Home Screen". It then
+#   launches full-screen with the app icon, like a native app.
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['*-ios']
+    branches: ['claude/askai-redesign-features-c73ka5', 'claude/ripoai-web-app-U0rvk']
+    paths:
+      - '.github/workflows/ios.yml'
+      - 'capacitor.config.ts'
+      - 'index.html'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'public/**'
+      - 'src/**'
+      - 'tailwind.config.js'
+      - 'vite.config.ts'
+
+permissions:
+  contents: write
+
+jobs:
+  build-ios:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Capacitor iOS platform
+        run: npm install @capacitor/ios@^6.2.1 --no-save
+
+      - name: Build web app (root base, with model providers)
+        env:
+          VITE_BASE: '/'
+          VITE_GROQ_API_KEY: ${{ secrets.VITE_GROQ_API_KEY }}
+          VITE_OPENROUTER_API_KEY: ${{ secrets.VITE_OPENROUTER_API_KEY }}
+          VITE_NVIDIA_BASE: ${{ secrets.VITE_NVIDIA_BASE }}
+          VITE_NVIDIA_API_KEY: ${{ secrets.VITE_NVIDIA_API_KEY }}
+          VITE_RIPOAI_PROXY_URL: ${{ vars.VITE_RIPOAI_PROXY_URL || secrets.VITE_RIPOAI_PROXY_URL }}
+        run: npm run build
+
+      - name: Add & sync iOS platform
+        run: |
+          npx cap add ios
+          npx cap sync ios
+
+      - name: Add microphone & speech usage strings (voice calls)
+        run: |
+          PLIST=ios/App/App/Info.plist
+          MIC="AskAI uses your microphone for voice calls."
+          SPEECH="AskAI uses speech recognition to understand you on voice calls."
+          /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string \"$MIC\"" "$PLIST" \
+            || /usr/libexec/PlistBuddy -c "Set :NSMicrophoneUsageDescription \"$MIC\"" "$PLIST"
+          /usr/libexec/PlistBuddy -c "Add :NSSpeechRecognitionUsageDescription string \"$SPEECH\"" "$PLIST" \
+            || /usr/libexec/PlistBuddy -c "Set :NSSpeechRecognitionUsageDescription \"$SPEECH\"" "$PLIST"
+
+      - name: Generate AskAI app icon & splash
+        run: |
+          npm install @capacitor/assets --no-save
+          npx @capacitor/assets generate \
+            --assetPath capacitor-assets \
+            --ios \
+            --iconBackgroundColor '#ffffff' \
+            --iconBackgroundColorDark '#1e1d1b' \
+            --splashBackgroundColor '#ffffff' \
+            --splashBackgroundColorDark '#1e1d1b'
+          npx cap sync ios
+
+      - name: Build unsigned app for the iOS Simulator
+        run: |
+          cd ios/App
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            build
+
+      - name: Package Simulator .app
+        run: |
+          cd ios/App/build/Build/Products
+          APP_DIR=$(find . -name 'App.app' -type d | head -n 1)
+          if [ -z "$APP_DIR" ]; then echo "App.app not found"; exit 1; fi
+          ditto -c -k --sequesterRsrc --keepParent "$APP_DIR" "$GITHUB_WORKSPACE/AskAI-iOS-Simulator.zip"
+
+      - name: Build unsigned device .ipa (for sideloading via AltStore/Sideloadly)
+        run: |
+          cd ios/App
+          xcodebuild \
+            -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build-device \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+          cd build-device/Build/Products/Release-iphoneos
+          mkdir Payload
+          cp -R App.app Payload/
+          zip -qry "$GITHUB_WORKSPACE/AskAI-unsigned.ipa" Payload
+
+      - name: Upload unsigned device .ipa
+        uses: actions/upload-artifact@v4
+        with:
+          name: AskAI-unsigned-ipa
+          path: AskAI-unsigned.ipa
+
+      - name: Package Xcode project (open in Xcode, sign, run on device)
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent ios "$GITHUB_WORKSPACE/AskAI-iOS-Xcode-project.zip"
+
+      - name: Upload Simulator build
+        uses: actions/upload-artifact@v4
+        with:
+          name: AskAI-iOS-Simulator
+          path: AskAI-iOS-Simulator.zip
+
+      - name: Upload Xcode project
+        uses: actions/upload-artifact@v4
+        with:
+          name: AskAI-iOS-Xcode-project
+          path: AskAI-iOS-Xcode-project.zip
+
+      - name: Publish to a Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ios-latest
+          name: AskAI iOS (latest)
+          files: |
+            AskAI-unsigned.ipa
+            AskAI-iOS-Simulator.zip
+            AskAI-iOS-Xcode-project.zip
+          body: |
+            AskAI iOS build (unsigned).
+
+            **Install on your iPhone with a free Apple ID (no Mac needed):**
+            1. Download `AskAI-unsigned.ipa` to your computer.
+            2. Install [Sideloadly](https://sideloadly.io) (Windows/Mac) or [AltStore](https://altstore.io).
+            3. Plug in your iPhone, drag the .ipa in, sign in with your Apple ID, install.
+            4. On the phone: Settings -> General -> VPN & Device Management -> trust your Apple ID.
+
+            > Free Apple IDs must re-sideload every 7 days (Apple's rule). A paid
+            > Apple Developer account ($99/yr) extends this to 1 year + TestFlight.
+
+            **Zero-setup alternative:** open the AskAI site in Safari -> Share ->
+            **Add to Home Screen** — launches full-screen with the app icon.
+
+            **Run in the iOS Simulator (Mac with Xcode):** download
+            `AskAI-iOS-Simulator.zip`, unzip, then:
+            `xcrun simctl install booted App.app && xcrun simctl launch booted io.github.riporipoteam.ripoai`
+
+            **Xcode route:** download `AskAI-iOS-Xcode-project.zip`, open
+            `App/App.xcworkspace`, set your Signing Team, plug in your iPhone, Run.

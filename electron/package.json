@@ -1,0 +1,46 @@
+{
+  "name": "askai-desktop",
+  "productName": "AskAI",
+  "version": "1.0.1",
+  "description": "AskAI desktop app for Windows — chat, agents, skills, and (opt-in) local PC control.",
+  "private": true,
+  "main": "main.js",
+  "author": "AskAI",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --publish never",
+    "release": "electron-builder --win --publish always"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "dependencies": {
+    "electron-updater": "^6.2.1"
+  },
+  "build": {
+    "appId": "com.askai.desktop",
+    "productName": "AskAI",
+    "artifactName": "AskAI-Setup-${version}.${ext}",
+    "directories": { "output": "release", "buildResources": "build" },
+    "files": ["main.js", "preload.js", "sideload.js", "build/icon.png"],
+    "extraResources": [
+      { "from": "build/tools", "to": "tools", "filter": ["**/*"] }
+    ],
+    "publish": [
+      { "provider": "github", "owner": "riporipoteam-ctrl", "repo": "ripoai", "releaseType": "release" }
+    ],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "AskAI"
+    }
+  }
+}

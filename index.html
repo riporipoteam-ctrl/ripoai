@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="64x64" href="/ripoai/assets/favicon-Cc-738DD.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#f5f3ee" />
+    <meta name="description" content="AskAI — your intelligent AI workspace for chat, research and building." />
+    <link rel="manifest" href="/ripoai/assets/manifest-BgpvOtUe.webmanifest" />
+    <!-- iOS "Add to Home Screen" — makes AskAI install & launch full-screen like a native app -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="AskAI" />
+    <link rel="apple-touch-icon" href="/ripoai/assets/apple-touch-icon-Puo1Ux5H.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="/ripoai/assets/icon-192-DOlHesC3.png" />
+    <link rel="apple-touch-icon" sizes="512x512" href="/ripoai/assets/icon-512-YnPz8sed.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,500&family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <title>AskAI</title>
+    <script src="https://js.puter.com/v2/"></script>
+    <script>
+      // Apply the saved light/dark choice before paint to avoid a flash. The
+      // visual design (warm paper, magenta→violet) is baked in as the only UI.
+      (function () {
+        try {
+          var t = localStorage.getItem('ripoai-theme') || 'light';
+          var dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          document.documentElement.classList.toggle('dark', dark);
+        } catch (e) {}
+      })();
+    </script>
+    <script type="module" crossorigin src="/ripoai/assets/index-DDfLYRwX.js"></script>
+    <link rel="modulepreload" crossorigin href="/ripoai/assets/motion-TAHrZRye.js">
+    <link rel="modulepreload" crossorigin href="/ripoai/assets/firebase-D2epOZ3z.js">
+    <link rel="modulepreload" crossorigin href="/ripoai/assets/markdown-B5uOaCix.js">
+    <link rel="stylesheet" crossorigin href="/ripoai/assets/index-CnrE7Z1R.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      // Register the network-first service worker so installed web/APK shells
+      // pull the latest deploy. A waiting worker is promoted immediately, then
+      // the page reloads once when the fresh worker takes control.
+      if ('serviceWorker' in navigator) {
+        var __ripoRefreshing = false;
+        function refreshOnce() {
+          if (__ripoRefreshing) return;
+          __ripoRefreshing = true;
+          location.reload();
+        }
+        function promoteWaitingWorker(reg) {
+          if (reg.waiting && navigator.serviceWorker.controller) {
+            reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+          }
+        }
+        function watchRegistration(reg) {
+          promoteWaitingWorker(reg);
+          reg.addEventListener('updatefound', function () {
+            var worker = reg.installing;
+            if (!worker) return;
+            worker.addEventListener('statechange', function () {
+              if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                worker.postMessage({ type: 'SKIP_WAITING' });
+              }
+            });
+          });
+          setInterval(function () {
+            reg.update().catch(function () {});
+          }, 60000);
+        }
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('./sw.js').then(watchRegistration).catch(function () {});
+        });
+        navigator.serviceWorker.addEventListener('controllerchange', refreshOnce);
+      }
+    </script>
+    <script>
+      // Auto-update: if a newer build has been deployed, reload to it once so
+      // users never get stuck on a stale cached bundle.
+      window.addEventListener('load', function () {
+        setTimeout(function () {
+          try {
+            var running = '';
+            var scripts = document.querySelectorAll('script[src]');
+            for (var i = 0; i < scripts.length; i++) {
+              if (scripts[i].src.indexOf('/assets/index-') > -1) { running = scripts[i].src; break; }
+            }
+            if (!running) return;
+            fetch(location.pathname + '?_=' + Date.now(), { cache: 'no-store' })
+              .then(function (r) { return r.text(); })
+              .then(function (html) {
+                var m = html.match(/assets\/index-[^"']+\.js/);
+                if (m && running.indexOf(m[0]) === -1) {
+                  if (!sessionStorage.getItem('ripoai-upd')) {
+                    sessionStorage.setItem('ripoai-upd', '1');
+                    location.replace(location.pathname + '?u=' + Date.now() + location.hash);
+                  }
+                } else {
+                  sessionStorage.removeItem('ripoai-upd');
+                }
+              })
+              .catch(function () {});
+          } catch (e) {}
+        }, 1500);
+      });
+    </script>
+  </body>
+</html>

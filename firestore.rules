@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function authed() { return request.auth != null; }
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email.lower() == 'ripo.ripoteam@gmail.com';
+    }
+
+    match /users/{uid} {
+      // Any signed-in user can READ profiles — required for friend search +
+      // suggestions. Only the owner (or admin) may WRITE their own doc.
+      allow read: if authed();
+      allow write: if authed() && (request.auth.uid == uid || isAdmin());
+
+      // Friend graph: anyone signed in can send a request to / become a friend
+      // of another user (that's how requests + accepts work cross-account).
+      match /friends/{friendId}  { allow read, write: if authed(); }
+      match /requests/{fromId}   { allow read, write: if authed(); }
+
+      // Everything else under a user (chats, settings, memories, jobs, apps…)
+      // stays private to the owner / admin.
+      match /{document=**} {
+        allow read, write: if authed() && (request.auth.uid == uid || isAdmin());
+      }
+    }
+
+    // Direct messages + calls: any signed-in participant can read/write.
+    match /dms/{cid}/{document=**}  { allow read, write: if authed(); }
+    match /calls/{id}/{document=**} { allow read, write: if authed(); }
+  }
+}

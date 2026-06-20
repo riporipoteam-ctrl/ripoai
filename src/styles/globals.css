@@ -1,0 +1,256 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Bold-modern light theme — vibrant indigo→violet accent (was mono black). */
+  --accent: 88 101 242;
+  --accent-soft: 130 99 245;
+  --accent-ink: 255 255 255;
+  --surface: 247 247 248;
+  --surface-raised: 255 255 255;
+  --card: 255 255 255;
+  --line: 224 224 230;
+  --ink: 13 13 13;
+  --muted: 108 108 122;
+  --glass-bg: 255 255 255;
+  --glass-border: 255 255 255;
+  --page-grad-1: 235 236 240;
+  --page-grad-2: 244 244 247;
+  --page-grad-3: 238 240 243;
+  --orb-1: 120 130 150;
+  --orb-2: 150 150 165;
+  --orb-3: 130 140 160;
+  --orb-alpha: 0.16;
+  color-scheme: light;
+}
+
+.dark {
+  /* Bold-modern dark theme — luminous indigo accent on near-black. */
+  --accent: 120 134 255;
+  --accent-soft: 158 126 255;
+  --accent-ink: 255 255 255;
+  --surface: 33 33 33;
+  --surface-raised: 47 47 47;
+  --card: 44 44 47;
+  --line: 64 64 70;
+  --ink: 236 236 238;
+  --muted: 154 154 166;
+  --glass-bg: 52 52 54;
+  --glass-border: 255 255 255;
+  --page-grad-1: 42 42 46;
+  --page-grad-2: 33 33 36;
+  --page-grad-3: 46 46 50;
+  --orb-1: 120 130 150;
+  --orb-2: 140 140 158;
+  --orb-3: 120 135 155;
+  --orb-alpha: 0.14;
+  color-scheme: dark;
+}
+
+/* Claude = warm "paper" palette (opt-in via Settings). */
+.ui-claude {
+  --accent: 217 119 87;
+  --accent-soft: 217 119 87;
+  --accent-ink: 255 255 255;
+  --surface: 244 242 235;
+  --surface-raised: 255 253 248;
+  --ink: 41 37 33;
+  --muted: 122 114 103;
+  --glass-bg: 255 253 248;
+  --page-grad-1: 246 230 214;
+  --page-grad-2: 250 240 230;
+  --page-grad-3: 244 228 222;
+  --orb-1: 217 119 87;
+  --orb-2: 224 165 94;
+  --orb-3: 214 132 110;
+  --orb-alpha: 0.5;
+}
+.dark.ui-claude {
+  --surface: 30 29 27;
+  --surface-raised: 43 41 38;
+  --ink: 236 232 225;
+  --muted: 162 153 141;
+  --glass-bg: 46 43 40;
+  --page-grad-1: 62 44 33;
+  --page-grad-2: 38 33 29;
+  --page-grad-3: 56 40 35;
+  --orb-alpha: 0.45;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Lock the text/zoom scale. Inside the native WebView (Android & iOS) the
+   system "Display size" / "Font size" accessibility settings otherwise inflate
+   every element, which makes the whole app look zoomed-in and oversized while
+   the same page looks correct in a desktop browser. Pinning to 100% keeps the
+   app rendering at its designed scale on every device. */
+html {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+/* Fill the whole screen on installed/home-screen PWAs. iOS standalone mishandles
+   100%/100vh, so use the dynamic viewport unit with sane fallbacks, and lay the
+   app out as a flex column so children stretch edge to edge. */
+#root {
+  /* Pin to the viewport. iOS standalone PWAs mis-size 100vh/100dvh (leaving a
+     dead strip below the app), but position:fixed + inset:0 always covers the
+     exact visual viewport — no gap. */
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  /* Only the top notch is padded here; the bottom (home-indicator) inset is
+     handled by the composer bar itself so its background fills to the very
+     bottom edge. */
+  padding-top: env(safe-area-inset-top);
+}
+/* The app's own root + the routed page must take all available height. */
+#root > * {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+body {
+  margin: 0;
+  font-family: 'Manrope', system-ui, sans-serif;
+  letter-spacing: -0.011em;
+  background: rgb(var(--surface));
+  color: rgb(var(--ink));
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+}
+
+/* Near-flat calm background. The old animated multi-gradient aurora + drifting
+   orbs made the UI feel "dizzy"; this is a single static surface with one very
+   faint top wash. (The clean-2026 layer reinforces this.) */
+.aurora {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: rgb(var(--surface));
+}
+.aurora::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 80% at 50% -10%, rgb(var(--accent) / 0.05), transparent 60%);
+}
+.aurora > .aurora-orb {
+  display: none;
+}
+
+@keyframes surface-shift {
+  0%, 100% { background-position: 0% 0%, 100% 0%, 50% 0%, 0 0; }
+  50% { background-position: 100% 42%, 0% 50%, 50% 0%, 0 0; }
+}
+@keyframes sheet-drift-a {
+  0%, 100% { transform: translate3d(-4%, -2%, 0) rotate(0deg); }
+  50% { transform: translate3d(5%, 4%, 0) rotate(2deg); }
+}
+@keyframes sheet-drift-b {
+  0%, 100% { transform: translate3d(4%, 3%, 0) rotate(0deg); }
+  50% { transform: translate3d(-5%, -3%, 0) rotate(-2deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aurora,
+  .aurora::before,
+  .aurora::after { animation: none; }
+}
+
+/* Reusable form field — visible in both themes (the old white/5 fill vanished
+   on light backgrounds). Glassy fill, clear accent focus ring. */
+.field {
+  width: 100%;
+  border-radius: 1rem;
+  border: 1px solid rgb(var(--ink) / 0.12);
+  background: rgb(var(--surface-raised) / 0.7);
+  padding: 0.8rem 1rem;
+  color: rgb(var(--ink));
+  outline: none;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.field::placeholder { color: rgb(var(--muted) / 0.8); }
+.field:focus {
+  border-color: rgb(var(--accent) / 0.7);
+  box-shadow: 0 0 0 4px rgb(var(--accent) / 0.18);
+  background: rgb(var(--surface-raised) / 0.92);
+}
+.dark .field { border-color: rgb(255 255 255 / 0.1); background: rgb(255 255 255 / 0.05); }
+.dark .field:focus { background: rgb(255 255 255 / 0.08); }
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--muted) / 0.3);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background: rgb(var(--muted) / 0.5); background-clip: content-box; }
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+
+/* Selection */
+::selection { background: rgb(var(--accent) / 0.3); }
+
+/* Markdown typography for chat answers */
+.prose-ripo {
+  line-height: 1.7;
+  font-size: 0.975rem;
+  word-break: break-word;
+}
+.prose-ripo > :first-child { margin-top: 0; }
+.prose-ripo > :last-child { margin-bottom: 0; }
+.prose-ripo p { margin: 0.6em 0; }
+.prose-ripo h1, .prose-ripo h2, .prose-ripo h3, .prose-ripo h4 {
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 1.1em 0 0.5em;
+}
+.prose-ripo h1 { font-size: 1.5em; }
+.prose-ripo h2 { font-size: 1.3em; }
+.prose-ripo h3 { font-size: 1.12em; }
+.prose-ripo ul, .prose-ripo ol { margin: 0.6em 0; padding-left: 1.4em; }
+.prose-ripo ul { list-style: disc; }
+.prose-ripo ol { list-style: decimal; }
+.prose-ripo li { margin: 0.25em 0; }
+.prose-ripo li::marker { color: rgb(var(--accent)); }
+.prose-ripo blockquote {
+  border-left: 3px solid rgb(var(--accent) / 0.6);
+  padding-left: 1em;
+  margin: 0.8em 0;
+  color: rgb(var(--muted));
+}
+.prose-ripo hr { border: none; border-top: 1px solid rgb(var(--muted) / 0.2); margin: 1.2em 0; }
+.prose-ripo a { word-break: break-all; }
+
+/* Typing caret blink for the streaming cursor */
+.stream-caret::after {
+  content: '▍';
+  margin-left: 1px;
+  animation: pulse-dot 1s steps(2) infinite;
+  color: rgb(var(--accent));
+}
+
+/* Loading bar shimmer for the full-screen loader */
+@keyframes loadbar {
+  0% { transform: translateX(-110%); }
+  100% { transform: translateX(320%); }
+}

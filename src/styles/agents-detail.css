@@ -1,0 +1,28 @@
+/* Agent Detail page — small polish on top of the shared design system.
+   The page itself uses the app's glass / pressable / accent utilities; this
+   file just tidies the textareas and the segmented control. */
+
+.agent-detail textarea {
+  /* Comfortable typing surface that still feels native. */
+  line-height: 1.55;
+  scrollbar-width: thin;
+}
+
+.agent-detail textarea::-webkit-scrollbar {
+  width: 8px;
+}
+.agent-detail textarea::-webkit-scrollbar-thumb {
+  background: rgb(var(--muted) / 0.25);
+  border-radius: 9999px;
+}
+
+/* Keep the segmented control's active pill crisply behind the labels. */
+.agent-seg {
+  isolation: isolate;
+}
+
+/* On the native shells, give the page a touch more breathing room above the
+   bottom tab bar so the chat CTA never sits flush against it. */
+html.native .agent-detail {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8rem);
+}

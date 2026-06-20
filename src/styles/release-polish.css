@@ -1,0 +1,450 @@
+.mobile-topbar {
+  border-bottom: 1px solid rgb(255 255 255 / 0.08);
+  background:
+    linear-gradient(180deg, rgb(var(--glass-bg) / 0.42), rgb(var(--glass-bg) / 0.18)),
+    rgb(var(--surface) / 0.16);
+  box-shadow: 0 14px 42px -34px rgb(0 0 0 / 0.7);
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+}
+
+.glass-control {
+  border: 1px solid rgb(255 255 255 / 0.12);
+  background: rgb(var(--glass-bg) / 0.2);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18);
+}
+
+.composer-dock {
+  pointer-events: none;
+  border-top: 0 !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+.composer-dock::before {
+  content: none !important;
+  display: none !important;
+}
+.composer-shell {
+  background: transparent !important;
+  background-color: transparent !important;
+  border-color: rgb(var(--ink) / 0.09) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.18),
+    0 18px 54px -42px rgb(0 0 0 / 0.88) !important;
+  backdrop-filter: blur(18px) saturate(155%);
+  -webkit-backdrop-filter: blur(18px) saturate(155%);
+}
+.composer-shell:focus-within {
+  transform: translateY(-2px);
+  border-color: rgb(var(--accent) / 0.34) !important;
+}
+
+.empty-state {
+  min-height: 100%;
+}
+.home-mark {
+  position: relative;
+  border-radius: 2rem;
+}
+.home-mark::after {
+  content: '';
+  position: absolute;
+  inset: -2rem;
+  z-index: -1;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgb(var(--accent) / 0.18), transparent 64%);
+  animation: halo-breathe 4.8s ease-in-out infinite;
+}
+.home-command-bar {
+  min-height: 2.4rem;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: 999px;
+  background: rgb(var(--glass-bg) / 0.24);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18), 0 20px 60px -44px rgb(0 0 0 / 0.75);
+  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+}
+.launch-card {
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.14), transparent 52%),
+    rgb(var(--glass-bg) / 0.22);
+}
+.launch-card:hover {
+  border-color: rgb(var(--accent) / 0.22);
+}
+.launch-icon {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.18);
+}
+
+.sidebar-shell {
+  border-right: 1px solid rgb(255 255 255 / 0.08);
+  background:
+    linear-gradient(180deg, rgb(var(--glass-bg) / 0.48), rgb(var(--glass-bg) / 0.28)),
+    rgb(var(--surface) / 0.32);
+}
+.sidebar-header {
+  border-bottom: 1px solid rgb(255 255 255 / 0.06);
+}
+.sidebar-search {
+  border: 1px solid rgb(255 255 255 / 0.08);
+  background: rgb(var(--ink) / 0.04);
+}
+.sidebar-item {
+  background: transparent;
+}
+.sidebar-item:hover,
+.sidebar-item.is-active {
+  background: rgb(var(--ink) / 0.06);
+}
+.dark .sidebar-item:hover,
+.dark .sidebar-item.is-active {
+  background: rgb(255 255 255 / 0.08);
+}
+
+@keyframes halo-breathe {
+  0%, 100% { opacity: 0.46; transform: scale(0.94); }
+  50% { opacity: 0.9; transform: scale(1.04); }
+}
+
+@media (max-width: 640px) {
+  .empty-state {
+    justify-content: flex-start;
+    padding-top: 2rem;
+  }
+  .empty-suggestions {
+    grid-template-columns: 1fr;
+  }
+  .launch-card {
+    min-height: 82px;
+  }
+  .composer-dock::before {
+    top: -5.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-mark::after {
+    animation: none;
+  }
+}
+
+/* Floating composer release pass */
+.composer-dock {
+  background: transparent !important;
+  background-color: transparent !important;
+  border-top: 0 !important;
+  box-shadow: none !important;
+  isolation: isolate;
+}
+
+.composer-dock::before,
+.composer-dock::after {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+}
+
+.floating-composer,
+.composer-shell {
+  background: transparent !important;
+  background-color: transparent !important;
+  border-color: rgb(var(--ink) / 0.09) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.18),
+    0 18px 54px -42px rgb(0 0 0 / 0.88) !important;
+  backdrop-filter: blur(18px) saturate(155%);
+  -webkit-backdrop-filter: blur(18px) saturate(155%);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background 180ms ease;
+}
+
+.dark .floating-composer,
+.dark .composer-shell {
+  background: transparent !important;
+  background-color: transparent !important;
+  border-color: rgb(255 255 255 / 0.09) !important;
+}
+
+.floating-composer textarea,
+.composer-shell textarea {
+  background: transparent !important;
+}
+
+.composer-shell:focus-within {
+  transform: translateY(-3px);
+  border-color: rgb(var(--accent) / 0.35) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.2),
+    0 24px 70px -44px rgb(0 0 0 / 0.82),
+    0 0 0 1px rgb(var(--accent) / 0.08) !important;
+}
+
+.quick-action-rail,
+.feature-ribbon {
+  margin-inline: auto;
+  max-width: min(58rem, 100%);
+  mask-image: linear-gradient(90deg, transparent, #000 1.25rem, #000 calc(100% - 1.25rem), transparent);
+}
+
+.quick-action-chip,
+.feature-pill,
+.composer-tool {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.2),
+    0 12px 34px -28px rgb(0 0 0 / 0.82);
+}
+
+.quick-action-chip:hover,
+.feature-pill:hover,
+.composer-tool:hover {
+  transform: translateY(-1px);
+  border-color: rgb(var(--accent) / 0.18);
+}
+
+.composer-tool {
+  display: inline-flex;
+  height: 2.25rem;
+  width: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(var(--ink) / 0.06);
+  border-radius: 999px;
+  background: rgb(var(--glass-bg) / 0.08);
+  color: rgb(var(--muted));
+  transition:
+    transform 160ms ease,
+    color 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease;
+}
+
+.composer-tool:hover {
+  background: rgb(var(--glass-bg) / 0.18);
+  color: rgb(var(--ink));
+}
+
+.composer-meter {
+  align-items: center;
+  min-height: 2rem;
+  border-radius: 999px;
+  padding: 0 0.6rem;
+  background: rgb(var(--ink) / 0.045);
+  color: rgb(var(--muted));
+  font-size: 0.69rem;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.composer-drop-hot {
+  border-color: rgb(var(--accent) / 0.5) !important;
+  background:
+    linear-gradient(180deg, rgb(var(--accent) / 0.1), rgb(255 255 255 / 0.02)),
+    rgb(var(--glass-bg) / 0.12) !important;
+  transform: translateY(-4px) scale(1.006);
+}
+
+.focus-composer-overlay {
+  animation: overlay-in 160ms ease both;
+}
+
+.focus-composer-panel {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.24),
+    0 32px 96px -36px rgb(0 0 0 / 0.85);
+}
+
+.feature-ribbon {
+  padding-inline: 0.5rem;
+}
+
+.feature-pill {
+  min-height: 2.15rem;
+}
+
+.launch-card {
+  transform-origin: center;
+}
+
+.launch-card:nth-child(2n) {
+  animation: card-breathe 5.2s ease-in-out infinite;
+}
+
+.launch-card:nth-child(2n + 1) {
+  animation: card-breathe 5.8s ease-in-out infinite reverse;
+}
+
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes card-breathe {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.04); }
+}
+
+@media (max-width: 640px) {
+  .composer-dock {
+    padding-inline: 0.65rem !important;
+    padding-bottom: max(env(safe-area-inset-bottom), 0.65rem) !important;
+  }
+
+  .quick-action-rail {
+    max-width: calc(100vw - 1rem);
+  }
+
+  .quick-action-chip,
+  .feature-pill {
+    padding-inline: 0.72rem;
+  }
+
+  .floating-composer,
+  .composer-shell {
+    border-radius: 24px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .launch-card,
+  .focus-composer-overlay {
+    animation: none !important;
+  }
+}
+
+/* Agent-mode + true floating composer pass */
+.chat-stage {
+  isolation: isolate;
+}
+
+.chat-scroll {
+  scroll-padding-bottom: 11rem;
+}
+
+.composer-dock {
+  background:
+    linear-gradient(
+      180deg,
+      transparent 0%,
+      rgb(var(--glass-bg) / 0.035) 38%,
+      rgb(var(--glass-bg) / 0.11) 100%
+    ) !important;
+  backdrop-filter: blur(22px) saturate(170%);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  box-shadow: none !important;
+}
+
+.dark .composer-dock {
+  background:
+    linear-gradient(
+      180deg,
+      transparent 0%,
+      rgb(0 0 0 / 0.06) 42%,
+      rgb(0 0 0 / 0.18) 100%
+    ) !important;
+}
+
+.floating-composer,
+.composer-shell {
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 0.2), rgb(255 255 255 / 0.06) 44%, rgb(255 255 255 / 0.02)),
+    rgb(var(--glass-bg) / 0.16) !important;
+  border-color: rgb(255 255 255 / 0.18) !important;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.28),
+    inset 0 -1px 0 rgb(0 0 0 / 0.05),
+    0 24px 72px -42px rgb(0 0 0 / 0.8) !important;
+  backdrop-filter: blur(28px) saturate(190%);
+  -webkit-backdrop-filter: blur(28px) saturate(190%);
+}
+
+.dark .floating-composer,
+.dark .composer-shell {
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 0.11), rgb(255 255 255 / 0.04) 50%, rgb(255 255 255 / 0.015)),
+    rgb(22 22 24 / 0.28) !important;
+}
+
+.composer-shell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(120deg, transparent 18%, rgb(255 255 255 / 0.18) 42%, transparent 58%);
+  opacity: 0;
+  transform: translateX(-42%);
+  transition: opacity 180ms ease, transform 520ms ease;
+}
+
+.composer-shell:focus-within::after {
+  opacity: 1;
+  transform: translateX(42%);
+}
+
+.agent-browser-panel {
+  background:
+    linear-gradient(145deg, rgb(255 255 255 / 0.18), rgb(255 255 255 / 0.04)),
+    rgb(var(--glass-bg) / 0.18);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.24),
+    0 28px 80px -54px rgb(0 0 0 / 0.82);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+
+.agent-browser-chrome,
+.agent-browser-actions {
+  background: rgb(var(--glass-bg) / 0.12);
+  backdrop-filter: blur(18px) saturate(170%);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+}
+
+.agent-browser-viewport {
+  background:
+    repeating-linear-gradient(45deg, rgb(0 0 0 / 0.04) 0 10px, transparent 10px 20px),
+    rgb(244 245 247);
+}
+.dark .agent-browser-viewport {
+  background:
+    repeating-linear-gradient(45deg, rgb(255 255 255 / 0.03) 0 10px, transparent 10px 20px),
+    rgb(20 21 23);
+}
+
+@media (max-width: 640px) {
+  .chat-thread {
+    padding-bottom: 12.5rem !important;
+  }
+
+  .composer-dock {
+    padding-top: 5rem !important;
+  }
+}
+
+/* ============================================================
+   v3.1 motion polish — additive animations on existing classes
+   ============================================================ */
+
+/* Subtle living gradient on the accent buttons (New chat, Send). */
+@keyframes askai-accent-shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+.accent-gradient-bg {
+  background-size: 180% 180%;
+  animation: askai-accent-shimmer 7s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .accent-gradient-bg { animation: none; }
+}
+
+/* Springier press + hover lift on the launch/suggestion + nav cards. */
+.lift-card, .pressable {
+  transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.18s ease, filter 0.18s ease;
+}
+.lift-card:hover { transform: translateY(-2px); }
+.pressable:active { transform: scale(0.97); }

@@ -1,0 +1,147 @@
+/* ============================================================================
+ * Agents screens — Nebula-style polish on the neutral ChatGPT palette.
+ * Only the Agents home, the New-Agent picker and the activity feed use these;
+ * nothing here leaks to other screens. Built on the shared tokens
+ * (accent / ink / muted / card / bg / line) and `pressable`.
+ * ========================================================================== */
+
+/* Segmented tabs ("My stuff" / "Activity", template categories). */
+.ag-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 9999px;
+  background: rgb(var(--surface-raised) / 0.9);
+  border: 1px solid rgb(var(--line));
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.ag-seg::-webkit-scrollbar {
+  display: none;
+}
+.ag-seg-btn {
+  position: relative;
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 9999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: rgb(var(--muted));
+  white-space: nowrap;
+  transition: color 0.15s ease;
+}
+.ag-seg-btn[data-active='true'] {
+  color: rgb(var(--surface));
+}
+.ag-seg-pill {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: rgb(var(--ink));
+  z-index: 0;
+}
+.ag-seg-label {
+  position: relative;
+  z-index: 1;
+}
+
+/* "Ready to work" status pill used on roster cards. */
+.ag-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+}
+.ag-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+}
+
+/* Roster card hover lift (kept subtle on the flat ChatGPT surfaces). */
+.ag-card {
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+@media (hover: hover) {
+  .ag-card:hover {
+    transform: translateY(-1px);
+    border-color: rgb(var(--ink) / 0.18) !important;
+    box-shadow: 0 6px 18px -12px rgb(0 0 0 / 0.35) !important;
+  }
+}
+
+/* Activity timeline rail (agent detail + feed). */
+.ag-timeline {
+  position: relative;
+  padding-left: 26px;
+}
+.ag-timeline::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 4px;
+  bottom: 4px;
+  width: 2px;
+  border-radius: 2px;
+  background: rgb(var(--line));
+}
+.ag-timeline-node {
+  position: absolute;
+  left: 3px;
+  top: 4px;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: rgb(var(--surface));
+  border: 2px solid rgb(var(--accent));
+  box-shadow: 0 0 0 3px rgb(var(--surface));
+}
+
+/* New-agent picker template grid. */
+.ag-tpl-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+@media (min-width: 560px) {
+  .ag-tpl-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Sample-goal chips. */
+.ag-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 9999px;
+  border: 1px solid rgb(var(--line));
+  background: rgb(var(--surface));
+  color: rgb(var(--ink));
+  font-size: 0.8125rem;
+  font-weight: 500;
+  text-align: left;
+}
+@media (hover: hover) {
+  .ag-chip:hover {
+    border-color: rgb(var(--accent) / 0.5);
+    color: rgb(var(--accent));
+  }
+}
+
+/* Generous bottom padding so nothing hides behind the native tab bar. */
+.ag-page {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 7rem);
+}
+html.native .ag-page {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8.5rem);
+}

@@ -1,0 +1,316 @@
+/* ============================================================================
+ * ChatGPT LAYOUT — the structural layer for the redesigned app shell + chat.
+ * Loaded AFTER chatgpt-theme.css (imported from App.tsx) so it wins the cascade.
+ * It builds on the neutral palette from chatgpt-theme.css (accent/ink/muted/
+ * card/bg/line/surface tokens) and never re-defines those colors.
+ *
+ * Responsibilities:
+ *   1. Neutralize the leftover "bold-2026" purple + the native (APK) periwinkle
+ *      aurora and the stray black line on the mobile tab bar.
+ *   2. ChatGPT-style sidebar, top bar, chat column, message rows and composer.
+ *   3. Hard responsive guards so every control fits + is tappable down to 320px.
+ * ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+ * 0. KILL THE PURPLE EVERYWHERE (web + native/APK)
+ * ------------------------------------------------------------------------- */
+/* The app still renders a `.aurora` background div + the native skin paints a
+ * periwinkle/lilac gradient over it. Force a flat ChatGPT surface on every
+ * platform — beats `html.native .aurora` because we load later AND match its
+ * specificity. */
+.aurora,
+html.native .aurora,
+html.native .aurora::before,
+html.native .aurora::after {
+  display: none !important;
+  background: none !important;
+  animation: none !important;
+}
+html.native,
+html.native body {
+  background: rgb(var(--surface)) !important;
+  background-image: none !important;
+}
+/* Neutralize the native tint tokens so any shadow/gradient still referencing
+ * them resolves to a neutral, not purple. */
+html.native,
+html.native.dark {
+  --na-tint-a: var(--ink);
+  --na-tint-b: var(--ink);
+  --na-tint-c: var(--accent);
+  --na-bg-1: var(--surface);
+  --na-bg-2: var(--surface);
+  --na-bg-3: var(--surface);
+  --na-glass: var(--surface-raised);
+  --na-stroke: var(--line);
+}
+
+/* ---------------------------------------------------------------------------
+ * 1. THE MOBILE TAB BAR — clean, no purple, NO black line.
+ * ------------------------------------------------------------------------- */
+.native-tabbar {
+  pointer-events: none;
+  background: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+/* The android skin adds a dark gradient + a top border that reads as a black
+ * line across the APK — remove both, on the bar and its inner pill. */
+.native-android .native-tabbar,
+html.native .native-tabbar {
+  background: none !important;
+  border-top: 0 !important;
+}
+.native-tabbar-inner {
+  background: rgb(var(--surface)) !important;
+  border: 1px solid rgb(var(--line)) !important;
+  box-shadow: 0 -1px 18px -8px rgb(0 0 0 / 0.18) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.dark .native-tabbar-inner,
+html.native.dark .native-tabbar-inner {
+  background: rgb(var(--surface-raised)) !important;
+  border-color: rgb(var(--line)) !important;
+  box-shadow: 0 -1px 22px -10px rgb(0 0 0 / 0.6) !important;
+}
+/* Remove the lit-glass rim + edge-lensing pseudo (those drew faint dark/white
+ * hairlines that looked like a stray line on the APK). */
+.native-tabbar-inner::after,
+.native-tabbar-inner::before {
+  display: none !important;
+}
+/* Kill the periwinkle glow pill behind the active android tab. */
+.native-android .native-tabbar [aria-current='page']::before,
+.native-android .native-tabbar .is-active::before {
+  display: none !important;
+}
+/* Every tab is a 44px+ touch target. */
+.native-tab {
+  min-height: 48px;
+  background: transparent !important;
+}
+/* Center "+" button: flat ChatGPT pill, no purple shadow/border. */
+.native-fab {
+  background-color: rgb(var(--ink)) !important;
+  background-image: none !important;
+  color: rgb(var(--surface)) !important;
+  border: 0 !important;
+  box-shadow: 0 6px 18px -8px rgb(0 0 0 / 0.45) !important;
+  width: 3.25rem !important;
+  height: 3.25rem !important;
+}
+
+/* ---------------------------------------------------------------------------
+ * 2. SIDEBAR — ChatGPT rail.
+ * ------------------------------------------------------------------------- */
+.cg-sidebar {
+  background: rgb(var(--surface-raised)) !important;
+  border-right: 1px solid rgb(var(--line));
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+.dark .cg-sidebar {
+  background: rgb(33 33 33) !important; /* #212121 */
+}
+/* A row in the sidebar (nav item, chat, project). */
+.cg-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  border-radius: 0.625rem;
+  padding: 0.5rem 0.625rem;
+  font-size: 0.875rem;
+  color: rgb(var(--ink) / 0.78);
+  transition: background-color 0.15s ease, color 0.15s ease;
+  min-height: 38px;
+  text-align: left;
+}
+.cg-row:hover {
+  background: rgb(var(--ink) / 0.06);
+  color: rgb(var(--ink));
+}
+.cg-row.is-active {
+  background: rgb(var(--ink) / 0.08);
+  color: rgb(var(--ink));
+}
+.cg-row-icon {
+  flex-shrink: 0;
+  color: rgb(var(--muted));
+}
+.cg-row.is-active .cg-row-icon {
+  color: rgb(var(--ink));
+}
+/* Search field in the sidebar. */
+.cg-search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 0.625rem;
+  background: rgb(var(--ink) / 0.05);
+  padding: 0.5rem 0.75rem;
+  min-height: 40px;
+}
+.cg-search input {
+  width: 100%;
+  background: transparent;
+  outline: none;
+  font-size: 0.875rem;
+  color: rgb(var(--ink));
+}
+.cg-search input::placeholder {
+  color: rgb(var(--muted));
+}
+/* "New chat" primary button — flat, full-width, neutral. */
+.cg-newchat {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  border-radius: 0.625rem;
+  border: 1px solid rgb(var(--line));
+  background: rgb(var(--surface));
+  padding: 0.625rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgb(var(--ink));
+  min-height: 44px;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.cg-newchat:hover {
+  background: rgb(var(--ink) / 0.05);
+}
+.dark .cg-newchat {
+  background: rgb(255 255 255 / 0.04);
+}
+.dark .cg-newchat:hover {
+  background: rgb(255 255 255 / 0.08);
+}
+.cg-section-label {
+  padding: 0.5rem 0.625rem 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: rgb(var(--muted));
+}
+/* Bottom account block. */
+.cg-account {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  border-radius: 0.625rem;
+  padding: 0.5rem;
+  transition: background-color 0.15s ease;
+}
+.cg-account:hover {
+  background: rgb(var(--ink) / 0.05);
+}
+
+/* ---------------------------------------------------------------------------
+ * 3. TOP BAR — minimal.
+ * ------------------------------------------------------------------------- */
+.cg-topbar {
+  background: rgb(var(--surface) / 0.85) !important;
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 1px solid rgb(var(--line) / 0.6) !important;
+  box-shadow: none !important;
+}
+.cg-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 0.625rem;
+  color: rgb(var(--ink));
+  transition: background-color 0.15s ease;
+}
+.cg-iconbtn:hover {
+  background: rgb(var(--ink) / 0.07);
+}
+
+/* ---------------------------------------------------------------------------
+ * 4. CHAT COLUMN + MESSAGES.
+ * ------------------------------------------------------------------------- */
+.cg-thread {
+  margin-inline: auto;
+  width: 100%;
+  max-width: 48rem; /* max-w-3xl */
+}
+/* Assistant rows render as plain text on the page (the theme already strips the
+ * bubble background); the .cg-thread column above just sets the centered
+ * max-w-3xl width + comfortable vertical rhythm via space-y on the thread. */
+
+/* User message bubble: ChatGPT's soft neutral bubble, right-aligned. The
+ * message component paints it with an accent gradient — override to a calm
+ * surface so it reads as a quiet bubble, not a loud accent block. */
+.user-bubble {
+  background: rgb(var(--ink) / 0.06) !important;
+  color: rgb(var(--ink)) !important;
+  box-shadow: none !important;
+  border-radius: 1.375rem !important;
+}
+.dark .user-bubble {
+  background: rgb(255 255 255 / 0.1) !important;
+}
+
+/* ---------------------------------------------------------------------------
+ * 5. COMPOSER — bottom-pinned rounded ChatGPT box.
+ * ------------------------------------------------------------------------- */
+.composer-dock {
+  background: linear-gradient(
+    to top,
+    rgb(var(--surface)) 38%,
+    rgb(var(--surface) / 0)
+  ) !important;
+}
+.composer-dock::before,
+.composer-dock::after {
+  display: none !important;
+}
+.composer-shell,
+.floating-composer {
+  background: rgb(var(--surface)) !important;
+  border: 1px solid rgb(var(--line)) !important;
+  border-radius: 1.75rem !important;
+  box-shadow: 0 2px 14px -6px rgb(0 0 0 / 0.14) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.dark .composer-shell,
+.dark .floating-composer,
+html.native.dark .composer-shell {
+  background: rgb(var(--surface-raised)) !important;
+  border-color: rgb(var(--line)) !important;
+  box-shadow: 0 2px 18px -8px rgb(0 0 0 / 0.55) !important;
+}
+.composer-shell:focus-within,
+.floating-composer:focus-within {
+  border-color: rgb(var(--ink) / 0.28) !important;
+  box-shadow: 0 4px 22px -8px rgb(0 0 0 / 0.22) !important;
+}
+/* Strip the native lit-glass pseudos from the composer too. */
+html.native .composer-shell::before,
+html.native .composer-shell::after,
+.composer-shell::after {
+  display: none !important;
+}
+
+/* ---------------------------------------------------------------------------
+ * 6. RESPONSIVE GUARDS — fit every phone down to 320px, keep 44px targets.
+ * ------------------------------------------------------------------------- */
+@media (max-width: 380px) {
+  .cg-thread {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+}
+/* Tappable minimums on the small round controls inside the composer + bars. */
+.pressable {
+  touch-action: manipulation;
+}

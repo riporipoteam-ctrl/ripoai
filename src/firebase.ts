@@ -1,0 +1,43 @@
+import { initializeApp } from 'firebase/app'
+import {
+  initializeAuth,
+  GoogleAuthProvider,
+  indexedDBLocalPersistence,
+  browserLocalPersistence,
+  browserPopupRedirectResolver,
+} from 'firebase/auth'
+import { getFirestore } from 'firebase/firestore'
+
+// Firebase web config is safe to ship in the client by design — access is
+// governed by Firebase Auth + Firestore security rules, not by hiding this.
+const firebaseConfig = {
+  apiKey: 'AIzaSyA-4hkATjzLE-nS0eDf09qs_8MWGc_iRPA',
+  // Use the default firebaseapp.com auth domain: its OAuth redirect URI
+  // (/__/auth/handler) is ALWAYS pre-registered for the project, so Google
+  // sign-in works from any authorized domain (Netlify, GitHub Pages, etc.).
+  // (web.app only works if Firebase Hosting is active — it isn't here, which
+  // caused redirect_uri_mismatch.)
+  authDomain: 'ripoai-dff5d.firebaseapp.com',
+  databaseURL: 'https://ripoai-dff5d-default-rtdb.firebaseio.com',
+  projectId: 'ripoai-dff5d',
+  storageBucket: 'ripoai-dff5d.firebasestorage.app',
+  messagingSenderId: '142008911833',
+  appId: '1:142008911833:web:fd73df454c5e66fe4abbc8',
+  measurementId: 'G-Z4ZKXJ989C',
+}
+
+export const app = initializeApp(firebaseConfig)
+
+// Persistence is set synchronously at init (no race with an async
+// setPersistence that could miss an early sign-in) and prefers IndexedDB,
+// which survives in the native WebView where localStorage is evicted under
+// storage pressure — fixing sign-ins that "sometimes don't save". Falls back
+// to localStorage where IndexedDB is unavailable.
+export const auth = initializeAuth(app, {
+  persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+  popupRedirectResolver: browserPopupRedirectResolver,
+})
+
+export const db = getFirestore(app)
+export const googleProvider = new GoogleAuthProvider()
+googleProvider.setCustomParameters({ prompt: 'select_account' })

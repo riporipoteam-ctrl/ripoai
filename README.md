@@ -1,0 +1,266 @@
+# AskAI
+
+A polished, ChatGPT‑style AI web app — chat, live web research, memory, and an in‑browser
+coding workspace with live preview. Built with React + Vite + TypeScript, Firebase Auth +
+Firestore, Tailwind, Framer Motion and an iOS‑26 "Liquid Glass" design. Deploys to GitHub Pages.
+
+## Features
+
+- **Auth** — email/password + Google sign‑in (Firebase). Animated onboarding on first run.
+- **Chat** — streaming answers, Markdown + syntax‑highlighted code, math, copy, edit, regenerate,
+  stop. Reasoning shown as a collapsible panel.
+- **Models** — pick a AskAI tier per chat:
+  | Tier | Powered by (Groq) |
+  | --- | --- |
+  | AskAI 1o instant | `qwen/qwen3-32b` |
+  | AskAI 2o instant | `meta-llama/llama-4-scout-17b-16e-instruct` (vision) |
+  | AskAI 1o Pro | `llama-3.3-70b-versatile` |
+  | AskAI 2o Pro (flagship) | `openai/gpt-oss-120b` |
+  | AskAI 5o Pro (web only) | Free & unlimited with **no sign‑up** — runs on a frontier fallback (Kimi 2.6 / `gpt-oss-120b`) by default. Optionally route it through Claude **Fable 5** via [Puter](https://puter.com) by enabling it in Settings (one‑time Puter setup; no popups after). Hidden inside the iOS/Android shells. |
+- **Subagents** — for big, multi‑part asks AskAI silently spins up a few focused
+  specialist subagents, runs them in parallel, and folds their findings into one
+  unified answer. You only ever see the live status pills ("Created subagent:
+  Researcher" → ✓), never their individual output. Trigger it with a large
+  request, or say "use subagents".
+- **Prebuilt skills** — 16 ready‑to‑use skills ship built in (`/proofread`,
+  `/summarize`, `/eli5`, `/code-review`, `/debug`, `/regex`, `/sql`, `/email`,
+  `/translate`, `/brainstorm`, `/study`, `/flashcards`, `/resume`, `/meeting`,
+  `/social`, `/recipe`, `/plan`). Type `/` in chat to use one; agents can use them too.
+- **Web Search mode** — live, cited answers via Groq's `compound` model. When off, AskAI
+  auto‑decides whether a query needs the web.
+- **Web image search** - ask for real images/photos/logos from the web and AskAI shows a
+  preview gallery with source links, creator, provider, and license details when available.
+- **Agent mode** — autonomous, multi‑step web research with a visible step trace.
+- **Uploads** — images (sent to vision models) and files/PDFs (parsed client‑side as context).
+- **Image generation** — ask naturally for a photo, logo, poster, wallpaper, avatar, banner, or
+  illustration and AskAI returns an image card on both the website and APK. Logo/text prompts
+  use a safer high-contrast path and black/blank generations are retried automatically.
+- **Projects** — a coding agent + a real in‑browser sandbox (Sandpack) with **Code / Preview /
+  Console** tabs. The agent writes files that run instantly.
+- **Memory** — AskAI extracts durable facts about you and reuses them; manage them in Settings.
+- **Settings** — theme (light/dark/system), accent, liquid‑glass intensity, default model,
+  custom instructions, memory, and data controls.
+- **History** — chats saved to Firestore, grouped by date, searchable, renamable.
+
+## Windows desktop app
+
+A native **Windows app** (Electron) lives in [`electron/`](electron/). It wraps the
+web app — so every website feature works — and adds desktop-only powers:
+
+> **Download:** grab the latest **`AskAI-Setup-x.y.z.exe`** from the
+> [Releases page](https://github.com/riporipoteam-ctrl/ripoai/releases) and run it.
+> The build is unsigned, so Windows SmartScreen shows "More info → Run anyway" the
+> first time. After install, the app keeps itself up to date automatically.
+
+- **Installable from GitHub Releases** with its own icon + Start-menu/desktop shortcuts.
+- **Auto-update** (electron-updater) — new releases install themselves; check manually in
+  **Settings → AskAI Desktop**.
+- **Local PC control** — ask AskAI to do things on your computer ("move the funny folder to
+  my Desktop", "make a folder and unzip this") and it acts via `pc-action` blocks. Safe file
+  operations inside your folders run automatically; risky actions and shell commands ask you to
+  confirm (tune the allowlist in Settings).
+- **iPhone updater (sideloader)** — **Settings → Update your iPhone**: plug an iPhone in over USB
+  and the app detects it, finds the latest AskAI `.ipa` on GitHub Releases, downloads it,
+  optionally re-signs it, and installs it to the device — AltStore/Sideloadly style. It drives
+  the standard iOS tooling: [`libimobiledevice`](https://github.com/libimobiledevice-win32/imobiledevice-net/releases)
+  (`idevice_id`, `ideviceinstaller`) to talk to the device, and optional [`zsign`](https://github.com/zhlynn/zsign)
+  to re-sign unsigned builds with your `.p12` + `.mobileprovision`. Point the app at the folder
+  holding those tools (or add them to PATH). Bundle them into `electron/build` /
+  `resources/tools` to ship a zero-setup installer.
+
+Build it locally:
+
+```bash
+cd electron && npm install && npm start          # run the desktop app (loads the live site)
+ASKAI_URL=http://localhost:5173 npm start        # or point it at your local dev server
+npm run dist                                      # build an installer into electron/release/
+```
+
+CI builds + publishes the installer via the **Build Windows App** workflow (push a `*-win`
+tag or run it from the Actions tab).
+
+## Run locally
+
+```bash
+npm install
+echo "VITE_GROQ_API_KEY=your_groq_key_here" > .env   # .env is gitignored
+npm run dev
+```
+
+Open the printed URL. Google sign‑in works on `localhost` out of the box.
+
+## The Groq API key
+
+GitHub push protection refuses to let an API key be committed to source, so the key is
+**not** hardcoded. It is resolved at runtime from, in order:
+
+1. a key you paste into **Settings → General → Groq API key** (saved only in your browser), or
+2. the build‑time env var `VITE_GROQ_API_KEY` (a local `.env` for dev; a GitHub Actions secret
+   for the deployed site).
+
+To make the deployed site work for everyone without anyone entering a key, add the secret:
+**GitHub → Settings → Secrets and variables → Actions → New repository secret**, name
+`VITE_GROQ_API_KEY`. The deploy workflow injects it at build time (the key then lives in the
+public bundle — the trade‑off accepted for a keyless‑for‑users static site).
+
+## Deploy to Netlify (recommended — shorter URL)
+
+A `netlify.toml` is included, so deploying is one click:
+
+1. Push this repo to GitHub (done).
+2. On **netlify.com** → **Add new site → Import from GitHub** → pick this repo.
+   Build command and publish dir are auto-detected from `netlify.toml`
+   (`npm run build` → `dist`, with `VITE_BASE="/"` so it serves at the root).
+3. **Site settings → Environment variables** → add `VITE_GROQ_API_KEY` and
+   `VITE_OPENROUTER_API_KEY`. Then **Deploys → Trigger deploy**.
+4. **Site settings → Domain management** → rename the site to e.g.
+   **`ripoai`** → you get **`ripoai.netlify.app`** (short, custom). Add your own
+   custom domain there too if you have one.
+5. In **Firebase → Authentication → Authorized domains**, add your
+   `*.netlify.app` domain (and any custom domain) so Google sign‑in works.
+
+> Shorter GitHub Pages URL: GitHub can't shorten `…github.io/ripoai/` without a
+> custom domain or renaming the repo to `riporipoteam-ctrl.github.io` (which
+> serves at the root). Netlify's free custom subdomain is the easiest fix.
+
+## Android APK (build on GitHub — no local Android SDK needed)
+
+AskAI ships as an Android app via **Capacitor**, built by GitHub Actions:
+
+1. Make sure the repo secrets `VITE_GROQ_API_KEY` and `VITE_OPENROUTER_API_KEY`
+   are set (Settings → Secrets and variables → Actions).
+2. **Actions** tab → **Build Android APK** → **Run workflow**.
+3. When it finishes (~5 min), download the APK from:
+   - the run's **Artifacts** (`AskAI-apk`), or
+   - the **`android-latest` Release** (`AskAI.apk`).
+4. On your phone: open `AskAI.apk`, allow **install from unknown sources**, install.
+
+It's a **debug** APK (unsigned) — installable directly; for the Play Store you'd
+produce a signed release build.
+
+### Auto-updating APK
+
+The app is configured (Capacitor `server.url`) to load the **live deployed site**
+(`https://riporipoteam-ctrl.github.io/ripoai/`) rather than a bundled copy. That
+means **every push that redeploys the site updates the installed app automatically**
+on next launch — no reinstall, no Play Store. The native shell (status bar, haptics,
+splash, bottom-sheet menus, glassier `.native` styling) still applies, so it looks
+like an app rather than the website. You only need to rebuild/reinstall the APK when
+the native shell itself changes.
+
+The Android workflow also rebuilds the `android-latest` APK release when app source,
+public assets, or build config changes on the deploy branch, so new installers get
+the latest shell and live-site bundle path.
+
+> ⚠️ Inside the Android WebView, **Google sign‑in (popup) does not work** — use
+> **email/password** in the app. (Native Google auth would need the
+> `@capacitor-firebase/authentication` plugin.) `localhost` must be in Firebase
+> Authorized domains (it is by default).
+
+## iOS app
+
+iPhone/iPad get AskAI three ways:
+
+**1. Add to Home Screen (free, no Mac, recommended).** Open the deployed AskAI
+site in **Safari** → tap **Share** → **Add to Home Screen**. AskAI installs with
+its app icon and launches **full‑screen** (no Safari chrome), respecting the
+notch and home indicator — it behaves like a native app. The app even shows a
+one‑time hint explaining this. This is a real PWA install and needs no Apple
+account.
+
+**2. Native build via Capacitor (needs a Mac for device install).** GitHub
+Actions builds the iOS app on a macOS runner:
+
+1. **Actions** tab → **Build iOS app** → **Run workflow**.
+2. Download from the run's **Artifacts** (or the **`ios-latest` Release**):
+   - `AskAI-iOS-Simulator.zip` — runs in Xcode's iOS Simulator on a Mac.
+   - `AskAI-iOS-Xcode-project.zip` — open `App/App.xcodeworkspace` in Xcode,
+     set your **Signing Team**, plug in your iPhone, press **Run** to install.
+
+**3. Expo iOS shell (live, connected wrapper).** The new [`expo`](./expo)
+app loads the same live AskAI website in a native WebView, so installed iOS
+users get website updates on next launch without rebuilding the shell. It uses
+`expo-glass-effect` for real Liquid Glass on iOS 26+ and falls back to
+`expo-blur` where Liquid Glass is unavailable.
+
+```bash
+npm run expo:start
+npm run expo:build:ios
+```
+
+The **Build iOS App (Expo)** workflow validates the Expo config on branch pushes.
+It queues a production EAS iOS build only when the repo has an `EXPO_TOKEN`
+secret and Apple/EAS credentials are configured.
+
+> ⚠️ Apple does **not** allow installing **unsigned** apps on a physical device.
+> Running on a real iPhone requires an **Apple Developer account** ($99/yr) and
+> code signing — that's an Apple rule, not a AskAI limitation. The PWA path
+> above sidesteps all of it. Inside native iOS WebViews, Google sign‑in (popup) may
+> not work — use **email/password**.
+
+## Google sign‑in in an installed (home‑screen) PWA
+
+Google sign‑in works in a normal browser tab, but in an **installed PWA**
+(Add to Home Screen) it fails on GitHub Pages / Netlify. That's not a bug in
+the code — it's a browser rule: the Firebase OAuth handler lives on a
+*different* domain (`…firebaseapp.com`) than your app (`…github.io`), and
+installed PWAs **partition storage per‑domain**, so the credential returned by
+Google can never be read back by the app. iOS is strictest about this.
+
+**The fix is to serve the app from a domain where the auth handler is
+same‑origin — Firebase Hosting (`https://ripoai-dff5d.web.app`).** There the
+handler is part of the same site, so Google sign‑in works everywhere, PWA
+included. A deploy workflow is provided:
+
+1. **Firebase console → Hosting → Get started** (enable Hosting).
+2. Create a **service‑account key** (role: *Firebase Hosting Admin*) and add it
+   as the repo secret **`FIREBASE_SERVICE_ACCOUNT`** (paste the full JSON).
+   Tip: `firebase init hosting:github` wires this up automatically.
+3. Push to the deploy branch (or run **Actions → Deploy to Firebase Hosting**).
+4. Open **`https://ripoai-dff5d.web.app`** in Safari/Chrome → **Add to Home
+   Screen**. Google sign‑in now works in the installed app.
+
+The app's `authDomain` is already set to `ripoai-dff5d.web.app` for this. On
+GitHub Pages the code still does the right thing (redirect‑based sign‑in), but
+the **`.web.app` install is the reliable one for Google in a PWA**. Email/
+password works everywhere regardless. In the **native APK/iOS app**, use
+email/password (native Google would need the Capacitor Firebase Auth plugin).
+
+## AskAI 4o Pro (NVIDIA — needs a proxy)
+
+**AskAI 4o Pro** runs NVIDIA's **Llama‑4 Maverick**. NVIDIA's API doesn't send
+CORS headers, so a static browser app can't call it directly — deploy the tiny
+Cloudflare Worker in [`worker/nvidia-proxy.js`](./worker/nvidia-proxy.js)
+(instructions in the file), then set the repo Actions secret **`VITE_NVIDIA_BASE`**
+to the worker URL and redeploy. The worker holds your `nvapi-…` key, so it never
+ships in the client bundle. Until then, **4o Pro automatically falls back** to a
+strong Groq model, so it still works.
+
+## One‑time setup (required for production)
+
+1. **Firebase → Authentication → Sign‑in method**: enable **Email/Password** and **Google**.
+2. **Firebase → Authentication → Settings → Authorized domains**: add
+   `riporipoteam-ctrl.github.io`.
+3. **Firebase → Firestore Database**: create a database, then publish the rules from
+   [`firestore.rules`](./firestore.rules).
+4. **GitHub → Settings → Pages → Build and deployment → Source**: select **GitHub Actions**.
+   Pushing to the deploy branch then publishes to `https://riporipoteam-ctrl.github.io/ripoai/`.
+5. **GitHub → Settings → Secrets and variables → Actions**: add `VITE_GROQ_API_KEY` (see above).
+
+## Notes on scope
+
+This is a **static** app (GitHub Pages). Features that require an always‑on server are
+intentionally **not** included rather than faked: a real OS browser agent that drives Chrome,
+arbitrary terminal/command execution, and a fake 24/7 dev process. The live app stays available
+through GitHub Pages/Firebase/Netlify hosting; the APK and Expo iOS shell load that deployed site.
+The Projects sandbox is the genuine in‑browser equivalent for "live code + preview".
+
+> ⚠️ With a site‑wide key (option 2 above) the key ships in the public client bundle and is
+> abusable. Rotate it in the Groq console if you see abuse. For zero exposure, leave the secret
+> unset and have each user paste their own key in Settings.
+
+## Tech
+
+React 18 · Vite 6 · TypeScript · Tailwind CSS · Framer Motion · Zustand · Firebase ·
+Expo 56 · `expo-glass-effect` · `@codesandbox/sandpack-react` · react‑markdown ·
+KaTeX · Groq API.
