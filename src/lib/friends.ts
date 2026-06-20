@@ -95,30 +95,38 @@ function toProfile(data: any, uid: string): UserProfile | null {
       photoURL: s.avatar || undefined,
     }
   }
-  // Last resort: a real account doc with no name yet — still show it so nobody
-  // is invisible in search/suggestions.
-  if (data && (data.settings || data.updatedAt || data.profile)) {
-    return { uid, name: 'AskAI user', handle: uid.slice(0, 8).toLowerCase() }
-  }
-  return null
+  // Last resort: ANY account document — even an empty placeholder — should be
+  // discoverable so no real account is ever invisible in search/suggestions.
+  return { uid, name: 'AskAI user', handle: uid.slice(0, 8).toLowerCase() }
 }
 
 /** Fetch every published user profile (excluding self). This is the source of
  *  truth for BOTH search and suggestions, so the friends UI reliably shows
  *  everyone who has an AskAI account — no fragile prefix queries or composite
  *  indexes that silently return nothing. */
-export async function fetchAllProfiles(selfUid: string, max = 300): Promise<UserProfile[]> {
+export async function fetchAllProfiles(selfUid: string, max = 1000): Promise<UserProfile[]> {
   const out: UserProfile[] = []
+  const seen = new Set<string>()
   try {
     const snap = await getDocs(query(collection(db, 'users'), limit(max)))
     snap.forEach((d) => {
+      if (d.id === selfUid || seen.has(d.id)) return
       const p = toProfile(d.data(), d.id)
-      if (p && p.uid !== selfUid) out.push(p)
+      if (p) {
+        seen.add(d.id)
+        out.push(p)
+      }
     })
   } catch {
     /* rules/network not ready */
   }
-  return out.sort((a, b) => a.name.localeCompare(b.name))
+  // Named accounts first (more useful), then the rest, alphabetically.
+  return out.sort((a, b) => {
+    const an = a.name === 'AskAI user' ? 1 : 0
+    const bn = b.name === 'AskAI user' ? 1 : 0
+    if (an !== bn) return an - bn
+    return a.name.localeCompare(b.name)
+  })
 }
 
 /** Search users by name OR handle (substring, case-insensitive). Returns every
@@ -244,7 +252,7 @@ export async function maybeAskAI(cid: string, history: DMMessage[], text: string
 /** A handful of people to suggest adding (recent profiles, excluding self). */
 export async function suggestedUsers(selfUid: string, exclude: string[] = []): Promise<UserProfile[]> {
   const all = await fetchAllProfiles(selfUid)
-  return all.filter((p) => !exclude.includes(p.uid)).slice(0, 20)
+  return all.filter((p) => !exclude.includes(p.uid)).slice(0, 40)
 }
 
 export async function getProfile(uid: string): Promise<UserProfile | null> {

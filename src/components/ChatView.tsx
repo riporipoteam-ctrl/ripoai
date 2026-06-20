@@ -22,6 +22,7 @@ import { useChat } from '../hooks/useChat'
 import InviteAgents from './InviteAgents'
 import { useStore } from '../store'
 import { useT } from '../lib/i18n'
+import { haptic } from '../lib/native'
 import Composer from './Composer'
 import VoiceCall from './VoiceCall'
 import Message from './Message'
@@ -383,6 +384,41 @@ export default function ChatView() {
                 )
               })()}
             </motion.h1>
+
+            {/* Quick-start suggestions — tap to drop a starter into the composer */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.16 }}
+              className="mt-7 grid w-full max-w-md grid-cols-2 gap-2.5 sm:gap-3"
+            >
+              {suggestions.map((s, i) => (
+                <motion.button
+                  key={s.title}
+                  initial={{ opacity: 0, y: 12, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ delay: 0.2 + i * 0.05, type: 'spring', stiffness: 240, damping: 20 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => {
+                    haptic('light')
+                    if (s.prompt.endsWith(' ')) {
+                      window.dispatchEvent(new CustomEvent('askai-prefill', { detail: s.prompt }))
+                    } else {
+                      handleSend(s.prompt, [])
+                    }
+                  }}
+                  className="ag-card pressable group flex items-start gap-2.5 rounded-2xl border border-line bg-card/70 p-3 text-left backdrop-blur-sm"
+                >
+                  <span className="accent-gradient-bg flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3">
+                    <s.icon size={17} />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-bold leading-tight text-ink">{s.title}</span>
+                    <span className="block text-[11px] leading-snug text-muted">{s.sub}</span>
+                  </span>
+                </motion.button>
+              ))}
+            </motion.div>
           </div>
         ) : (
           /* Extra top clearance when the floating top bar overlays the scroll

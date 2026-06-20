@@ -16,6 +16,7 @@ import './styles/bold-2026.css'
 import './styles/chatgpt-theme.css'
 import './styles/platform.css'
 import './styles/nebula.css'
+import './styles/worldcup.css'
 import 'katex/dist/katex.min.css'
 import { applyPlatformClass } from './lib/platform'
 
