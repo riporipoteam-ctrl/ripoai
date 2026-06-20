@@ -39,6 +39,14 @@ interface Props {
 
 const THINKING_PHRASES = ['Thinking', 'Reasoning', 'Working on it', 'Putting it together']
 
+/** Short, locale-aware clock time for a message (e.g. "3:48 PM"). */
+function formatTime(ts?: number): string {
+  if (!ts) return ''
+  const d = new Date(ts)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+}
+
 /** Animated "Calling Max (Researcher)…" hand-off chip shown on the lead's
  *  message when AskAI brings specialists into the chat (Nebula-style). */
 function CallingAgents({ agents }: { agents: NonNullable<StoredMessage['callingAgents']> }) {
@@ -188,6 +196,11 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
               <div className="user-bubble whitespace-pre-wrap rounded-[22px] rounded-tr-md bg-gradient-to-br from-[rgb(var(--accent))] to-[rgb(var(--accent)/0.82)] px-4 py-2.5 font-medium text-[rgb(var(--accent-ink))] shadow-[0_8px_22px_-12px_rgb(var(--ink)/0.5)]">
                 {message.content}
               </div>
+              {formatTime(message.createdAt) && (
+                <div className="mt-1 pr-1 text-right text-[10px] font-medium text-muted/70">
+                  {formatTime(message.createdAt)}
+                </div>
+              )}
               {onEdit && (
                 <button
                   onClick={() => {
@@ -377,6 +390,9 @@ export default function Message({ message, streaming, isLastAssistant, onRegener
                 <Bookmark size={13} fill={message.bookmarked ? 'currentColor' : 'none'} />
                 {message.bookmarked ? 'Saved' : 'Save'}
               </button>
+            )}
+            {formatTime(message.createdAt) && (
+              <span className="ml-1 pr-2 text-[10px] font-medium text-muted/60">{formatTime(message.createdAt)}</span>
             )}
           </div>
         )}

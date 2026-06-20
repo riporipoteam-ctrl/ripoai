@@ -19,6 +19,7 @@ import { useStore } from '../store'
 import { isNative, haptic } from '../lib/native'
 import { watchConversations, watchFriends, type Conversation, type UserProfile } from '../lib/friends'
 import WorldCup from '../components/WorldCup'
+import PullToRefresh from '../components/PullToRefresh'
 
 const CARDS = [
   { to: '/agents', label: 'Agents', desc: 'Your AI team & Chief of Staff', icon: Bot, grad: 'linear-gradient(135deg,#6366f1,#8b5cf6)' },
@@ -46,6 +47,7 @@ export default function HomeLanding() {
 
   const [convs, setConvs] = useState<Conversation[]>([])
   const [friends, setFriends] = useState<UserProfile[]>([])
+  const [refreshKey, setRefreshKey] = useState(0)
   useEffect(() => {
     if (!user) return
     const u1 = watchConversations(user.uid, setConvs)
@@ -54,7 +56,14 @@ export default function HomeLanding() {
       u1()
       u2()
     }
-  }, [user])
+  }, [user, refreshKey])
+
+  // Pull-to-refresh: re-subscribe the live feeds and give the gesture a moment
+  // to settle so it feels responsive.
+  const onRefresh = async () => {
+    setRefreshKey((k) => k + 1)
+    await new Promise((r) => setTimeout(r, 650))
+  }
   const friendByUid = useMemo(() => new Map(friends.map((f) => [f.uid, f])), [friends])
 
   // Tap with a tactile tick (native only; no-op on web).
@@ -64,7 +73,8 @@ export default function HomeLanding() {
   }
 
   return (
-    <div className={`nb-page h-full w-full overflow-y-auto mx-auto max-w-2xl px-4 pt-9 ${isNative ? 'pb-28' : 'pb-10'}`}>
+    <PullToRefresh onRefresh={onRefresh} className="nb-page h-full w-full">
+      <div className={`mx-auto max-w-2xl px-4 pt-9 ${isNative ? 'pb-28' : 'pb-10'}`}>
       {/* Hero */}
       <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="mb-8 text-center">
         <motion.div
@@ -190,6 +200,7 @@ export default function HomeLanding() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </PullToRefresh>
   )
 }
