@@ -21,12 +21,21 @@ import { watchConversations, watchFriends, type Conversation, type UserProfile }
 import WorldCup from '../components/WorldCup'
 
 const CARDS = [
-  { to: '/agents', label: 'Agents', desc: 'Your AI team & Chief of Staff', icon: Bot },
-  { to: '/messages', label: 'Messages', desc: 'Chat, voice & video call friends', icon: MessageSquare },
-  { to: '/jobs', label: 'Jobs', desc: 'Scheduled, recurring tasks', icon: CalendarClock },
-  { to: '/friends', label: 'Friends', desc: 'Find & add people', icon: Users },
-  { to: '/apps', label: 'Apps', desc: 'Websites & apps agents build', icon: AppWindow },
+  { to: '/agents', label: 'Agents', desc: 'Your AI team & Chief of Staff', icon: Bot, grad: 'linear-gradient(135deg,#6366f1,#8b5cf6)' },
+  { to: '/messages', label: 'Messages', desc: 'Chat, voice & video call friends', icon: MessageSquare, grad: 'linear-gradient(135deg,#0ea5e9,#22d3ee)' },
+  { to: '/jobs', label: 'Jobs', desc: 'Scheduled, recurring tasks', icon: CalendarClock, grad: 'linear-gradient(135deg,#f59e0b,#f97316)' },
+  { to: '/friends', label: 'Friends', desc: 'Find & add people', icon: Users, grad: 'linear-gradient(135deg,#ec4899,#f43f5e)' },
+  { to: '/apps', label: 'Apps', desc: 'Websites & apps agents build', icon: AppWindow, grad: 'linear-gradient(135deg,#10b981,#34d399)' },
 ]
+
+function greeting(): string {
+  const h = new Date().getHours()
+  if (h < 5) return 'Good night'
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  if (h < 22) return 'Good evening'
+  return 'Good night'
+}
 
 export default function HomeLanding() {
   const navigate = useNavigate()
@@ -69,7 +78,7 @@ export default function HomeLanding() {
         <h1 className="nebula-display text-[1.7rem] font-bold leading-tight text-ink sm:text-4xl">
           {name ? (
             <>
-              Welcome back, <span className="nb-grad-text">{name}</span>
+              {greeting()}, <span className="nb-grad-text">{name}</span>
             </>
           ) : (
             <>
@@ -103,7 +112,10 @@ export default function HomeLanding() {
             onClick={() => tapTo(c.to)}
             className="ag-card pressable group flex flex-col items-start gap-2.5 rounded-[20px] border border-line bg-card p-4 text-left"
           >
-            <span className="accent-gradient-bg flex h-11 w-11 items-center justify-center rounded-[14px] transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3">
+            <span
+              className="flex h-11 w-11 items-center justify-center rounded-[14px] text-white shadow-md transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3"
+              style={{ background: c.grad }}
+            >
               <c.icon size={21} />
             </span>
             <span className="nebula-display font-bold text-ink">{c.label}</span>
