@@ -6,6 +6,7 @@ import { useNavigate } from 'react-router-dom'
 import { Search, UserPlus, Check, X, MessageSquare } from 'lucide-react'
 import { useStore } from '../store'
 import { isNative, haptic } from '../lib/native'
+import PullToRefresh from '../components/PullToRefresh'
 import {
   publishProfile,
   searchUsers,
@@ -110,6 +111,21 @@ export default function FriendsPage() {
 
   if (!me) return <div className="p-8 text-center text-muted">Sign in to use Friends.</div>
 
+  // Pull-to-refresh: republish our profile, then reload suggestions + any active
+  // search so newly-joined accounts surface immediately.
+  async function onRefresh() {
+    if (!me) return
+    setLoadingSuggested(true)
+    void publishProfile(user!)
+    const [sug, res] = await Promise.all([
+      suggestedUsers(me.uid, friends.map((f) => f.uid)),
+      term.trim() ? searchUsers(term, me.uid) : Promise.resolve([] as UserProfile[]),
+    ])
+    setSuggested(sug)
+    if (term.trim()) setResults(res)
+    setLoadingSuggested(false)
+  }
+
   async function add(p: UserProfile) {
     haptic('medium')
     setSent((s) => new Set(s).add(p.uid))
@@ -127,7 +143,8 @@ export default function FriendsPage() {
   )
 
   return (
-    <div className={`mx-auto h-full w-full max-w-2xl overflow-y-auto px-4 pt-5 ${isNative ? 'pb-28' : 'pb-6'}`}>
+    <PullToRefresh onRefresh={onRefresh} className="h-full w-full">
+      <div className={`mx-auto w-full max-w-2xl px-4 pt-5 ${isNative ? 'pb-28' : 'pb-6'}`}>
       <h1 className="mb-4 text-2xl font-bold text-ink">Friends</h1>
 
       <div className="mb-5 flex items-center gap-2 rounded-2xl border border-line bg-card px-3 py-2.5">
@@ -208,7 +225,8 @@ export default function FriendsPage() {
           </Row>
         ))}
       </Section>
-    </div>
+      </div>
+    </PullToRefresh>
   )
 }
 

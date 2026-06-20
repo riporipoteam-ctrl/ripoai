@@ -1,5 +1,6 @@
 import { Suspense, lazy, useEffect, useRef } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import { PanelLeftOpen, PenSquare, ArrowLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import Sidebar from '../components/Sidebar'
@@ -10,6 +11,7 @@ import Spinner from '../components/ui/Spinner'
 import { useStore } from '../store'
 import { loadPendingRuns } from '../lib/pendingRuns'
 import { useSwipeNav } from '../hooks/useSwipeNav'
+import { useTabSwipe } from '../hooks/useTabSwipe'
 import NativeTabBar from '../components/native/NativeTabBar'
 import CallManager from '../components/CallManager'
 import NotificationBell from '../components/NotificationBell'
@@ -33,6 +35,8 @@ export default function Home() {
   const { toggleSidebar, user } = useStore()
   // Native-style edge-swipe to open/close the sidebar on touch devices.
   useSwipeNav()
+  // Native swipe-between-tabs (Home · Agents · Jobs · Friends).
+  useTabSwipe()
   const navigate = useNavigate()
   const location = useLocation()
   // ChatView renders its own top bar; only the Projects view needs the
@@ -40,6 +44,15 @@ export default function Home() {
   const onProject = location.pathname.startsWith('/project')
   // Workspace pages render no top bar of their own — give them a back + menu.
   const onWorkspace = /^\/(agents|agent|jobs|apps|friends|messages|dm|tasks|team)\b/.test(location.pathname)
+
+  // Animate transitions between SECTIONS, not every URL change — so navigating
+  // within a chat (/chat → /c/:id while a reply streams) never remounts ChatView.
+  const sectionKey =
+    location.pathname === '/chat' || location.pathname.startsWith('/c/')
+      ? 'chat'
+      : location.pathname.startsWith('/project')
+        ? 'project'
+        : location.pathname
 
   // On a fresh open at the root, if a chat/agent task was interrupted by closing
   // the app, jump back into it so it resumes and finishes (handled in useChat).
@@ -85,7 +98,16 @@ export default function Home() {
           </div>
         )}
 
-        <Routes>
+        <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={sectionKey}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -6 }}
+          transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+          className="relative flex min-h-0 flex-1 flex-col"
+        >
+        <Routes location={location}>
           <Route
             path="/"
             element={
@@ -200,6 +222,8 @@ export default function Home() {
           />
           <Route path="*" element={<ChatView />} />
         </Routes>
+        </motion.div>
+        </AnimatePresence>
       </main>
       <Settings />
       <CommandPalette />
