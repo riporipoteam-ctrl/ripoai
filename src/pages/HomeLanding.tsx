@@ -16,7 +16,7 @@ import {
   MessageSquare,
 } from 'lucide-react'
 import { useStore } from '../store'
-import { isNative } from '../lib/native'
+import { isNative, haptic } from '../lib/native'
 import { watchConversations, watchFriends, type Conversation, type UserProfile } from '../lib/friends'
 import WorldCup from '../components/WorldCup'
 
@@ -47,6 +47,12 @@ export default function HomeLanding() {
     }
   }, [user])
   const friendByUid = useMemo(() => new Map(friends.map((f) => [f.uid, f])), [friends])
+
+  // Tap with a tactile tick (native only; no-op on web).
+  const tapTo = (to: string, h: 'light' | 'medium' = 'light') => {
+    haptic(h)
+    navigate(to)
+  }
 
   return (
     <div className={`nb-page h-full w-full overflow-y-auto mx-auto max-w-2xl px-4 pt-9 ${isNative ? 'pb-28' : 'pb-10'}`}>
@@ -82,7 +88,7 @@ export default function HomeLanding() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.06 }}
         whileTap={{ scale: 0.98 }}
-        onClick={() => navigate('/chat')}
+        onClick={() => tapTo('/chat', 'medium')}
         className="accent-gradient-bg pressable group mb-7 flex w-full items-center justify-center gap-2.5 rounded-[22px] px-4 py-4 text-base font-bold text-white"
       >
         <PenSquare size={20} /> New chat with AskAI
@@ -94,7 +100,7 @@ export default function HomeLanding() {
         {CARDS.map((c) => (
           <button
             key={c.to}
-            onClick={() => navigate(c.to)}
+            onClick={() => tapTo(c.to)}
             className="ag-card pressable group flex flex-col items-start gap-2.5 rounded-[20px] border border-line bg-card p-4 text-left"
           >
             <span className="accent-gradient-bg flex h-11 w-11 items-center justify-center rounded-[14px] transition-transform duration-300 group-hover:scale-110 group-hover:-rotate-3">

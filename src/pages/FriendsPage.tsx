@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, UserPlus, Check, X, MessageSquare } from 'lucide-react'
 import { useStore } from '../store'
-import { isNative } from '../lib/native'
+import { isNative, haptic } from '../lib/native'
 import {
   publishProfile,
   searchUsers,
@@ -67,6 +67,7 @@ export default function FriendsPage() {
   const [term, setTerm] = useState('')
   const [results, setResults] = useState<UserProfile[]>([])
   const [suggested, setSuggested] = useState<UserProfile[]>([])
+  const [loadingSuggested, setLoadingSuggested] = useState(true)
   const [sent, setSent] = useState<Set<string>>(new Set())
 
   useEffect(() => {
@@ -90,17 +91,29 @@ export default function FriendsPage() {
 
   useEffect(() => {
     if (!me) return
+    let alive = true
     suggestedUsers(
       me.uid,
       friends.map((f) => f.uid),
-    ).then(setSuggested)
+    )
+      .then((list) => {
+        if (!alive) return
+        setSuggested(list)
+      })
+      .finally(() => {
+        if (alive) setLoadingSuggested(false)
+      })
+    return () => {
+      alive = false
+    }
   }, [me, friends])
 
   if (!me) return <div className="p-8 text-center text-muted">Sign in to use Friends.</div>
 
   async function add(p: UserProfile) {
-    await sendFriendRequest(me!, p)
+    haptic('medium')
     setSent((s) => new Set(s).add(p.uid))
+    await sendFriendRequest(me!, p)
   }
 
   const AddBtn = ({ p }: { p: UserProfile }) => (
@@ -142,10 +155,10 @@ export default function FriendsPage() {
           {requests.map((r) => (
             <Row key={r.uid} p={r}>
               <div className="flex gap-1.5">
-                <button onClick={() => acceptRequest(me, r)} className="pressable flex h-8 w-8 items-center justify-center rounded-full accent-gradient-bg text-white">
+                <button onClick={() => { haptic('medium'); acceptRequest(me, r) }} className="pressable flex h-8 w-8 items-center justify-center rounded-full accent-gradient-bg text-white">
                   <Check size={15} />
                 </button>
-                <button onClick={() => declineRequest(me.uid, r.uid)} className="pressable flex h-8 w-8 items-center justify-center rounded-full border border-line text-muted">
+                <button onClick={() => { haptic('light'); declineRequest(me.uid, r.uid) }} className="pressable flex h-8 w-8 items-center justify-center rounded-full border border-line text-muted">
                   <X size={15} />
                 </button>
               </div>
@@ -156,9 +169,21 @@ export default function FriendsPage() {
 
       {!term && (
         <Section title="Suggestions">
-          {suggested.length === 0 ? (
+          {loadingSuggested ? (
+            <div className="space-y-2 py-2">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="nb-skeleton h-11 w-11 rounded-full" />
+                  <div className="flex-1 space-y-1.5">
+                    <div className="nb-skeleton h-3.5 w-1/3 rounded" />
+                    <div className="nb-skeleton h-3 w-1/4 rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : suggested.length === 0 ? (
             <p className="py-3 text-center text-sm text-muted">
-              No suggestions yet — as more people join, they'll show here. Search a username above to add someone.
+              No one to suggest yet — as more people join, they'll show here. Search a username above to add someone.
             </p>
           ) : (
             suggested.map((p) => (
@@ -175,7 +200,7 @@ export default function FriendsPage() {
         {friends.map((f) => (
           <Row key={f.uid} p={f}>
             <button
-              onClick={() => navigate(`/dm/${f.uid}`)}
+              onClick={() => { haptic('light'); navigate(`/dm/${f.uid}`) }}
               className="pressable flex items-center gap-1 rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-ink"
             >
               <MessageSquare size={13} /> Message

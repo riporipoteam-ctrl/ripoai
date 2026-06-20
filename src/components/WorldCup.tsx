@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { Trophy, Radio, MapPin, Clock } from 'lucide-react'
+import { Trophy, Radio, MapPin, Clock, ChevronRight } from 'lucide-react'
 import { fetchWorldCup, isLiveNow, type WCMatch } from '../lib/worldcup'
+import Flag from './Flag'
 
 function formatKickoff(iso: string): string {
   const d = new Date(iso)
@@ -18,7 +19,7 @@ function StatusPill({ match }: { match: WCMatch }) {
   const live = isLiveNow(match)
   if (live) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-ink">
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500/15 px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-red-600 dark:text-red-400">
         <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse-dot" />
         LIVE{match.minute ? ` · ${match.minute}` : ''}
       </span>
@@ -39,15 +40,31 @@ function StatusPill({ match }: { match: WCMatch }) {
   )
 }
 
-function TeamRow({ name, flag, score, show }: { name: string; flag?: string; score?: number | null; show: boolean }) {
+function TeamRow({
+  name,
+  flag,
+  score,
+  show,
+  winner,
+}: {
+  name: string
+  flag?: string
+  score?: number | null
+  show: boolean
+  winner?: boolean
+}) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <div className="flex min-w-0 items-center gap-2">
-        <span className="text-xl leading-none">{flag || '🏳️'}</span>
-        <span className="truncate text-sm font-semibold text-ink">{name}</span>
+      <div className="flex min-w-0 items-center gap-2.5">
+        <Flag name={name} emoji={flag} size={26} />
+        <span className={`truncate text-sm ${winner ? 'font-extrabold text-ink' : 'font-semibold text-ink'}`}>
+          {name}
+        </span>
       </div>
       {show ? (
-        <span className="nebula-display text-2xl font-bold tabular-nums text-ink">{score ?? 0}</span>
+        <span className={`wc-score text-2xl font-extrabold tabular-nums ${winner ? 'text-ink' : 'text-ink/80'}`}>
+          {score ?? 0}
+        </span>
       ) : (
         <span className="text-lg text-muted">–</span>
       )}
@@ -57,11 +74,20 @@ function TeamRow({ name, flag, score, show }: { name: string; flag?: string; sco
 
 function MatchCard({ match }: { match: WCMatch }) {
   const showScore = match.status === 'live' || match.status === 'finished'
+  const homeWin = showScore && (match.homeScore ?? 0) > (match.awayScore ?? 0)
+  const awayWin = showScore && (match.awayScore ?? 0) > (match.homeScore ?? 0)
+  const live = isLiveNow(match)
   return (
-    <div className="pressable flex w-64 shrink-0 flex-col gap-3 rounded-3xl border border-line bg-card p-4 sm:w-72">
+    <div
+      className={`wc-match pressable flex w-64 shrink-0 snap-start flex-col gap-3 rounded-3xl border bg-card p-4 sm:w-72 ${
+        live ? 'border-red-500/40 wc-live-glow' : 'border-line'
+      }`}
+    >
       <div className="flex items-center justify-between">
         {match.group ? (
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-muted">{match.group}</span>
+          <span className="rounded-md bg-ink/[0.05] px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-muted">
+            {match.group}
+          </span>
         ) : (
           <span />
         )}
@@ -69,8 +95,8 @@ function MatchCard({ match }: { match: WCMatch }) {
       </div>
 
       <div className="flex flex-col gap-2.5">
-        <TeamRow name={match.home} flag={match.homeFlag} score={match.homeScore} show={showScore} />
-        <TeamRow name={match.away} flag={match.awayFlag} score={match.awayScore} show={showScore} />
+        <TeamRow name={match.home} flag={match.homeFlag} score={match.homeScore} show={showScore} winner={homeWin} />
+        <TeamRow name={match.away} flag={match.awayFlag} score={match.awayScore} show={showScore} winner={awayWin} />
       </div>
 
       <div className="mt-auto flex flex-col gap-1 border-t border-line pt-2 text-[11px] text-muted">
@@ -129,65 +155,56 @@ export default function WorldCup() {
   }, [])
 
   const loading = matches == null
+  const liveCount = (matches || []).filter((m) => isLiveNow(m)).length
 
   return (
-    <section className="relative my-3 w-full overflow-hidden rounded-4xl border border-line bg-card p-5">
-      {/* Pitch-stripe / gradient backdrop using tokenized colors */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.06]"
-        style={{
-          backgroundImage:
-            'repeating-linear-gradient(90deg, rgb(var(--ink)) 0 1px, transparent 1px 64px)',
-        }}
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-accent/10 blur-2xl"
-      />
+    <section className="wc-hero relative my-3 w-full overflow-hidden rounded-[28px] p-[1.5px]">
+      {/* Official-style WC26 multi-colour gradient frame */}
+      <div className="relative overflow-hidden rounded-[26px] bg-card p-5">
+        {/* Pitch stripes + colourful aurora wash */}
+        <div aria-hidden className="wc-pitch pointer-events-none absolute inset-0" />
+        <div aria-hidden className="wc-wash pointer-events-none absolute inset-0" />
 
-      {/* Floating accent emoji */}
-      <span aria-hidden className="nb-float pointer-events-none absolute right-6 top-8 text-lg opacity-30">
-        🏆
-      </span>
-      <span
-        aria-hidden
-        className="nb-float pointer-events-none absolute right-16 bottom-6 text-base opacity-20"
-        style={{ animationDelay: '1.2s' }}
-      >
-        ⚽
-      </span>
-
-      {/* Header */}
-      <div className="relative flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/10">
-          <span className="animate-bounce-sm text-xl leading-none">⚽</span>
-        </div>
-        <div className="min-w-0 flex-1">
-          <h2 className="nebula-display flex items-center gap-2 text-lg font-bold text-ink">
-            World Cup 2026
-            <Trophy className="h-4 w-4 text-muted animate-spin-slow" />
-          </h2>
-          <p className="text-xs text-muted">United 2026 · USA · Canada · Mexico</p>
-        </div>
-      </div>
-
-      {/* Matches */}
-      <div className="no-scrollbar nb-stagger relative mt-4 flex gap-3 overflow-x-auto pb-1">
-        {loading ? (
-          <>
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
-          </>
-        ) : matches.length === 0 ? (
-          <div className="flex items-center gap-2 px-1 py-6 text-sm text-muted">
-            <Radio className="h-4 w-4" />
-            No fixtures available right now.
+        {/* Header */}
+        <div className="relative flex items-center gap-3">
+          <div className="wc-badge flex h-12 w-12 items-center justify-center rounded-2xl text-white shadow-lg">
+            <span className="animate-bounce-sm text-2xl leading-none">⚽</span>
           </div>
-        ) : (
-          matches.map((m) => <MatchCard key={m.id} match={m} />)
-        )}
+          <div className="min-w-0 flex-1">
+            <h2 className="wc-title flex items-center gap-2 text-xl font-black tracking-tight">
+              FIFA World Cup 26
+              {liveCount > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-red-600 dark:text-red-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse-dot" />
+                  {liveCount} live
+                </span>
+              )}
+            </h2>
+            <p className="flex items-center gap-1.5 text-xs font-medium text-muted">
+              <Trophy className="h-3.5 w-3.5" />
+              Canada · Mexico · USA
+            </p>
+          </div>
+          <ChevronRight className="h-5 w-5 shrink-0 text-muted" />
+        </div>
+
+        {/* Matches */}
+        <div className="no-scrollbar nb-stagger relative mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1">
+          {loading ? (
+            <>
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </>
+          ) : matches.length === 0 ? (
+            <div className="flex items-center gap-2 px-1 py-6 text-sm text-muted">
+              <Radio className="h-4 w-4" />
+              No fixtures available right now.
+            </div>
+          ) : (
+            matches.map((m) => <MatchCard key={m.id} match={m} />)
+          )}
+        </div>
       </div>
     </section>
   )
