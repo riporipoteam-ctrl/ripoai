@@ -10,6 +10,7 @@ import Spinner from '../components/ui/Spinner'
 import { useStore } from '../store'
 import { loadPendingRuns } from '../lib/pendingRuns'
 import { useSwipeNav } from '../hooks/useSwipeNav'
+import { useTabSwipe } from '../hooks/useTabSwipe'
 import NativeTabBar from '../components/native/NativeTabBar'
 import CallManager from '../components/CallManager'
 import NotificationBell from '../components/NotificationBell'
@@ -33,6 +34,8 @@ export default function Home() {
   const { toggleSidebar, user } = useStore()
   // Native-style edge-swipe to open/close the sidebar on touch devices.
   useSwipeNav()
+  // Native swipe-between-tabs (Home · Agents · Jobs · Friends).
+  useTabSwipe()
   const navigate = useNavigate()
   const location = useLocation()
   // ChatView renders its own top bar; only the Projects view needs the
